@@ -478,17 +478,40 @@ class CashFlowGame {
         player.receive(player.salary);
         message = `💰 Получено: $${player.salary}`;
         break;
-      case 'double_real_estate':
+      case 'half_real_estate':
         let realEstateCount = 0;
         player.assets.forEach(asset => {
           if (asset.title.includes('квартира') || asset.title.includes('дом') || 
               asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
               asset.title.includes('Торговый')) {
-            asset.cost *= 2;
+            asset.cost /= 2;
             realEstateCount++;
           }
         });
-        message = `🏠 Недвижимость удвоилась в цене! (${realEstateCount} объектов)`;
+        message = `🏠 Недвижимость теряет 50% стоимости! (${realEstateCount} объектов)`;
+        break;
+      case 'double_real_estate':
+        let realDEstateCount = 0;
+        player.assets.forEach(asset => {
+          if (asset.title.includes('квартира') || asset.title.includes('дом') || 
+              asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
+              asset.title.includes('Торговый')) {
+            asset.cost *= 2;
+            realDEstateCount++;
+          }
+        });
+        message = `🏠 Недвижимость удвоилась в цене! (${realDEstateCount} объектов)`;
+        break;
+      case 'double_stocks':
+        let stocksDCount = 0;
+        player.assets.forEach(asset => {
+          if (asset.title.includes('Акции') || asset.title.includes('акции') || 
+              asset.title.includes('Облигации')) {
+            asset.cost = Math.floor(asset.cost / 2);
+            stocksDCount++;
+          }
+        });
+        message = `📉 Акции удвоились в цене! (${stocksDCount} активов)`;
         break;
       case 'halve_stocks':
         let stocksCount = 0;
@@ -501,12 +524,18 @@ class CashFlowGame {
         });
         message = `📉 Акции потеряли 50% стоимости! (${stocksCount} активов)`;
         break;
-      case 'increase_expenses':
-        const increase = Math.floor(player.expenses * 0.1);
-        player.expenses += increase;
+      case 'increase_salary':
+        const increaseR = Math.floor(player.salary * 0.1);
+        player.salary += increase;
         player.totalExpenses += increase;
         player.cashFlow = player.totalIncome - player.totalExpenses;
         message = `💸 Расходы увеличились на $${increase}/мес`;
+        break;
+      case 'increase_expenses':
+        const increase = Math.floor(player.totalIncome * 0.1);
+        player.totalIncome += increase;
+        player.cashFlow = player.totalIncome - player.totalExpenses;
+        message = `💸 Доходы увеличились на $${increase}/мес`;
         break;
       default:
         message = "Эффект применен";
