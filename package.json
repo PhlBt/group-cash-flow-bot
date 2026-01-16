@@ -1,0 +1,21 @@
+{
+  "name": "cashflow-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for playing CashFlow game",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node bot.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "cashflow",
+    "game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0"
+  }
+}
