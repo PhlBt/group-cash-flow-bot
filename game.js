@@ -140,9 +140,12 @@ class CashFlowGame {
         break;
       case 'opportunity':
         card = generateOpportunityCard();
+        const oppResult = this.applyOpportunityEffect(player, card);
+        if (oppResult.newDeal) {
+          message += `\n\n💰 Баланс: $${player.cash}`;
+        }
         message += "\n\n🎁 ВОЗМОЖНОСТЬ:\n" + this.formatCard(card);
         // Применяем эффект сразу
-        const oppResult = this.applyOpportunityEffect(player, card);
         message += "\n" + oppResult.message;
         if (oppResult.newDeal) {
           // Если получена новая сделка - ждём действия
@@ -159,14 +162,14 @@ class CashFlowGame {
         this.waitingForAction = true;
         message += "\n\n💸 РАСХОДЫ:\n" + this.formatCard(card);
         break;
-      // case 'payday':
-      //   // День зарплаты - только начисляем доходы (расходы списываются в конце месяца)
-      //   player.receive(player.salary);
-      //   message += "\n\n💰 ДЕНЬ ЗАРПЛАТЫ!\n";
-      //   message += `💵 Зарплата: +$${player.salary}\n`;
-      //   message += `💰 Баланс: $${player.cash}`;
-      //   this.nextTurn();
-      //   break;
+      case 'payday':
+        // День зарплаты - только начисляем доходы (расходы списываются в конце месяца)
+        player.receive(player.salary);
+        message += "\n\n💰 ДЕНЬ ЗАРПЛАТЫ!\n";
+        message += `💵 Зарплата: +$${player.salary}\n`;
+        message += `💰 Баланс: $${player.cash}`;
+        this.nextTurn();
+        break;
       default:
         this.nextTurn();
     }
@@ -176,7 +179,7 @@ class CashFlowGame {
 
   getCellType(position) {
     // Упрощенная карта: каждые 4 клетки - новый тип
-    const types = ['small_deal', 'big_deal', 'market', 'opportunity', 'doodad'];
+    const types = ['small_deal', 'big_deal', 'market', 'opportunity', 'doodad', 'payday'];
     return types[position % types.length];
   }
 
@@ -424,17 +427,18 @@ class CashFlowGame {
   }
 
   // Продажа актива
-  sellAsset(assetIndex) {
+  sellAsset(assetId) {
     const player = this.getCurrentPlayer();
     if (!player) {
       return { success: false, message: "Игрок не найден!" };
     }
 
-    if (assetIndex < 0 || assetIndex >= player.assets.length) {
-      return { success: false, message: "Неверный номер актива!" };
+    const asset = player.assets.find(l => l.id === assetId);
+
+    if (!asset) {
+      return { success: false, message: "Актив не найден!" };
     }
 
-    const asset = player.assets[assetIndex];
     const salePrice = Math.floor(asset.cost * 0.8); // Продаём за 80% стоимости
 
     // Удаляем актив и получаем деньги
@@ -534,7 +538,7 @@ class CashFlowGame {
         player.passiveIncome += increasePIncome;
         player.totalIncome = player.salary + player.passiveIncome
         player.cashFlow = player.totalIncome - player.totalExpenses;
-        message = `💸 Доходы увеличились на $${increaseSalary+increasePIncome}/мес`;
+        message = `💸 Доходы увеличились на $${increaseSalary + increasePIncome}/мес\n`;
         message += `📊 Денежный поток: +$${player.cashFlow}/месяц`;
         break;
       case 'increase_expenses':
@@ -618,7 +622,7 @@ class CashFlowGame {
     message += `📍 Позиция на Fast Track: ${player.fastTrackPosition + 1}\n`;
     message += `💰 Получен доход: +$${player.fastTrackIncome}\n`;
     message += `💵 Баланс: $${player.fastTrackCash}\n`;
-    message += `🎯 До мечты: $${player.dreamCost - player.fastTrackCash}`;
+    message += `🎯 До мечты: $${player.dreamCost - player.fastTrackIncome}`;
 
     // Генерируем событие Fast Track
     const event = this.generateFastTrackEvent();
@@ -669,7 +673,7 @@ class CashFlowGame {
         icon: '💰',
         title: 'День денежного потока',
         description: 'Получите дополнительный доход!',
-        income: 10000
+        profit: 10000
       },
       {
         type: 'divorce',

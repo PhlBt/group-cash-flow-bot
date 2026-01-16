@@ -1097,7 +1097,7 @@ bot.on('callback_query', async (query) => {
     const player = game ? game.players.get(userId) : null;
     if (player) {
       const assetId = parseInt(data.split('_')[1]);
-      const result = player.sellAsset(assetId);
+      const result = game.sellAsset(assetId);
       await sendMessage(chatId, result.message);
     }
   }
