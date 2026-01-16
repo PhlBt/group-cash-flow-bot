@@ -97,8 +97,3 @@ node bot.js
 ## Лицензия
 
 MIT
-
-
-```
-docker run -d --restart=always --name cashFlow -v $(pwd):/app -w /app node:latest sh -c "npm install --save-prod pm2 && npm install && npx pm2 start bot.js --watch && npx pm2-runtime"
-```
