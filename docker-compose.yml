@@ -1,0 +1,13 @@
+services:
+
+  cash-flow:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    image: cash-flow
+    container_name: cashFlow
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm i && npm run serve"
+    restart: always

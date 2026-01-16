@@ -4,8 +4,7 @@
   "description": "Telegram bot for playing CashFlow game",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "node bot.js"
+    "serve": "pm2-runtime bot.js --watch"
   },
   "keywords": [
     "telegram",
@@ -15,10 +14,8 @@
   ],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
-    "pm2": "^6.0.14"
-  },
   "dependencies": {
-    "node-telegram-bot-api": "^0.64.0"
+    "node-telegram-bot-api": "^0.64.0",
+    "pm2": "^6.0.14"
   }
 }
