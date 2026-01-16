@@ -97,3 +97,8 @@ node bot.js
 ## Лицензия
 
 MIT
+
+
+```
+docker compose run --rm app pm2-runtime index.js
+```
