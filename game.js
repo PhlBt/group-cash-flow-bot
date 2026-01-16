@@ -120,12 +120,14 @@ class CashFlowGame {
         card = generateSmallDeal();
         this.currentCard = card;
         this.waitingForAction = true;
+        message += `\n\n💰 Баланс: $${player.cash}`;
         message += "\n\n🎯 МАЛАЯ СДЕЛКА:\n" + this.formatCard(card);
         break;
       case 'big_deal':
         card = generateBigDeal();
         this.currentCard = card;
         this.waitingForAction = true;
+        message += `\n\n💰 Баланс: $${player.cash}`;
         message += "\n\n💼 БОЛЬШАЯ СДЕЛКА:\n" + this.formatCard(card);
         break;
       case 'market':
@@ -157,14 +159,14 @@ class CashFlowGame {
         this.waitingForAction = true;
         message += "\n\n💸 РАСХОДЫ:\n" + this.formatCard(card);
         break;
-      case 'payday':
-        // День зарплаты - только начисляем доходы (расходы списываются в конце месяца)
-        player.receive(player.salary);
-        message += "\n\n💰 ДЕНЬ ЗАРПЛАТЫ!\n";
-        message += `💵 Зарплата: +$${player.salary}\n`;
-        message += `💰 Баланс: $${player.cash}`;
-        this.nextTurn();
-        break;
+      // case 'payday':
+      //   // День зарплаты - только начисляем доходы (расходы списываются в конце месяца)
+      //   player.receive(player.salary);
+      //   message += "\n\n💰 ДЕНЬ ЗАРПЛАТЫ!\n";
+      //   message += `💵 Зарплата: +$${player.salary}\n`;
+      //   message += `💰 Баланс: $${player.cash}`;
+      //   this.nextTurn();
+      //   break;
       default:
         this.nextTurn();
     }
@@ -174,7 +176,7 @@ class CashFlowGame {
 
   getCellType(position) {
     // Упрощенная карта: каждые 4 клетки - новый тип
-    const types = ['small_deal', 'big_deal', 'market', 'opportunity', 'doodad', 'payday'];
+    const types = ['small_deal', 'big_deal', 'market', 'opportunity', 'doodad'];
     return types[position % types.length];
   }
 
@@ -215,9 +217,9 @@ class CashFlowGame {
     if (useLoan && hasDownPayment) {
       // Покупка в кредит: платим первый взнос, остальное в кредит
       if (player.cash < downPayment) {
-        return { 
-          success: false, 
-          message: `Недостаточно денег для первого взноса! Нужно: $${downPayment}, у вас: $${player.cash}` 
+        return {
+          success: false,
+          message: `Недостаточно денег для первого взноса! Нужно: $${downPayment}, у вас: $${player.cash}`
         };
       }
 
@@ -237,10 +239,10 @@ class CashFlowGame {
       console.log('buy asset player before', player);
       player.pay(downPayment);
       console.log('buy asset player after', player);
-      
+
       // Берем кредит на остаток
       loanTaken = player.takeLoan(loanAmount, card.title);
-      
+
       message += `💵 Первый взнос: $${downPayment}\n`;
       message += `💰 Кредит: $${loanAmount}\n`;
       message += `💸 Ежемесячный платеж: $${loanTaken.monthlyPayment}\n`;
@@ -372,7 +374,7 @@ class CashFlowGame {
       } else {
         // Предлагаем варианты
         let message = `❌ Недостаточно денег! Нужно: $${card.cost}, у вас: $${player.cash}\n\n`;
-        
+
         if (monthlyPayment < player.cashFlow) {
           message += `💳 Можно взять кредит:\n`;
           message += `Сумма: $${shortage}\n`;
@@ -416,7 +418,7 @@ class CashFlowGame {
 
   // Форматирование активов для продажи
   formatAssetsForSale(player) {
-    return player.assets.map((a, i) => 
+    return player.assets.map((a, i) =>
       `${i + 1}. ${a.title} - $${a.cost} (доход: $${a.passiveIncome}/мес)`
     ).join('\n');
   }
@@ -476,14 +478,15 @@ class CashFlowGame {
     switch (card.effect) {
       case 'salary_bonus':
         player.receive(player.salary);
-        message = `💰 Получено: $${player.salary}`;
+        message = `💰 Получено: $${player.salary}\n`;
+        message += `💰 Баланс: $${player.cash}`;
         break;
       case 'half_real_estate':
         let realEstateCount = 0;
         player.assets.forEach(asset => {
-          if (asset.title.includes('квартира') || asset.title.includes('дом') || 
-              asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
-              asset.title.includes('Торговый')) {
+          if (asset.title.includes('квартира') || asset.title.includes('дом') ||
+            asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
+            asset.title.includes('Торговый')) {
             asset.cost /= 2;
             realEstateCount++;
           }
@@ -493,9 +496,9 @@ class CashFlowGame {
       case 'double_real_estate':
         let realDEstateCount = 0;
         player.assets.forEach(asset => {
-          if (asset.title.includes('квартира') || asset.title.includes('дом') || 
-              asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
-              asset.title.includes('Торговый')) {
+          if (asset.title.includes('квартира') || asset.title.includes('дом') ||
+            asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
+            asset.title.includes('Торговый')) {
             asset.cost *= 2;
             realDEstateCount++;
           }
@@ -505,8 +508,8 @@ class CashFlowGame {
       case 'double_stocks':
         let stocksDCount = 0;
         player.assets.forEach(asset => {
-          if (asset.title.includes('Акции') || asset.title.includes('акции') || 
-              asset.title.includes('Облигации')) {
+          if (asset.title.includes('Акции') || asset.title.includes('акции') ||
+            asset.title.includes('Облигации')) {
             asset.cost = Math.floor(asset.cost / 2);
             stocksDCount++;
           }
@@ -516,32 +519,36 @@ class CashFlowGame {
       case 'halve_stocks':
         let stocksCount = 0;
         player.assets.forEach(asset => {
-          if (asset.title.includes('Акции') || asset.title.includes('акции') || 
-              asset.title.includes('Облигации')) {
+          if (asset.title.includes('Акции') || asset.title.includes('акции') ||
+            asset.title.includes('Облигации')) {
             asset.cost = Math.floor(asset.cost / 2);
             stocksCount++;
           }
         });
         message = `📉 Акции потеряли 50% стоимости! (${stocksCount} активов)`;
         break;
-      case 'increase_salary':
-        const increaseR = Math.floor(player.salary * 0.1);
-        player.salary += increase;
-        player.totalExpenses += increase;
+      case 'increase_income':
+        const increaseSalary = Math.floor(player.salary * 0.1);
+        const increasePIncome = Math.floor(player.passiveIncome * 0.1);
+        player.salary += increaseSalary
+        player.passiveIncome += increasePIncome;
+        player.totalIncome = player.salary + player.passiveIncome
         player.cashFlow = player.totalIncome - player.totalExpenses;
-        message = `💸 Расходы увеличились на $${increase}/мес`;
+        message = `💸 Доходы увеличились на $${increaseSalary+increasePIncome}/мес`;
+        message += `📊 Денежный поток: +$${player.cashFlow}/месяц`;
         break;
       case 'increase_expenses':
-        const increase = Math.floor(player.totalIncome * 0.1);
-        player.totalIncome += increase;
+        const increase = Math.floor(player.expenses * 0.1);
+        player.expenses += increase;
+        player.totalExpenses += increase;
         player.cashFlow = player.totalIncome - player.totalExpenses;
-        message = `💸 Доходы увеличились на $${increase}/мес`;
+        message = `💸 Расходы увеличились на $${increase}/мес\n`;
+        message += `📊 Денежный поток: +$${player.cashFlow}/месяц`;
         break;
       default:
         message = "Эффект применен";
     }
 
-    message += `\n💰 Баланс: $${player.cash}`;
     return { message };
   }
 
@@ -801,7 +808,7 @@ class CashFlowGame {
     }
 
     const votes = this.kickVotes.get(targetUserId);
-    
+
     // Проверяем, голосовал ли уже
     if (votes.has(voterId)) {
       return { success: false, message: "Вы уже голосовали за исключение этого игрока!" };
@@ -835,7 +842,7 @@ class CashFlowGame {
     }
 
     const playerName = player.username;
-    
+
     // Если кикаем текущего игрока, переключаем ход
     if (this.currentPlayerId === targetUserId) {
       this.nextTurn();
@@ -909,7 +916,7 @@ class CashFlowGame {
       this.loser = player;
       // Удаляем игрока из игры
       this.players.delete(player.userId);
-      
+
       // Если остался только один игрок - он победитель
       if (this.players.size === 1) {
         this.winner = Array.from(this.players.values())[0];
@@ -917,7 +924,7 @@ class CashFlowGame {
       } else if (this.players.size === 0) {
         this.gameFinished = true;
       }
-      
+
       return {
         bankrupt: true,
         message: `\n\n💀 БАНКРОТСТВО!\n${player.username} обанкротился и выбывает из игры!`

@@ -68,7 +68,7 @@ class Player {
   // Взять кредит для покупки актива
   takeLoan(amount, assetTitle = '') {
     // Процентная ставка: 10% годовых, ежемесячный платеж = 1% от суммы кредита
-    const monthlyPayment = Math.ceil(amount * 0.1); // 1% в месяц (примерно 12% годовых)
+    const monthlyPayment = Math.ceil(amount * 0.01); // 1% в месяц (примерно 12% годовых)
 
     const loan = {
       id: Date.now(),

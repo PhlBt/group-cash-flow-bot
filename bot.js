@@ -4,6 +4,7 @@ const CashFlowGame = require('./game');
 // Замените на ваш токен от @BotFather
 const TOKEN = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN_HERE';
 
+
 const bot = new TelegramBot(TOKEN, { polling: true });
 
 // Хранилище игр по chatId
@@ -169,7 +170,7 @@ bot.onText(/\/join/, async (msg) => {
   if (result.success) {
     await sendMessage(chatId, formatPlayerInfo(result.player));
     const keyboard = getJoinSuccessKeyboard(game.gameStarted);
-    await sendMessage(chatId, "Выберите действие:", { reply_markup: keyboard });
+    await sendMessage(chatId, `Выберите действие:`, { reply_markup: keyboard });
   }
 });
 
@@ -188,7 +189,7 @@ bot.onText(/\/startgame/, async (msg) => {
     const currentPlayer = game.getCurrentPlayer();
     await sendMessage(chatId, `${result.message}\n\nХод игрока: ${currentPlayer.username}`);
     await sendMessage(chatId, formatPlayerInfo(currentPlayer.getStatus()));
-    await sendMessage(chatId, "Ваш ход! Бросьте кубик:", { reply_markup: getGameActionsKeyboard() });
+    await sendMessage(chatId, `Ваш ход ${currentPlayer.username}! Бросьте кубик:`, { reply_markup: getGameActionsKeyboard() });
   } else {
     await sendMessage(chatId, result.message);
   }
@@ -219,7 +220,7 @@ bot.onText(/\/roll/, async (msg) => {
 
     if (result.card && !result.card.skip) {
       const keyboard = getCardKeyboard(result.card.type);
-      await sendMessage(chatId, "Выберите действие:", { reply_markup: keyboard });
+      await sendMessage(chatId, `${player.username} выберите действие:`, { reply_markup: keyboard });
     }
 
     if (game.gameFinished) {
@@ -613,7 +614,7 @@ bot.onText(/\/fastroll/, async (msg) => {
   await sendMessage(chatId, result.message);
 
   if (result.success && !game.gameFinished) {
-    await sendMessage(chatId, "Выберите действие:", { reply_markup: getFastTrackKeyboard() });
+    await sendMessage(chatId, `${player.username} выберите действие:`, { reply_markup: getFastTrackKeyboard() });
   }
 
   if (game.gameFinished) {
@@ -768,7 +769,7 @@ bot.on('callback_query', async (query) => {
     if (result.success) {
       await sendMessage(chatId, formatPlayerInfo(result.player));
       const keyboard = getJoinSuccessKeyboard(game.gameStarted);
-      await sendMessage(chatId, "Выберите действие:", { reply_markup: keyboard });
+      await sendMessage(chatId, `Выберите действие:`, { reply_markup: keyboard });
     }
     return;
   } else if (data === 'cmd_startgame') {
@@ -781,7 +782,7 @@ bot.on('callback_query', async (query) => {
       const currentPlayer = game.getCurrentPlayer();
       await sendMessage(chatId, `${result.message}\n\nХод игрока: ${currentPlayer.username}`);
       await sendMessage(chatId, formatPlayerInfo(currentPlayer.getStatus()));
-      await sendMessage(chatId, "Ваш ход! Бросьте кубик:", { reply_markup: getGameActionsKeyboard() });
+      await sendMessage(chatId, `Ваш ход ${currentPlayer.username}! Бросьте кубик:`, { reply_markup: getGameActionsKeyboard() });
     } else {
       await sendMessage(chatId, result.message);
     }
@@ -801,7 +802,8 @@ bot.on('callback_query', async (query) => {
       if (result.card && !result.card.skip) {
         console.log('2 result.card', result.card);
         const keyboard = getCardKeyboard(result.card.type);
-        await sendMessage(chatId, "Выберите действие:", { reply_markup: keyboard });
+        const currentPlayer = game.getCurrentPlayer();
+        await sendMessage(chatId, `${currentPlayer.username} выберите действие:`, { reply_markup: keyboard });
       }
       if (game.gameFinished) {
         await sendMessage(chatId, "🎉 ИГРА ЗАВЕРШЕНА! Победитель вышел из крысиных бегов!");
@@ -1032,7 +1034,7 @@ bot.on('callback_query', async (query) => {
       const result = game.rollDiceFastTrack();
       await sendMessage(chatId, result.message);
       if (result.success && !game.gameFinished) {
-        await sendMessage(chatId, "Выберите действие:", { reply_markup: getFastTrackKeyboard() });
+        await sendMessage(chatId, `${player.username} выберите действие:`, { reply_markup: getFastTrackKeyboard() });
       }
       if (game.gameFinished) {
         const winner = game.getWinner();
@@ -1192,7 +1194,7 @@ function getSellAssetKeyboard(assets) {
 
   assets.forEach((asset, index) => {
     keyboard.inline_keyboard.push([
-      { text: `Продать актив #${index + 1} ($${asset.cost})`, callback_data: `sellasset_${loan.id}` }
+      { text: `Продать актив #${index + 1} ($${asset.cost})`, callback_data: `sellasset_${asset.id}` }
     ]);
   });
 

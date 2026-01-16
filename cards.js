@@ -106,7 +106,7 @@ function generateMarketCard() {
       type: "market",
       title: "Экономический рост",
       description: "Все доходы увеличиваются на 10%",
-      effect: "increase_revenues",
+      effect: "increase_income",
       skip: true
     },
     {
