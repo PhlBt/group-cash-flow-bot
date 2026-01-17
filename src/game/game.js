@@ -888,8 +888,8 @@ class CashFlowGame {
     }
 
     const card = this.currentCard;
-    const shortage = card.cost - player.cash;
-    const creditCardPayment = Math.ceil(shortage * 0.02); // 2% в месяц
+    const amount = card.cost;
+    const creditCardPayment = Math.ceil(amount * 0.02); // 2% в месяц
 
     // Проверяем, что платеж по кредитной карте меньше денежного потока
     if (creditCardPayment >= player.cashFlow) {
@@ -900,14 +900,14 @@ class CashFlowGame {
     }
 
     // Используем кредитную карту
-    const creditCard = player.useCreditCard(shortage, card.title);
+    const creditCard = player.useCreditCard(amount, card.title);
 
     this.currentCard = null;
     this.waitingForAction = false;
 
     let message = `💳 Оплачено кредитной картой: ₽${card.cost} за ${card.title}\n\n`;
     message += `💰 ВЫДАН КРЕДИТ КАРТОЙ:\n`;
-    message += `💵 Сумма кредита: ₽${shortage}\n`;
+    message += `💵 Сумма кредита: ₽${amount}\n`;
     message += `📊 Процентная ставка: 24% годовых\n`;
     message += `💸 Ежемесячный платеж: ₽${creditCard.monthlyPayment} (2% от суммы)\n`;
     message += `⚠️ Кредитная карта - дорогой способ! Рассмотрите другие варианты\n\n`;
