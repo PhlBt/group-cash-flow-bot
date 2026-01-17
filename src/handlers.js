@@ -38,9 +38,10 @@ async function handleNewGame(msg, services) {
   const { gameService, messageService } = services;
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  const username = msg.from.first_name || msg.from.username || 'игрок';
 
   try {
-    const gameId = await gameService.createGame(userId, userId); // chatId = userId для личных игр
+    const gameId = await gameService.createGame(chatId, userId, username);
     await messageService.sendGameCreatedMessage(chatId, gameId);
   } catch (error) {
     console.error('Error in handleNewGame:', error);
@@ -89,6 +90,7 @@ async function handleCallbackQuery(query, services) {
   const { gameService, messageService, bot } = services;
   const chatId = query.message.chat.id;
   const userId = query.from.id;
+  const username = query.from.first_name || query.from.username || 'игрок';
   const data = query.data;
 
   // Подтверждаем получение callback
@@ -101,15 +103,16 @@ async function handleCallbackQuery(query, services) {
         const existingGame = await gameService.getActiveGameByChatId(chatId);
         if (existingGame) {
           // Присоединиться к существующей игре
-          const joinResult = await gameService.joinGame(userId, existingGame.gameId);
+          const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
           if (joinResult.success) {
             await messageService.sendJoinSuccessMessage(chatId, existingGame.gameId);
+            await messageService.sendPlayerCard(chatId, joinResult.player);
           } else {
             await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
         } else {
           // Создать новую игру для чата
-          const gameId = await gameService.createGame(chatId, userId);
+          const gameId = await gameService.createGame(chatId, userId, username);
           await messageService.sendGameCreatedMessage(chatId, gameId);
         }
         break;

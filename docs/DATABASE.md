@@ -53,31 +53,78 @@ DatabaseService - это класс, отвечающий за все взаим
   - Закрывает клиент MongoDB
   - Логирует закрытие соединения
 
+## Структура данных
+
+### Документ игры (коллекция 'games')
+```javascript
+{
+  gameId: "string", // Уникальный ID игры
+  chatId: "string", // ID чата Telegram
+  creatorId: "string", // ID создателя игры
+  players: [
+    {
+      userId: "string", // ID пользователя Telegram
+      username: "string", // Имя пользователя
+      profession: "string", // Название профессии
+      cash: number, // Денежные средства
+      salary: number, // Зарплата
+      expenses: number, // Расходы
+      childrenCount: number, // Количество детей
+      childrenExpenses: number, // Расходы на детей
+      passiveIncome: number, // Пассивный доход
+      totalIncome: number, // Общий доход
+      totalExpenses: number, // Общие расходы
+      cashFlow: number, // Денежный поток
+      assetsCount: number, // Количество активов
+      liabilitiesCount: number, // Количество пассивов
+      loansCount: number, // Количество кредитов
+      totalLoans: number, // Общая сумма кредитов
+      totalLoanPayments: number, // Платежи по кредитам
+      position: number, // Позиция игрока (0-based)
+      inFastTrack: boolean, // Находится ли на скоростной дорожке
+      fastTrackCash: number, // Капитал на скоростной дорожке
+      fastTrackIncome: number, // Доход на скоростной дорожке
+      dreamCost: number // Стоимость мечты
+    }
+  ],
+  status: "waiting|active|finished", // Статус игры
+  createdAt: Date, // Время создания
+  startedAt: Date // Время начала (опционально)
+}
+```
+
 ## Методы работы с играми
 
-### createGame(userId)
+### createGame(chatId, userId, username)
 - **Назначение**: Создает новую игровую сессию
 - **Параметры**:
+  - `chatId` (string): ID чата
   - `userId` (string): ID пользователя-создателя игры
+  - `username` (string): Имя пользователя
 - **Возвращает**: Promise<string> - ID созданной игры
 - **Функционал**:
   - Генерирует уникальный ID игры на основе timestamp
-  - Создает документ игры в коллекции 'games'
-  - Устанавливает создателя как первого игрока
+  - Генерирует случайную профессию для создателя
+  - Создает объект игрока с начальными данными
+  - Создает документ игры в коллекции 'games' с массивом players
   - Устанавливает статус 'waiting' и время создания
 
-### joinGame(userId, gameId)
+### joinGame(userId, gameId, username)
 - **Назначение**: Присоединяет игрока к существующей игре
 - **Параметры**:
   - `userId` (string): ID игрока
   - `gameId` (string): ID игры
-- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+  - `username` (string): Имя пользователя
+- **Возвращает**: Promise<{success: boolean, error?: string, player?: Object}> - результат операции
 - **Функционал**:
   - Ищет игру по ID в коллекции 'games'
   - Проверяет существование игры
   - Проверяет, не присоединился ли уже игрок
   - Проверяет статус игры ('waiting')
-  - Добавляет игрока в массив players
+  - Генерирует случайную профессию для игрока
+  - Создает объект игрока с начальными данными
+  - Добавляет объект игрока в массив players
+  - Возвращает объект игрока в случае успеха
 
 ### getGame(gameId)
 - **Назначение**: Получает информацию об игре

@@ -7,20 +7,22 @@ class GameService {
    * Создает новую игру
    * @param {string} chatId - ID чата
    * @param {string} userId - ID создателя игры
+   * @param {string} username - Имя пользователя
    * @returns {Promise<string>} ID созданной игры
    */
-  async createGame(chatId, userId) {
-    return await this.databaseService.createGame(chatId, userId);
+  async createGame(chatId, userId, username) {
+    return await this.databaseService.createGame(chatId, userId, username);
   }
 
   /**
    * Присоединяет игрока к существующей игре
    * @param {string} userId - ID игрока
    * @param {string} gameId - ID игры
-   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   * @param {string} username - Имя пользователя
+   * @returns {Promise<{success: boolean, error?: string, player?: Object}>} Результат операции
    */
-  async joinGame(userId, gameId) {
-    return await this.databaseService.joinGame(userId, gameId);
+  async joinGame(userId, gameId, username) {
+    return await this.databaseService.joinGame(userId, gameId, username);
   }
 
   /**

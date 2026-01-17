@@ -1,4 +1,5 @@
 const { welcomeKeyboard } = require('../keyboards');
+const { formatNumber } = require('../utils');
 
 class MessageService {
   constructor(bot) {
@@ -156,6 +157,58 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет карточку игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   */
+  async sendPlayerCard(chatId, player) {
+    let info = `👤 ${player.username}\n`;
+    info += `💼 Профессия: ${player.profession}\n`;
+    info += `💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+    info += `💵 Зарплата: ${formatNumber(player.salary)} ₽/месяц\n`;
+    info += `💸 Базовые расходы: ${formatNumber(player.expenses)} ₽/месяц\n`;
+
+    if (player.childrenCount && player.childrenCount > 0) {
+      info += `👶 Детей: ${player.childrenCount} (расходы: ${formatNumber(player.childrenExpenses)} ₽/месяц)\n`;
+    }
+
+    info += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n`;
+    info += `📊 Общий доход: ${formatNumber(player.totalIncome)} ₽/месяц\n`;
+    info += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/месяц\n`;
+    info += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n`;
+    info += `🏠 Активов: ${player.assetsCount}\n`;
+    info += `📋 Пассивов: ${player.liabilitiesCount}\n`;
+
+    // Информация о кредитах
+    if (player.loansCount && player.loansCount > 0) {
+      info += `💳 Кредитов: ${player.loansCount}\n`;
+      info += `📊 Общая сумма кредитов: ${formatNumber(player.totalLoans)} ₽\n`;
+      info += `💸 Платежи по кредитам: ${formatNumber(player.totalLoanPayments)} ₽/месяц\n`;
+    }
+
+    info += `📍 Позиция: ${player.position + 1}\n`;
+
+    if (player.cashFlow > 0) {
+      info += `\n✅ Положительный денежный поток!`;
+    } else {
+      info += `\n⚠️ Отрицательный денежный поток`;
+    }
+
+    if (player.passiveIncome >= player.totalExpenses) {
+      info += `\n\n🎉 ВЫ ВЫШЛИ ИЗ КРЫСИНЫХ БЕГОВ!`;
+    }
+
+    if (player.inFastTrack) {
+      info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
+      info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
+      info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
+      info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
+    }
+
+    await this.bot.sendMessage(chatId, info);
   }
 
   /**

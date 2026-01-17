@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const { getRandomProfession } = require('../game/professions');
 
 /**
  * Сервис для работы с MongoDB
@@ -52,17 +53,44 @@ class DatabaseService {
    * Создает новую игру
    * @param {string} chatId - ID чата
    * @param {string} userId - ID создателя игры
+   * @param {string} username - Имя пользователя
    * @returns {Promise<string>} ID созданной игры
    */
-  async createGame(chatId, userId) {
+  async createGame(chatId, userId, username) {
     const gamesCollection = this.getCollection('games');
     const gameId = Date.now().toString(); // Простой ID на основе timestamp
+
+    const profession = getRandomProfession();
+    const player = {
+      userId,
+      username,
+      profession: profession.name,
+      cash: profession.savings,
+      salary: profession.salary,
+      expenses: profession.expenses,
+      childrenCount: 0,
+      childrenExpenses: 0,
+      passiveIncome: 0,
+      totalIncome: profession.salary,
+      totalExpenses: profession.expenses,
+      cashFlow: profession.salary - profession.expenses,
+      assetsCount: 0,
+      liabilitiesCount: 0,
+      loansCount: 0,
+      totalLoans: 0,
+      totalLoanPayments: 0,
+      position: 0,
+      inFastTrack: false,
+      fastTrackCash: 0,
+      fastTrackIncome: 0,
+      dreamCost: 0
+    };
 
     await gamesCollection.insertOne({
       gameId,
       chatId,
       creatorId: userId,
-      players: [userId],
+      players: [player],
       status: 'waiting',
       createdAt: new Date()
     });
@@ -74,9 +102,10 @@ class DatabaseService {
    * Присоединяет игрока к существующей игре
    * @param {string} userId - ID игрока
    * @param {string} gameId - ID игры
-   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   * @param {string} username - Имя пользователя
+   * @returns {Promise<{success: boolean, error?: string, player?: Object}>} Результат операции
    */
-  async joinGame(userId, gameId) {
+  async joinGame(userId, gameId, username) {
     const gamesCollection = this.getCollection('games');
     const game = await gamesCollection.findOne({ gameId });
 
@@ -84,7 +113,7 @@ class DatabaseService {
       return { success: false, error: 'not_found' };
     }
 
-    if (game.players.includes(userId)) {
+    if (game.players.some(player => player.userId === userId)) {
       return { success: false, error: 'already_joined' };
     }
 
@@ -92,12 +121,38 @@ class DatabaseService {
       return { success: false, error: 'game_started' };
     }
 
+    const profession = getRandomProfession();
+    const player = {
+      userId,
+      username,
+      profession: profession.name,
+      cash: profession.savings,
+      salary: profession.salary,
+      expenses: profession.expenses,
+      childrenCount: 0,
+      childrenExpenses: 0,
+      passiveIncome: 0,
+      totalIncome: profession.salary,
+      totalExpenses: profession.expenses,
+      cashFlow: profession.salary - profession.expenses,
+      assetsCount: 0,
+      liabilitiesCount: 0,
+      loansCount: 0,
+      totalLoans: 0,
+      totalLoanPayments: 0,
+      position: game.players.length, // позиция начиная с 0
+      inFastTrack: false,
+      fastTrackCash: 0,
+      fastTrackIncome: 0,
+      dreamCost: 0
+    };
+
     await gamesCollection.updateOne(
       { gameId },
-      { $push: { players: userId } }
+      { $push: { players: player } }
     );
 
-    return { success: true };
+    return { success: true, player };
   }
 
   /**
@@ -148,7 +203,7 @@ class DatabaseService {
   async getUserGames(userId) {
     const gamesCollection = this.getCollection('games');
     return await gamesCollection.find({
-      players: userId,
+      'players.userId': userId,
       status: { $in: ['waiting', 'active'] }
     }).toArray();
   }
