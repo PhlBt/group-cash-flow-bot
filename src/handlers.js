@@ -197,6 +197,13 @@ async function handleCallbackQuery(query, services) {
           // Создать новую игру для чата
           const gameId = await gameService.createGame(chatId, userId, username);
           await messageService.sendGameCreatedMessage(chatId, gameId);
+
+          // Отправить карточку игрока создателю
+          const game = await gameService.getGame(gameId);
+          const player = game.players.find(p => p.userId === userId);
+          if (player) {
+            await messageService.sendPlayerCard(chatId, player);
+          }
         }
         break;
 
