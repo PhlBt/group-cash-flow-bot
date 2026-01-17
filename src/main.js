@@ -1,6 +1,7 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { MongoClient } = require('mongodb');
+const MessageService = require('./services/messageService');
 
 // Загрузка переменных окружения
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -9,6 +10,9 @@ const MONGODB_DATABASE = process.env.MONGODB_DATABASE;
 
 // Инициализация бота
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+
+// Инициализация сервиса сообщений
+const messageService = new MessageService(bot);
 
 // Подключение к MongoDB
 let db;
@@ -25,30 +29,18 @@ async function connectToMongoDB() {
 }
 
 // Обработчик команды /start
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const userName = msg.from.first_name || 'игрок';
 
-  bot.sendMessage(chatId, `Привет, ${userName}! Добро пожаловать в игру CashFlow. Используй /help для получения списка команд.`);
+  await messageService.sendWelcomeMessage(chatId, userName);
 });
 
 // Обработчик команды /help
-bot.onText(/\/help/, (msg) => {
+bot.onText(/\/help/, async (msg) => {
   const chatId = msg.chat.id;
 
-  const helpText = `
-*Команды бота CashFlow:*
-
-/start - Начать игру
-/help - Показать эту справку
-/newgame - Создать новую игру
-/join - Присоединиться к игре
-
-*О игре:*
-CashFlow - настольная игра о финансовом планировании.
-  `;
-
-  bot.sendMessage(chatId, helpText, { parse_mode: 'Markdown' });
+  await messageService.sendHelpMessage(chatId);
 });
 
 // Обработчик команды /newgame
@@ -69,10 +61,10 @@ bot.onText(/\/newgame/, async (msg) => {
       createdAt: new Date()
     });
 
-    bot.sendMessage(chatId, `Новая игра создана! ID игры: ${gameId}. Другие игроки могут присоединиться с помощью команды /join ${gameId}`);
+    await messageService.sendGameCreatedMessage(chatId, gameId);
   } catch (error) {
     console.error('Error creating new game:', error);
-    bot.sendMessage(chatId, 'Ошибка при создании игры. Попробуйте еще раз.');
+    await messageService.sendGameCreationErrorMessage(chatId);
   }
 });
 
@@ -87,17 +79,17 @@ bot.onText(/\/join (.+)/, async (msg, match) => {
     const game = await gamesCollection.findOne({ gameId });
 
     if (!game) {
-      bot.sendMessage(chatId, 'Игра с таким ID не найдена.');
+      await messageService.sendJoinErrorMessage(chatId, 'not_found');
       return;
     }
 
     if (game.players.includes(userId)) {
-      bot.sendMessage(chatId, 'Вы уже присоединились к этой игре.');
+      await messageService.sendJoinErrorMessage(chatId, 'already_joined');
       return;
     }
 
     if (game.status !== 'waiting') {
-      bot.sendMessage(chatId, 'Игра уже начата или завершена.');
+      await messageService.sendJoinErrorMessage(chatId, 'game_started');
       return;
     }
 
@@ -106,10 +98,10 @@ bot.onText(/\/join (.+)/, async (msg, match) => {
       { $push: { players: userId } }
     );
 
-    bot.sendMessage(chatId, `Вы присоединились к игре ${gameId}!`);
+    await messageService.sendJoinSuccessMessage(chatId, gameId);
   } catch (error) {
     console.error('Error joining game:', error);
-    bot.sendMessage(chatId, 'Ошибка при присоединении к игре. Попробуйте еще раз.');
+    await messageService.sendJoinErrorMessage(chatId, 'general');
   }
 });
 
