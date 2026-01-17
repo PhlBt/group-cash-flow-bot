@@ -2,6 +2,7 @@
  * Сервис игровых событий
  * Обрабатывает все игровые события: броски кубика, карты, сделки и т.д.
  */
+const { formatNumber } = require('../utils/formatters');
 
 class GameEventsService {
   constructor(gameManager) {
@@ -172,21 +173,21 @@ class GameEventsService {
     if (paydayAmount >= 0) {
       player.receive(paydayAmount);
       message += "\n\n💰 ДЕНЬ ВЫПЛАТ!\n";
-      message += `💵 Зарплата: +₽${player.salary}\n`;
-      message += `📈 Пассивный доход: +₽${player.passiveIncome}\n`;
-      message += `💸 Расходы: -₽${player.totalExpenses}\n`;
-      message += `💹 Чистый денежный поток: +₽${paydayAmount}\n`;
-      message += `💰 Баланс: ₽${player.cash}`;
+      message += `💵 Зарплата: +${formatNumber(player.salary)} ₽\n`;
+      message += `📈 Пассивный доход: +${formatNumber(player.passiveIncome)} ₽\n`;
+      message += `💸 Расходы: -${formatNumber(player.totalExpenses)} ₽\n`;
+      message += `💹 Чистый денежный поток: +${formatNumber(paydayAmount)} ₽\n`;
+      message += `💰 Баланс: ${formatNumber(player.cash)} ₽`;
     } else {
       const penalty = Math.abs(paydayAmount);
       player.pay(penalty);
       message += "\n\n💸 ДЕНЬ ВЫПЛАТ!\n";
-      message += `💵 Зарплата: +₽${player.salary}\n`;
-      message += `📈 Пассивный доход: +₽${player.passiveIncome}\n`;
-      message += `💸 Расходы: -₽${player.totalExpenses}\n`;
-      message += `💹 Чистый денежный поток: -₽${penalty}\n`;
-      message += `⚠️ Штраф: -₽${penalty}\n`;
-      message += `💰 Баланс: ₽${player.cash}`;
+      message += `💵 Зарплата: +${formatNumber(player.salary)} ₽\n`;
+      message += `📈 Пассивный доход: +${formatNumber(player.passiveIncome)} ₽\n`;
+      message += `💸 Расходы: -${formatNumber(player.totalExpenses)} ₽\n`;
+      message += `💹 Чистый денежный поток: -${formatNumber(penalty)} ₽\n`;
+      message += `⚠️ Штраф: -${formatNumber(penalty)} ₽\n`;
+      message += `💰 Баланс: ${formatNumber(player.cash)} ₽`;
     }
 
     // Проверяем банкротство после выплат
@@ -338,29 +339,29 @@ class GameEventsService {
 
       case 'lottery_win':
         player.receive(100000);
-        message = `🎰 Выигрыш в лотерею! 💰 Получено: ₽100000`;
+        message = `🎰 Выигрыш в лотерею! 💰 Получено: ${formatNumber(100000)} ₽`;
         break;
 
       case 'lawsuit_win':
         player.receive(500000);
-        message = `⚖️ Коллективный иск выиграл! 💰 Получено: ₽500000`;
+        message = `⚖️ Коллективный иск выиграл! 💰 Получено: ${formatNumber(500000)} ₽`;
         break;
 
       case 'inheritance':
         player.receive(2000000);
-        message = `🤑 Получено наследство! 💰 Получено: ₽2000000`;
+        message = `🤑 Получено наследство! 💰 Получено: ${formatNumber(2000000)} ₽`;
         break;
 
       case 'car_accident':
-        message = `🚗 Вы попали в аварию. Нужно заплатить ₽150000`;
+        message = `🚗 Вы попали в аварию. Нужно заплатить ${formatNumber(150000)} ₽`;
         return { message, cost: 150000, canSkip: true };
 
       case 'surgery':
-        message = `🏥 Необходима операция. Нужно заплатить ₽200000`;
+        message = `🏥 Необходима операция. Нужно заплатить ${formatNumber(200000)} ₽`;
         return { message, cost: 200000, canSkip: true };
 
       case 'home_improvement':
-        message = `🏠 Улучшение дома. Нужно заплатить ₽250000`;
+        message = `🏠 Улучшение дома. Нужно заплатить ${formatNumber(250000)} ₽`;
         return { message, cost: 250000, canSkip: true };
 
       case 'charity':
@@ -368,9 +369,9 @@ class GameEventsService {
         if (player.cash >= charityAmount) {
           player.pay(charityAmount);
           player.charityTurnsLeft = 3;
-          message = `🎗️ Благотворительность!\n💸 Пожертвовано: ₽${charityAmount} (10% от дохода)\n🎲 Следующие 3 хода: право бросать 1 или 2 кубика`;
+          message = `🎗️ Благотворительность!\n💸 Пожертвовано: ${formatNumber(charityAmount)} ₽ (10% от дохода)\n🎲 Следующие 3 хода: право бросать 1 или 2 кубика`;
         } else {
-          message = `❌ Недостаточно средств для благотворительности!\nНужно: ₽${charityAmount}, у вас: ₽${player.cash}`;
+          message = `❌ Недостаточно средств для благотворительности!\nНужно: ${formatNumber(charityAmount)} ₽, у вас: ${formatNumber(player.cash)} ₽`;
           return { message, canSkip: true };
         }
         break;

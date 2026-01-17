@@ -1,6 +1,7 @@
 /**
  * Обработчики финансовых команд
  */
+const { formatNumber } = require('../utils/formatters');
 
 class FinanceHandler {
   constructor(gameManager) {
@@ -32,16 +33,16 @@ class FinanceHandler {
       return;
     }
 
-    let message = `💳 ВАШИ КРЕДИТЫ:\n\n`;
-    loansInfo.loans.forEach((loan, index) => {
-      message += `${index + 1}. ${loan.assetTitle || 'Кредит'}\n`;
-      message += `   💰 Сумма: $${loan.amount}\n`;
-      message += `   📉 Остаток: $${loan.remainingAmount}\n`;
-      message += `   💸 Ежемесячный платеж: $${loan.monthlyPayment}\n\n`;
-    });
+  let message = `💳 ВАШИ КРЕДИТЫ:\n\n`;
+  loansInfo.loans.forEach((loan, index) => {
+    message += `${index + 1}. ${loan.assetTitle || 'Кредит'}\n`;
+    message += `   💰 Сумма: ${formatNumber(loan.amount)} ₽\n`;
+    message += `   📉 Остаток: ${formatNumber(loan.remainingAmount)} ₽\n`;
+    message += `   💸 Ежемесячный платеж: ${formatNumber(loan.monthlyPayment)} ₽\n\n`;
+  });
 
-    message += `📊 Общая сумма кредитов: $${loansInfo.totalAmount}\n`;
-    message += `💸 Общие ежемесячные платежи: $${loansInfo.totalPayments}`;
+  message += `📊 Общая сумма кредитов: ${formatNumber(loansInfo.totalAmount)} ₽\n`;
+  message += `💸 Общие ежемесячные платежи: ${formatNumber(loansInfo.totalPayments)} ₽`;
 
     await sendMessage(chatId, message, { reply_markup: getLoansKeyboard(loansInfo.loans) });
   }
@@ -83,7 +84,7 @@ class FinanceHandler {
       // Показываем список кредитов для погашения
       let message = `💳 Выберите кредит для погашения:\n\n`;
       loansInfo.loans.forEach((loan, index) => {
-        message += `${index + 1}. Остаток: $${loan.remainingAmount}, Платеж: $${loan.monthlyPayment}/мес\n`;
+        message += `${index + 1}. Остаток: ${formatNumber(loan.remainingAmount)} ₽, Платеж: ${formatNumber(loan.monthlyPayment)} ₽/мес\n`;
       });
       message += `\nИспользуйте: /payloan <номер> [сумма]\n`;
       message += `Например: /payloan 1 1000 (погасить 1000 из кредита #1)\n`;
@@ -128,9 +129,9 @@ class FinanceHandler {
       const globalIndex = startIndex + i + 1;
       const salePrice = Math.floor(a.cost * 0.8);
       message += `${globalIndex}. ${a.title}\n`;
-      message += `   💰 Стоимость: $${a.cost}\n`;
-      message += `   💵 Цена продажи: $${salePrice} (80%)\n`;
-      message += `   📈 Доход: $${a.passiveIncome}/мес\n\n`;
+      message += `   💰 Стоимость: ${formatNumber(a.cost)} ₽\n`;
+      message += `   💵 Цена продажи: ${formatNumber(salePrice)} ₽ (80%)\n`;
+      message += `   📈 Доход: ${formatNumber(a.passiveIncome)} ₽/мес\n\n`;
     });
 
     if (player.assets.length > ITEMS_PER_PAGE) {
@@ -177,9 +178,9 @@ class FinanceHandler {
     currentLoans.forEach((loan, index) => {
       const globalIndex = startIndex + index + 1;
       message += `${globalIndex}. ${loan.assetTitle || 'Кредит'}\n`;
-      message += `   💰 Сумма: $${loan.amount}\n`;
-      message += `   📉 Остаток: $${loan.remainingAmount}\n`;
-      message += `   💸 Ежемесячный платеж: $${loan.monthlyPayment}\n\n`;
+      message += `   💰 Сумма: ${formatNumber(loan.amount)} ₽\n`;
+      message += `   📉 Остаток: ${formatNumber(loan.remainingAmount)} ₽\n`;
+      message += `   💸 Ежемесячный платеж: ${formatNumber(loan.monthlyPayment)} ₽\n\n`;
     });
 
     if (loansInfo.loans.length > ITEMS_PER_PAGE) {
@@ -187,8 +188,8 @@ class FinanceHandler {
       message += `📄 Страница ${page + 1} из ${totalPages}\n\n`;
     }
 
-    message += `📊 Общая сумма кредитов: $${loansInfo.totalAmount}\n`;
-    message += `💸 Общие ежемесячные платежи: $${loansInfo.totalPayments}`;
+    message += `📊 Общая сумма кредитов: ${formatNumber(loansInfo.totalAmount)} ₽\n`;
+    message += `💸 Общие ежемесячные платежи: ${formatNumber(loansInfo.totalPayments)} ₽`;
 
     await sendMessage(chatId, message, { reply_markup: getLoansKeyboard(loansInfo.loans, page) });
   }

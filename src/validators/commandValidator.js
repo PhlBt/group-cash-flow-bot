@@ -2,6 +2,7 @@
  * Сервис валидации команд
  * Проверяет корректность команд и их параметров
  */
+const { formatNumber } = require('../utils/formatters');
 
 class CommandValidator {
   constructor(gameManager) {
@@ -122,7 +123,7 @@ class CommandValidator {
         }
 
         if (amount > player.cash) {
-          return { valid: false, message: `Недостаточно денег! У вас: ₽${player.cash}` };
+          return { valid: false, message: `Недостаточно денег! У вас: ${formatNumber(player.cash)} ₽` };
         }
       }
     }

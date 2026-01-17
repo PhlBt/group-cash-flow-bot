@@ -41,7 +41,7 @@ bot.onText(/\/mystats/, async (msg) => {
       message += `\n🚀 FAST TRACK:\n`;
       message += `Входов: ${playerStats.fastTrackEntries}\n`;
       message += `Побед на FT: ${playerStats.fastTrackWins}\n`;
-      message += `Лучший капитал: $${playerStats.bestFastTrackCash}\n`;
+      message += `Лучший капитал: ${formatNumber(playerStats.bestFastTrackCash)} ₽\n`;
     }
 
     if (playerStats.professionsPlayed.length > 0) {
@@ -343,7 +343,7 @@ bot.onText(/\/small_deal/, async (msg) => {
   game.currentCard = card;
 
   const player = game.players.get(userId);
-  const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ₽${player.cash}`;
+  const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
   await sendMessage(chatId, message, { reply_markup: getDealActionsKeyboard(card) });
 });
 
@@ -371,7 +371,7 @@ bot.onText(/\/big_deal/, async (msg) => {
   game.currentCard = card;
 
   const player = game.players.get(userId);
-  const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ₽${player.cash}`;
+  const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
   await sendMessage(chatId, message, { reply_markup: getDealActionsKeyboard(card) });
 });
 
@@ -850,20 +850,20 @@ bot.onText(/\/status/, async (msg) => {
     message += `Текущий ход: ${currentPlayer.username}\n\n`;
   }
 
-  message += `Игроки:\n`;
-  status.players.forEach((player, index) => {
-    message += `\n${index + 1}. ${player.username} (${player.profession})\n`;
-    message += `   💰 Деньги: ₽${player.cash}\n`;
-    message += `   📊 Денежный поток: ₽${player.cashFlow}/месяц\n`;
-    message += `   📈 Пассивный доход: ₽${player.passiveIncome}/месяц\n`;
-    message += `   🏠 Активы: ${player.assetsCount}\n`;
-    if (player.loansCount && player.loansCount > 0) {
-      message += `   💳 Кредитов: ${player.loansCount} (₽${player.totalLoans})\n`;
-    }
-    if (player.inFastTrack) {
-      message += `   ⚡ На быстром треке!\n`;
-    }
-  });
+    message += `Игроки:\n`;
+    status.players.forEach((player, index) => {
+      message += `\n${index + 1}. ${player.username} (${player.profession})\n`;
+      message += `   💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+      message += `   📊 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n`;
+      message += `   📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n`;
+      message += `   🏠 Активы: ${player.assetsCount}\n`;
+      if (player.loansCount && player.loansCount > 0) {
+        message += `   💳 Кредитов: ${player.loansCount} (${formatNumber(player.totalLoans)} ₽)\n`;
+      }
+      if (player.inFastTrack) {
+        message += `   ⚡ На быстром треке!\n`;
+      }
+    });
 
   const keyboard = status.gameStarted ? getGameActionsKeyboard() : getJoinSuccessKeyboard(false);
   await sendMessage(chatId, message, { reply_markup: keyboard });
@@ -1321,12 +1321,12 @@ bot.on('callback_query', async (query) => {
     message += `Игроки:\n`;
     status.players.forEach((player, index) => {
       message += `\n${index + 1}. ${player.username} (${player.profession})\n`;
-      message += `   💰 Деньги: $${player.cash}\n`;
-      message += `   📊 Денежный поток: $${player.cashFlow}/месяц\n`;
-      message += `   📈 Пассивный доход: $${player.passiveIncome}/месяц\n`;
+      message += `   💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+      message += `   📊 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n`;
+      message += `   📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n`;
       message += `   🏠 Активы: ${player.assetsCount}\n`;
       if (player.loansCount && player.loansCount > 0) {
-        message += `   💳 Кредитов: ${player.loansCount} ($${player.totalLoans})\n`;
+        message += `   💳 Кредитов: ${player.loansCount} (${formatNumber(player.totalLoans)} ₽)\n`;
       }
       if (player.inFastTrack) {
         message += `   ⚡ На быстром треке!\n`;
@@ -1624,7 +1624,7 @@ bot.on('callback_query', async (query) => {
       game.currentCard = card;
 
       const player = game.players.get(userId);
-      const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: $${player.cash}`;
+      const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
       await sendMessage(chatId, message, { reply_markup: getCardKeyboard(card.type) });
     }
   } else if (data === 'big_deal') {
@@ -1636,7 +1636,7 @@ bot.on('callback_query', async (query) => {
       game.currentCard = card;
 
       const player = game.players.get(userId);
-      const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: $${player.cash}`;
+      const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
       await sendMessage(chatId, message, { reply_markup: getCardKeyboard(card.type) });
     }
   } else if (data === 'charity_accept') {

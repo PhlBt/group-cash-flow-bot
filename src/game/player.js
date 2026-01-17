@@ -156,11 +156,11 @@ class Player {
     const paymentAmount = amount || loan.remainingAmount;
 
     if (paymentAmount > this.cash) {
-      return { success: false, message: `Недостаточно денег! Нужно: $${paymentAmount}, у вас: $${this.cash}` };
+      return { success: false, message: `Недостаточно денег! Нужно: ${formatNumber(paymentAmount)} ₽, у вас: ${formatNumber(this.cash)} ₽` };
     }
 
     if (paymentAmount > loan.remainingAmount) {
-      return { success: false, message: `Сумма превышает остаток по кредиту! Остаток: $${loan.remainingAmount}` };
+      return { success: false, message: `Сумма превышает остаток по кредиту! Остаток: ${formatNumber(loan.remainingAmount)} ₽` };
     }
 
     // Вычитаем деньги
@@ -182,8 +182,8 @@ class Player {
     return {
       success: true,
       message: isFullyPaid
-        ? `✅ Кредит полностью погашен! Потрачено: $${paymentAmount}`
-        : `✅ Погашено: $${paymentAmount}. Остаток по кредиту: $${loan.remainingAmount}`,
+        ? `✅ Кредит полностью погашен! Потрачено: ${formatNumber(paymentAmount)} ₽`
+        : `✅ Погашено: ${formatNumber(paymentAmount)} ₽. Остаток по кредиту: ${formatNumber(loan.remainingAmount)} ₽`,
       loan: isFullyPaid ? null : loan,
       isFullyPaid: isFullyPaid
     };
@@ -245,7 +245,7 @@ class Player {
 
     return {
       success: true,
-      message: `🎉 Вы вышли из крысиных бегов!\n\n🚀 FAST TRACK:\n💰 Начальный капитал: $${this.fastTrackCash}\n💵 Ежемесячный доход: $${this.fastTrackIncome}\n🎯 Цель - купить мечту: $${this.dreamCost}`
+      message: `🎉 Вы вышли из крысиных бегов!\n\n🚀 FAST TRACK:\n💰 Начальный капитал: ₽${formatNumber(this.fastTrackCash)}\n💵 Ежемесячный доход: ₽${formatNumber(this.fastTrackIncome)}\n🎯 Цель - купить мечту: ₽${formatNumber(this.dreamCost)}`
     };
   }
 
@@ -289,7 +289,7 @@ class Player {
 
     return {
       success: true,
-      message: `👶 У вас родился ребенок! Теперь у вас ${this.childrenCount} ${this.childrenCount === 1 ? 'ребенок' : this.childrenCount === 2 ? 'ребенка' : 'детей'}.\n💸 Расходы увеличились на ₽${childExpense}/месяц\n📊 Денежный поток: ₽${this.cashFlow}/месяц`
+      message: `👶 У вас родился ребенок! Теперь у вас ${this.childrenCount} ${this.childrenCount === 1 ? 'ребенок' : this.childrenCount === 2 ? 'ребенка' : 'детей'}.\n💸 Расходы увеличились на ${formatNumber(childExpense)} ₽/месяц\n📊 Денежный поток: ${formatNumber(this.cashFlow)} ₽/месяц`
     };
   }
 
@@ -313,7 +313,7 @@ class Player {
       // Если не можем оплатить - банкротство
       return {
         success: false,
-        message: `💼 УВОЛЬНЕНИЕ!\n❌ Недостаточно средств для оплаты расходов!\nНужно: ₽${expenseAmount}, у вас: ₽${this.cash}\n\n💀 БАНКРОТСТВО!`,
+        message: `💼 УВОЛЬНЕНИЕ!\n❌ Недостаточно средств для оплаты расходов!\nНужно: ${formatNumber(expenseAmount)} ₽, у вас: ${formatNumber(this.cash)} ₽\n\n💀 БАНКРОТСТВО!`,
         bankrupt: true,
         expenseAmount: expenseAmount
       };

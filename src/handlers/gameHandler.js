@@ -1,6 +1,7 @@
 /**
  * Обработчики игровых команд
  */
+const { formatNumber } = require('../utils/formatters');
 
 class GameHandler {
   constructor(gameManager) {
@@ -88,12 +89,12 @@ class GameHandler {
     message += `Игроки:\n`;
     status.players.forEach((player, index) => {
       message += `\n${index + 1}. ${player.username} (${player.profession})\n`;
-      message += `   💰 Деньги: $${player.cash}\n`;
-      message += `   📊 Денежный поток: $${player.cashFlow}/месяц\n`;
-      message += `   📈 Пассивный доход: $${player.passiveIncome}/месяц\n`;
+      message += `   💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+      message += `   📊 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n`;
+      message += `   📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n`;
       message += `   🏠 Активы: ${player.assetsCount}\n`;
       if (player.loansCount && player.loansCount > 0) {
-        message += `   💳 Кредитов: ${player.loansCount} ($${player.totalLoans})\n`;
+        message += `   💳 Кредитов: ${player.loansCount} (${formatNumber(player.totalLoans)} ₽)\n`;
       }
       if (player.inFastTrack) {
         message += `   ⚡ На быстром треке!\n`;
