@@ -22,7 +22,8 @@ let gameService;
 // Объект с сервисами для передачи в обработчики
 const services = {
   get messageService() { return messageService; },
-  get gameService() { return gameService; }
+  get gameService() { return gameService; },
+  get bot() { return bot; }
 };
 
 // Подключение к MongoDB
@@ -56,6 +57,11 @@ bot.onText(/\/newgame/, async (msg) => {
 // Обработчик команды /play
 bot.onText(/\/play (.+)/, async (msg, match) => {
   await handlers.handlePlay(msg, match, services);
+});
+
+// Обработчик callback_query от inline кнопок
+bot.on('callback_query', async (query) => {
+  await handlers.handleCallbackQuery(query, services);
 });
 
 // Установка команд для бота

@@ -1,3 +1,5 @@
+const { welcomeKeyboard } = require('../keyboards');
+
 class MessageService {
   constructor(bot) {
     this.bot = bot;
@@ -9,8 +11,13 @@ class MessageService {
    * @param {string} userName - Имя пользователя
    */
   async sendWelcomeMessage(chatId, userName) {
-    const message = `Привет, ${userName}! Добро пожаловать в игру CashFlow. Используй /help для получения списка команд.`;
-    await this.bot.sendMessage(chatId, message);
+    const message = `🎮 Добро пожаловать в CashFlow!
+
+Правила игры:
+🎯 Цель: Выйти из "крысиных бегов", накопив пассивный доход больше расходов
+
+Используйте кнопки ниже для управления игрой.`;
+    await this.bot.sendMessage(chatId, message, { reply_markup: welcomeKeyboard });
   }
 
   /**
@@ -31,6 +38,35 @@ CashFlow - настольная игра о финансовом планиро�
     `;
 
     await this.bot.sendMessage(chatId, helpText.trim(), { parse_mode: 'Markdown' });
+  }
+
+  /**
+   * Отправляет сообщение с правилами игры
+   * @param {number} chatId - ID чата
+   */
+  async sendRulesMessage(chatId) {
+    const rulesText = `
+*Правила игры CashFlow:*
+
+🎯 *Цель игры:*
+Выйти из "крысиных бегов" - состояния, когда ваши расходы превышают доходы. Для этого нужно накопить пассивный доход, превышающий ваши ежемесячные расходы.
+
+💰 *Основные понятия:*
+- *Активы* - источники пассивного дохода (аренда, дивиденды и т.д.)
+- *Пассивный доход* - доход от активов
+- *Расходы* - ежемесячные обязательные платежи
+- *Крысиные бега* - когда расходы > доход
+
+🎲 *Как играть:*
+1. Создайте новую игру с помощью кнопки "🎮 Играть!" или команды /newgame
+2. Следуйте подсказкам бота для управления финансами
+3. Принимайте решения о покупке активов и управлении расходами
+4. Цель - достичь финансовой свободы!
+
+📋 Используйте кнопки или команды для навигации.
+    `;
+
+    await this.bot.sendMessage(chatId, rulesText.trim(), { parse_mode: 'Markdown' });
   }
 
   /**

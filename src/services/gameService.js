@@ -5,11 +5,12 @@ class GameService {
 
   /**
    * Создает новую игру
+   * @param {string} chatId - ID чата
    * @param {string} userId - ID создателя игры
    * @returns {Promise<string>} ID созданной игры
    */
-  async createGame(userId) {
-    return await this.databaseService.createGame(userId);
+  async createGame(chatId, userId) {
+    return await this.databaseService.createGame(chatId, userId);
   }
 
   /**
@@ -48,6 +49,15 @@ class GameService {
    */
   async getUserGames(userId) {
     return await this.databaseService.getUserGames(userId);
+  }
+
+  /**
+   * Получает активную игру для чата
+   * @param {string} chatId - ID чата
+   * @returns {Promise<Object|null>} Документ игры или null
+   */
+  async getActiveGameByChatId(chatId) {
+    return await this.databaseService.getActiveGameByChatId(chatId);
   }
 }
 

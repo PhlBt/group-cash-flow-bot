@@ -12,7 +12,7 @@
 async function handleStart(msg, services) {
   const { messageService } = services;
   const chatId = msg.chat.id;
-  const userName = msg.from.first_name || 'игрок';
+  const userName = msg.from.first_name || msg.from.username || 'игрок';
 
   await messageService.sendWelcomeMessage(chatId, userName);
 }
@@ -40,7 +40,7 @@ async function handleNewGame(msg, services) {
   const userId = msg.from.id;
 
   try {
-    const gameId = await gameService.createGame(userId);
+    const gameId = await gameService.createGame(userId, userId); // chatId = userId для личных игр
     await messageService.sendGameCreatedMessage(chatId, gameId);
   } catch (error) {
     console.error('Error in handleNewGame:', error);
@@ -80,9 +80,63 @@ async function handlePlay(msg, match, services) {
   }
 }
 
+/**
+ * Обрабатывает callback_query от inline кнопок
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
+ */
+async function handleCallbackQuery(query, services) {
+  const { gameService, messageService, bot } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const data = query.data;
+
+  // Подтверждаем получение callback
+  await bot.answerCallbackQuery(query.id);
+
+  try {
+    switch (data) {
+      case 'play':
+        // Проверить наличие активной игры для чата
+        const existingGame = await gameService.getActiveGameByChatId(chatId);
+        if (existingGame) {
+          // Присоединиться к существующей игре
+          const joinResult = await gameService.joinGame(userId, existingGame.gameId);
+          if (joinResult.success) {
+            await messageService.sendJoinSuccessMessage(chatId, existingGame.gameId);
+          } else {
+            await messageService.sendJoinErrorMessage(chatId, joinResult.error);
+          }
+        } else {
+          // Создать новую игру для чата
+          const gameId = await gameService.createGame(chatId, userId);
+          await messageService.sendGameCreatedMessage(chatId, gameId);
+        }
+        break;
+
+      case 'rules':
+        // Показать правила
+        await messageService.sendRulesMessage(chatId);
+        break;
+
+      case 'help':
+        // Показать помощь
+        await messageService.sendHelpMessage(chatId);
+        break;
+
+      default:
+        console.warn('Unknown callback data:', data);
+    }
+  } catch (error) {
+    console.error('Error in handleCallbackQuery:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка. Попробуйте еще раз.');
+  }
+}
+
 module.exports = {
   handleStart,
   handleHelp,
   handleNewGame,
-  handlePlay
+  handlePlay,
+  handleCallbackQuery
 };

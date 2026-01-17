@@ -55,10 +55,24 @@ Handlers - модуль функций-обработчиков команд Tel
   - `services` (Object): Объект с сервисами { messageService, gameService }
 - **Функционал**:
   - Извлекает chatId, userId из сообщения, gameId из match
-  - Валидирует gameId (проверка на пустоту)
+  - Валидирует gameId (проверка на пустоту перед передачей в gameService)
   - Вызывает gameService.startGame() для начала игры
   - В случае успеха вызывает messageService.sendPlaySuccessMessage()
   - В случае ошибки вызывает messageService.sendPlayErrorMessage() с соответствующим кодом
+
+### handleCallbackQuery(query, services)
+- **Назначение**: Обработка callback_query от inline кнопок
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { messageService, gameService, bot }
+- **Функционал**:
+  - Извлекает chatId, userId из query, data из query.data
+  - Подтверждает получение callback с bot.answerCallbackQuery()
+  - В зависимости от data:
+    - 'play': Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), иначе создает новую игру через gameService.createGame(chatId, userId)
+    - 'rules': Отправляет правила через messageService.sendRulesMessage()
+    - 'help': Отправляет справку через messageService.sendHelpMessage()
+  - Обрабатывает ошибки и отправляет сообщение об ошибке пользователю
 
 ## Бизнес-правила и проверки
 
