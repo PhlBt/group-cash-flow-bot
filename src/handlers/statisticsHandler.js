@@ -1,6 +1,7 @@
 /**
  * Обработчики команд статистики
  */
+const { formatNumber } = require('../utils/formatters');
 
 class StatisticsHandler {
   constructor(gameManager) {
@@ -27,14 +28,14 @@ class StatisticsHandler {
       message += `🎮 Игр сыграно: ${playerStats.gamesPlayed}\n`;
       message += `🏆 Побед: ${playerStats.gamesWon}\n`;
       message += `💀 Банкротств: ${playerStats.gamesBankrupt}\n`;
-      message += `📈 Лучший денежный поток: $${playerStats.bestCashFlow}\n`;
-      message += `💰 Средний денежный поток: $${Math.round(playerStats.averageCashFlow)}\n`;
+      message += `📈 Лучший денежный поток: ${formatNumber(playerStats.bestCashFlow)} ₽\n`;
+      message += `💰 Средний денежный поток: ${formatNumber(Math.round(playerStats.averageCashFlow))} ₽\n`;
 
       if (playerStats.fastTrackEntries > 0) {
         message += `\n🚀 СКОРОСТНАЯ ДОРОЖКА:\n`;
         message += `Входов: ${playerStats.fastTrackEntries}\n`;
         message += `Побед на СД: ${playerStats.fastTrackWins}\n`;
-        message += `Лучший капитал: $${playerStats.bestFastTrackCash}\n`;
+        message += `Лучший капитал: ${formatNumber(playerStats.bestFastTrackCash)} ₽\n`;
       }
 
       if (playerStats.professionsPlayed.length > 0) {
@@ -101,12 +102,12 @@ class StatisticsHandler {
         if (sortBy === 'gamesWon') {
           message += `   🏆 ${player.gamesWon} побед\n`;
         } else if (sortBy === 'bestCashFlow') {
-          message += `   💰 $${player.bestCashFlow} макс. поток\n`;
+          message += `   💰 ${formatNumber(player.bestCashFlow)} ₽ макс. поток\n`;
         } else if (sortBy === 'gamesPlayed') {
           message += `   🎮 ${player.gamesPlayed} игр\n`;
         }
 
-        message += `   💸 $${player.totalCashEarned} заработано\n\n`;
+        message += `   💸 ${formatNumber(player.totalCashEarned)} ₽ заработано\n\n`;
       });
 
       message += `Используйте:\n`;

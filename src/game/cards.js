@@ -1,4 +1,5 @@
 // Генерация случайных карт сделок
+const { formatNumber } = require('../utils/formatters');
 
 function generateSmallDeal() {
   const deals = [
@@ -236,7 +237,7 @@ function generateMarketCard() {
     };
 
     // Формируем описание с вариантами действий
-    tradeCard.description = `🏢 ${tradeCard.asset.title}\n💰 Стоимость: ₽${tradeCard.asset.cost}\n📈 Доход: ₽${tradeCard.asset.cashFlow}/мес\n\nВы можете купить этот актив или продать его (если он у вас есть).`;
+    tradeCard.description = `🏢 ${tradeCard.asset.title}\n💰 Стоимость: ${formatNumber(tradeCard.asset.cost)} ₽\n📈 Доход: ${formatNumber(tradeCard.asset.cashFlow)} ₽/мес\n\nВы можете купить этот актив или продать его (если он у вас есть).`;
 
     return tradeCard;
   }

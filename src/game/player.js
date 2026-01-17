@@ -245,7 +245,7 @@ class Player {
 
     return {
       success: true,
-      message: `🎉 Вы вышли из крысиных бегов!\n\n🚀 FAST TRACK:\n💰 Начальный капитал: ₽${formatNumber(this.fastTrackCash)}\n💵 Ежемесячный доход: ₽${formatNumber(this.fastTrackIncome)}\n🎯 Цель - купить мечту: ₽${formatNumber(this.dreamCost)}`
+      message: `🎉 Вы вышли из крысиных бегов!\n\n🚀 FAST TRACK:\n💰 Начальный капитал: ${formatNumber(this.fastTrackCash)} ₽\n💵 Ежемесячный доход: ${formatNumber(this.fastTrackIncome)} ₽\n🎯 Цель - купить мечту: ${formatNumber(this.dreamCost)} ₽`
     };
   }
 

@@ -205,22 +205,22 @@ class CashFlowGame {
         if (paydayAmount >= 0) {
           player.receive(paydayAmount);
           message += "\n\n💰 ДЕНЬ ВЫПЛАТ!\n";
-          message += `💵 Зарплата: +${ player.salary}\n`;
-          message += `📈 Пассивный доход: +${ player.passiveIncome}\n`;
-          message += `💸 Расходы: -${ player.totalExpenses}\n`;
-          message += `💹 Чистый денежный поток: +${ paydayAmount}\n`;
-          message += `💰 Баланс: ${ player.cash}`;
+          message += `💵 Зарплата: +${formatNumber(player.salary)} ₽\n`;
+          message += `📈 Пассивный доход: +${formatNumber(player.passiveIncome)} ₽\n`;
+          message += `💸 Расходы: -${formatNumber(player.totalExpenses)} ₽\n`;
+          message += `💹 Чистый денежный поток: +${formatNumber(paydayAmount)} ₽\n`;
+          message += `💰 Баланс: ${formatNumber(player.cash)} ₽`;
         } else {
           // Отрицательный денежный поток - вычитаем из баланса
           const penalty = Math.abs(paydayAmount);
           player.pay(penalty);
           message += "\n\n💸 ДЕНЬ ВЫПЛАТ!\n";
-          message += `💵 Зарплата: +${ player.salary}\n`;
-          message += `📈 Пассивный доход: +${ player.passiveIncome}\n`;
-          message += `💸 Расходы: -${ player.totalExpenses}\n`;
-          message += `💹 Чистый денежный поток: -${ penalty}\n`;
-          message += `⚠️ Штраф: -${ penalty}\n`;
-          message += `💰 Баланс: ${ player.cash}`;
+          message += `💵 Зарплата: +${formatNumber(player.salary)} ₽\n`;
+          message += `📈 Пассивный доход: +${formatNumber(player.passiveIncome)} ₽\n`;
+          message += `💸 Расходы: -${formatNumber(player.totalExpenses)} ₽\n`;
+          message += `💹 Чистый денежный поток: -${formatNumber(penalty)} ₽\n`;
+          message += `⚠️ Штраф: -${formatNumber(penalty)} ₽\n`;
+          message += `💰 Баланс: ${formatNumber(player.cash)} ₽`;
         }
         this.nextTurn();
         break;
@@ -307,7 +307,7 @@ class CashFlowGame {
       if (player.cash < downPayment) {
         return {
           success: false,
-          message: `Недостаточно денег для первого взноса! Нужно: ${ downPayment}, у вас: ${ player.cash}`
+          message: `Недостаточно денег для первого взноса! Нужно: ${formatNumber(downPayment)} ₽, у вас: ${formatNumber(player.cash)} ₽`
         };
       }
 
@@ -321,7 +321,7 @@ class CashFlowGame {
         if (mortgagePayment >= player.cashFlow) {
           return {
             success: false,
-            message: `Ипотека не одобрена! Ежемесячный платеж (${ mortgagePayment}) должен быть меньше вашего денежного потока (${ player.cashFlow})`
+            message: `Ипотека не одобрена! Ежемесячный платеж (${formatNumber(mortgagePayment)} ₽) должен быть меньше вашего денежного потока (${formatNumber(player.cashFlow)} ₽)`
           };
         }
 
@@ -331,9 +331,9 @@ class CashFlowGame {
         // Берем ипотеку
         loanTaken = player.takeMortgage(loanAmount, card.title);
 
-        message += `💵 Первый взнос: ${ downPayment}\n`;
-        message += `🏠 Ипотека: ${ loanAmount}\n`;
-        message += `💸 Ежемесячный платеж: ${ loanTaken.monthlyPayment} (6% годовых)\n`;
+          message += `💵 Первый взнос: ${formatNumber(downPayment)} ₽\n`;
+        message += `🏠 Ипотека: ${formatNumber(loanAmount)} ₽\n`;
+        message += `💸 Ежемесячный платеж: ${formatNumber(loanTaken.monthlyPayment)} ₽ (6% годовых)\n`;
       } else {
         const monthlyPayment = Math.ceil(loanAmount * 0.01); // 1% для обычного кредита
 
@@ -341,7 +341,7 @@ class CashFlowGame {
         if (monthlyPayment >= player.cashFlow) {
           return {
             success: false,
-            message: `Кредит не одобрен! Ежемесячный платеж (${ monthlyPayment}) должен быть меньше вашего денежного потока (${ player.cashFlow})`
+            message: `Кредит не одобрен! Ежемесячный платеж (${formatNumber(monthlyPayment)} ₽) должен быть меньше вашего денежного потока (${formatNumber(player.cashFlow)} ₽)`
           };
         }
 
@@ -351,9 +351,9 @@ class CashFlowGame {
         // Берем обычный кредит
         loanTaken = player.takeLoan(loanAmount, card.title);
 
-        message += `💵 Первый взнос: ${ downPayment}\n`;
-        message += `💰 Кредит: ${ loanAmount}\n`;
-        message += `💸 Ежемесячный платеж: ${ loanTaken.monthlyPayment} (12% годовых)\n`;
+        message += `💵 Первый взнос: ${formatNumber(downPayment)} ₽\n`;
+        message += `💰 Кредит: ${formatNumber(loanAmount)} ₽\n`;
+        message += `💸 Ежемесячный платеж: ${formatNumber(loanTaken.monthlyPayment)} ₽ (12% годовых)\n`;
       }
     } else {
       // Покупка за наличные: платим полную стоимость
@@ -365,7 +365,7 @@ class CashFlowGame {
             const mortgagePayment = Math.ceil(loanAmount * 0.005);
             return {
               success: false,
-              message: `Недостаточно денег! Нужно: ${ card.cost}, у вас: ${ player.cash}\n\n🏠 Можно купить в ипотеку:\n💵 Первый взнос: ${ downPayment}\n💰 Сумма ипотеки: ${ loanAmount}\n💸 Ежемесячный платеж: ${ mortgagePayment} (6% годовых)`,
+              message: `Недостаточно денег! Нужно: ${formatNumber(card.cost)} ₽, у вас: ${formatNumber(player.cash)} ₽\n\n🏠 Можно купить в ипотеку:\n💵 Первый взнос: ${formatNumber(downPayment)} ₽\n💰 Сумма ипотеки: ${formatNumber(loanAmount)} ₽\n💸 Ежемесячный платеж: ${formatNumber(mortgagePayment)} ₽ (6% годовых)`,
               canUseLoan: true,
               downPayment: downPayment,
               loanAmount: loanAmount,
@@ -381,7 +381,7 @@ class CashFlowGame {
         } else {
           return {
             success: false,
-            message: `Недостаточно денег! Нужно: ${ card.cost}, у вас: ${ player.cash}`
+            message: `Недостаточно денег! Нужно: ${formatNumber(card.cost)} ₽, у вас: ${formatNumber(player.cash)} ₽`
           };
         }
       }
@@ -405,11 +405,11 @@ class CashFlowGame {
     this.currentCard = null;
     this.waitingForAction = false;
 
-    message += `📈 Пассивный доход: +${ card.cashFlow}/месяц\n`;
-    message += `💹 Ваш денежный поток: ${ player.cashFlow}/месяц`;
+    message += `📈 Пассивный доход: +${formatNumber(card.cashFlow)} ₽/месяц\n`;
+    message += `💹 Ваш денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц`;
 
     if (loanTaken) {
-      message += `\n\n⚠️ У вас кредит с платежом ${ loanTaken.monthlyPayment}/мес`;
+      message += `\n\n⚠️ У вас кредит с платежом ${formatNumber(loanTaken.monthlyPayment)} ₽/мес`;
     }
 
     // Проверяем выход из крысиных бегов
@@ -1189,7 +1189,7 @@ class CashFlowGame {
       case 'small_deal':
         this.currentCard = { type: 'deal_choice', waitingForChoice: true };
         this.waitingForAction = true;
-        message += `\n\n💰 Баланс: ${ player.cash}`;
+        message += `\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
         message += "\n\n🎯 СДЕЛКА!\n";
         message += "Выберите тип сделки:\n\n";
         message += "🔹 Малая сделка - небольшие инвестиции\n";
@@ -1200,7 +1200,7 @@ class CashFlowGame {
         card = generateBigDeal();
         this.currentCard = card;
         this.waitingForAction = true;
-        message += `\n\n💰 Баланс: ${ player.cash}`;
+        message += `\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
         message += "\n\n💼 БОЛЬШАЯ СДЕЛКА:\n" + this.formatCard(card);
         message += "\n\nВыберите действие:\n";
         break;
@@ -1241,7 +1241,7 @@ class CashFlowGame {
           card = generateOpportunityCard();
           const oppResult = this.applyOpportunityEffect(player, card);
           if (oppResult.newDeal) {
-            message += `\n\n💰 Баланс: ${ player.cash}`;
+            message += `\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
           }
           message += "\n\n🎁 ВОЗМОЖНОСТЬ:\n" + this.formatCard(card);
           message += "\n" + oppResult.message;
@@ -1279,22 +1279,22 @@ class CashFlowGame {
         if (paydayAmount >= 0) {
           player.receive(paydayAmount);
           message += "\n\n💰 ДЕНЬ ВЫПЛАТ!\n";
-          message += `💵 Зарплата: +${ player.salary}\n`;
-          message += `📈 Пассивный доход: +${ player.passiveIncome}\n`;
-          message += `💸 Расходы: -${ player.totalExpenses}\n`;
-          message += `💹 Чистый денежный поток: +${ paydayAmount}\n`;
-          message += `💰 Баланс: ${ player.cash}`;
+          message += `💵 Зарплата: +${formatNumber(player.salary)} ₽\n`;
+          message += `📈 Пассивный доход: +${formatNumber(player.passiveIncome)} ₽\n`;
+          message += `💸 Расходы: -${formatNumber(player.totalExpenses)} ₽\n`;
+          message += `💹 Чистый денежный поток: +${formatNumber(paydayAmount)} ₽\n`;
+          message += `💰 Баланс: ${formatNumber(player.cash)} ₽`;
         } else {
           // Отрицательный денежный поток - вычитаем из баланса
           const penalty = Math.abs(paydayAmount);
           player.pay(penalty);
           message += "\n\n💸 ДЕНЬ ВЫПЛАТ!\n";
-          message += `💵 Зарплата: +${ player.salary}\n`;
-          message += `📈 Пассивный доход: +${ player.passiveIncome}\n`;
-          message += `💸 Расходы: -${ player.totalExpenses}\n`;
-          message += `💹 Чистый денежный поток: -${ penalty}\n`;
-          message += `⚠️ Штраф: -${ penalty}\n`;
-          message += `💰 Баланс: ${ player.cash}`;
+          message += `💵 Зарплата: +${formatNumber(player.salary)} ₽\n`;
+          message += `📈 Пассивный доход: +${formatNumber(player.passiveIncome)} ₽\n`;
+          message += `💸 Расходы: -${formatNumber(player.totalExpenses)} ₽\n`;
+          message += `💹 Чистый денежный поток: -${formatNumber(penalty)} ₽\n`;
+          message += `⚠️ Штраф: -${formatNumber(penalty)} ₽\n`;
+          message += `💰 Баланс: ${formatNumber(player.cash)} ₽`;
         }
         this.nextTurn();
         break;

@@ -34,8 +34,8 @@ bot.onText(/\/mystats/, async (msg) => {
     message += `🎮 Игр сыграно: ${playerStats.gamesPlayed}\n`;
     message += `🏆 Побед: ${playerStats.gamesWon}\n`;
     message += `💀 Банкротств: ${playerStats.gamesBankrupt}\n`;
-    message += `📈 Лучший денежный поток: ₽${playerStats.bestCashFlow}\n`;
-    message += `💰 Средний денежный поток: ₽${Math.round(playerStats.averageCashFlow)}\n`;
+    message += `📈 Лучший денежный поток: ${formatNumber(playerStats.bestCashFlow)} ₽\n`;
+    message += `💰 Средний денежный поток: ${formatNumber(Math.round(playerStats.averageCashFlow))} ₽\n`;
 
     if (playerStats.fastTrackEntries > 0) {
       message += `\n🚀 FAST TRACK:\n`;
@@ -105,12 +105,12 @@ bot.onText(/\/leaderboard(?: (wins|cash|games))?/, async (msg, match) => {
       if (sortBy === 'gamesWon') {
         message += `   🏆 ${player.gamesWon} побед\n`;
       } else if (sortBy === 'bestCashFlow') {
-        message += `   💰 ₽${player.bestCashFlow} макс. поток\n`;
+        message += `   💰 ${formatNumber(player.bestCashFlow)} ₽ макс. поток\n`;
       } else if (sortBy === 'gamesPlayed') {
         message += `   🎮 ${player.gamesPlayed} игр\n`;
       }
 
-      message += `   💸 ₽${player.totalCashEarned} заработано\n\n`;
+      message += `   💸 ${formatNumber(player.totalCashEarned)} ₽ заработано\n\n`;
     });
 
     message += `Используйте:\n`;
@@ -897,13 +897,13 @@ bot.onText(/\/loans/, async (msg) => {
   let message = `💳 ВАШИ КРЕДИТЫ:\n\n`;
   loansInfo.loans.forEach((loan, index) => {
     message += `${index + 1}. ${loan.assetTitle || 'Кредит'}\n`;
-    message += `   💰 Сумма: $${loan.amount}\n`;
-    message += `   📉 Остаток: $${loan.remainingAmount}\n`;
-    message += `   💸 Ежемесячный платеж: $${loan.monthlyPayment}\n\n`;
+    message += `   💰 Сумма: ${formatNumber(loan.amount)} ₽\n`;
+    message += `   📉 Остаток: ${formatNumber(loan.remainingAmount)} ₽\n`;
+    message += `   💸 Ежемесячный платеж: ${formatNumber(loan.monthlyPayment)} ₽\n\n`;
   });
 
-  message += `📊 Общая сумма кредитов: $${loansInfo.totalAmount}\n`;
-  message += `💸 Общие ежемесячные платежи: $${loansInfo.totalPayments}`;
+  message += `📊 Общая сумма кредитов: ${formatNumber(loansInfo.totalAmount)} ₽\n`;
+  message += `💸 Общие ежемесячные платежи: ${formatNumber(loansInfo.totalPayments)} ₽`;
 
   await sendMessage(chatId, message, { reply_markup: getLoansKeyboard(loansInfo.loans) });
 });
@@ -939,15 +939,15 @@ bot.onText(/\/payloan(?: (.+))?/, async (msg, match) => {
     const result = player.payLoan(loanId, amount);
     await sendMessage(chatId, result.message);
     await gameManager.saveGame(chatId);
-  } else {
-    // Показываем список кредитов для погашения
-    let message = `💳 Выберите кредит для погашения:\n\n`;
-    loansInfo.loans.forEach((loan, index) => {
-      message += `${index + 1}. Остаток: $${loan.remainingAmount}, Платеж: $${loan.monthlyPayment}/мес\n`;
-    });
-    message += `\nИспользуйте: /payloan <номер> [сумма]\n`;
-    message += `Например: /payloan 1 1000 (погасить 1000 из кредита #1)\n`;
-    message += `Или: /payloan 1 (погасить кредит #1 полностью)`;
+    } else {
+      // Показываем список кредитов для погашения
+      let message = `💳 Выберите кредит для погашения:\n\n`;
+      loansInfo.loans.forEach((loan, index) => {
+        message += `${index + 1}. Остаток: ${formatNumber(loan.remainingAmount)} ₽, Платеж: ${formatNumber(loan.monthlyPayment)} ₽/мес\n`;
+      });
+      message += `\nИспользуйте: /payloan <номер> [сумма]\n`;
+      message += `Например: /payloan 1 1000 (погасить 1000 из кредита #1)\n`;
+      message += `Или: /payloan 1 (погасить кредит #1 полностью)`;
 
     await sendMessage(chatId, message, { reply_markup: getLoansKeyboard(loansInfo.loans) });
   }
@@ -1007,9 +1007,9 @@ bot.onText(/\/sellasset(?: (\d+))?/, async (msg, match) => {
     player.assets.forEach((a, i) => {
       const salePrice = Math.floor(a.cost * 0.8);
       message += `${i + 1}. ${a.title}\n`;
-      message += `   💰 Стоимость: $${a.cost}\n`;
-      message += `   💵 Цена продажи: $${salePrice} (80%)\n`;
-      message += `   📈 Доход: $${a.passiveIncome}/мес\n\n`;
+      message += `   💰 Стоимость: ${formatNumber(a.cost)} ₽\n`;
+      message += `   💵 Цена продажи: ${formatNumber(salePrice)} ₽ (80%)\n`;
+      message += `   📈 Доход: ${formatNumber(a.passiveIncome)} ₽/мес\n\n`;
     });
 
     return await sendMessage(chatId, message, { reply_markup: getSellAssetKeyboard(player.assets) });
@@ -1023,7 +1023,7 @@ bot.onText(/\/sellasset(?: (\d+))?/, async (msg, match) => {
 
   // Если был расход, проверяем можно ли теперь оплатить
   if (result.success && game.currentCard && game.currentCard.type === 'doodad') {
-    await sendMessage(chatId, `💸 Нужно оплатить: $${game.currentCard.cost}\n💰 У вас: $${player.cash}\n\nИспользуйте /pay для оплаты`);
+    await sendMessage(chatId, `💸 Нужно оплатить: ${formatNumber(game.currentCard.cost)} ₽\n💰 У вас: ${formatNumber(player.cash)} ₽\n\nИспользуйте /pay для оплаты`);
   }
 });
 
@@ -1077,7 +1077,7 @@ bot.onText(/\/fastroll/, async (msg) => {
   if (game.gameFinished) {
     await gameManager.saveGame(chatId);
     const winner = game.getWinner();
-    await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: $${winner.finalCash}`);
+    await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: ${formatNumber(winner.finalCash)} ₽`);
   }
 });
 
@@ -1101,7 +1101,7 @@ bot.onText(/\/fastaccept/, async (msg) => {
   if (game.gameFinished) {
     await gameManager.saveGame(chatId);
     const winner = game.getWinner();
-    await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: $${winner.finalCash}`);
+        await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: ${formatNumber(winner.finalCash)} ₽`);
   } else if (result.extraTurn) {
     await sendMessage(chatId, "🎲 У вас дополнительный ход!", { reply_markup: getFastTrackRollKeyboard() });
   } else {
@@ -1192,9 +1192,9 @@ bot.on('callback_query', async (query) => {
       const globalIndex = startIndex + i + 1;
       const salePrice = Math.floor(a.cost * 0.8);
       message += `${globalIndex}. ${a.title}\n`;
-      message += `   💰 Стоимость: $${a.cost}\n`;
-      message += `   💵 Цена продажи: $${salePrice} (80%)\n`;
-      message += `   📈 Доход: $${a.passiveIncome}/мес\n\n`;
+      message += `   💰 Стоимость: ${formatNumber(a.cost)} ₽\n`;
+      message += `   💵 Цена продажи: ${formatNumber(salePrice)} ₽ (80%)\n`;
+      message += `   📈 Доход: ${formatNumber(a.passiveIncome)} ₽/мес\n\n`;
     });
 
     if (player.assets.length > ITEMS_PER_PAGE) {
@@ -1232,9 +1232,9 @@ bot.on('callback_query', async (query) => {
     currentLoans.forEach((loan, index) => {
       const globalIndex = startIndex + index + 1;
       message += `${globalIndex}. ${loan.assetTitle || 'Кредит'}\n`;
-      message += `   💰 Сумма: $${loan.amount}\n`;
-      message += `   📉 Остаток: $${loan.remainingAmount}\n`;
-      message += `   💸 Ежемесячный платеж: $${loan.monthlyPayment}\n\n`;
+      message += `   💰 Сумма: ${formatNumber(loan.amount)} ₽\n`;
+      message += `   📉 Остаток: ${formatNumber(loan.remainingAmount)} ₽\n`;
+      message += `   💸 Ежемесячный платеж: ${formatNumber(loan.monthlyPayment)} ₽\n\n`;
     });
 
     if (loansInfo.loans.length > ITEMS_PER_PAGE) {
@@ -1242,8 +1242,8 @@ bot.on('callback_query', async (query) => {
       message += `📄 Страница ${page + 1} из ${totalPages}\n\n`;
     }
 
-    message += `📊 Общая сумма кредитов: $${loansInfo.totalAmount}\n`;
-    message += `💸 Общие ежемесячные платежи: $${loansInfo.totalPayments}`;
+    message += `📊 Общая сумма кредитов: ${formatNumber(loansInfo.totalAmount)} ₽\n`;
+    message += `💸 Общие ежемесячные платежи: ${formatNumber(loansInfo.totalPayments)} ₽`;
 
     await sendMessage(chatId, message, { reply_markup: getLoansKeyboard(loansInfo.loans, page) });
   } else if (data === 'cmd_join') {
@@ -1519,7 +1519,7 @@ bot.on('callback_query', async (query) => {
       if (result.cost) {
         const keyboard = {
           inline_keyboard: [
-            [{ text: `💸 Оплатить $${result.cost}`, callback_data: 'pay_opportunity' }]
+            [{ text: `💸 Оплатить ${formatNumber(result.cost)} ₽`, callback_data: 'pay_opportunity' }]
           ]
         };
         await sendMessage(chatId, result.message, { reply_markup: keyboard });
@@ -1556,7 +1556,7 @@ bot.on('callback_query', async (query) => {
       if (game.gameFinished) {
         await gameManager.saveGame(chatId);
         const winner = game.getWinner();
-        await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: $${winner.finalCash}`);
+        await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: ${formatNumber(winner.finalCash)} ₽`);
       }
     }
   } else if (data === 'fastaccept') {
@@ -1567,7 +1567,7 @@ bot.on('callback_query', async (query) => {
       if (game.gameFinished) {
         await gameManager.saveGame(chatId);
         const winner = game.getWinner();
-        await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: $${winner.finalCash}`);
+        await sendMessage(chatId, `🏆 ПОБЕДИТЕЛЬ: ${winner.username}\n💰 Финальный капитал: ${formatNumber(winner.finalCash)} ₽`);
       } else if (result.extraTurn) {
         await sendMessage(chatId, "🎲 У вас дополнительный ход!", { reply_markup: getFastTrackRollKeyboard() });
       } else {
@@ -1652,14 +1652,14 @@ bot.on('callback_query', async (query) => {
         game.currentCard = null;
         game.waitingForAction = false;
 
-        const message = `✅ Благотворительность принята!\n💸 Пожертвовано: ₽${formatNumber(charityAmount)}\n🎲 Следующие 3 хода: право бросать 1 или 2 кубика\n💰 Баланс: ₽${formatNumber(player.cash)}`;
+        const message = `✅ Благотворительность принята!\n💸 Пожертвовано: ${formatNumber(charityAmount)} ₽\n🎲 Следующие 3 хода: право бросать 1 или 2 кубика\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
         await sendMessage(chatId, message);
         await gameManager.saveGame(chatId);
         game.nextTurn();
         const nextPlayer = game.getCurrentPlayer();
         await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
       } else {
-        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ₽${charityAmount}, у вас: ₽${player.cash}`);
+        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ${formatNumber(charityAmount)} ₽, у вас: ${formatNumber(player.cash)} ₽`);
       }
     }
   } else if (data === 'charity_skip') {

@@ -1,3 +1,5 @@
+const { formatNumber } = require('./formatters');
+
 function getStartInlineKeyboard() {
   return {
     inline_keyboard: [
@@ -139,7 +141,7 @@ function getLoansKeyboard(loans, page = 0) {
   currentLoans.forEach((loan, index) => {
     const globalIndex = startIndex + index + 1;
     keyboard.inline_keyboard.push([
-      { text: `Погасить кредит #${globalIndex} ($${loan.remainingAmount})`, callback_data: `payloan_${loan.id}_full` }
+      { text: `Погасить кредит #${globalIndex} (${formatNumber(loan.remainingAmount)} ₽)`, callback_data: `payloan_${loan.id}_full` }
     ]);
   });
 
@@ -179,7 +181,7 @@ function getSellAssetKeyboard(assets, page = 0, viewOnly = false) {
     if (!viewOnly) {
       // Показываем кнопки продажи только если не режим просмотра
       keyboard.inline_keyboard.push([
-        { text: `Продать актив #${globalIndex} ($${asset.cost})`, callback_data: `sellasset_${asset.id}` }
+        { text: `Продать актив #${globalIndex} (${formatNumber(asset.cost)} ₽)`, callback_data: `sellasset_${asset.id}` }
       ]);
     }
     // В режиме просмотра просто показываем информацию без кнопок
@@ -286,7 +288,7 @@ function getSellDealPlayerSelectKeyboard(otherPlayers) {
 
   otherPlayers.forEach((player, index) => {
     keyboard.inline_keyboard.push([
-      { text: `${index + 1}. ${player.username} (💰 ₽${player.cash})`, callback_data: `offer_deal_${index + 1}` }
+      { text: `${index + 1}. ${player.username} (💰 ${formatNumber(player.cash)} ₽)`, callback_data: `offer_deal_${index + 1}` }
     ]);
   });
 
