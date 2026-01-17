@@ -314,6 +314,20 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Удаляет сообщение
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения
+   */
+  async deleteMessage(chatId, messageId) {
+    try {
+      await this.bot.deleteMessage(chatId, messageId);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      // Игнорируем ошибки, если сообщение уже удалено или не существует
+    }
+  }
+
+  /**
    * Отправляет общее сообщение об ошибке
    * @param {number} chatId - ID чата
    * @param {string} errorText - Текст ошибки

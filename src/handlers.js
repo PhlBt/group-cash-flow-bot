@@ -181,6 +181,9 @@ async function handleCallbackQuery(query, services) {
   try {
     switch (data) {
       case 'play':
+        // Удалить сообщение с кнопками
+        await messageService.deleteMessage(chatId, query.message.message_id);
+
         // Проверить наличие активной игры для чата
         const existingGame = await gameService.getActiveGameByChatId(chatId);
         if (existingGame) {
