@@ -297,6 +297,9 @@ CashFlow - настольная игра о финансовом планиро�
       case 'not_active':
         message = 'Игра не активна.';
         break;
+      case 'already_finished':
+        message = 'Игра уже завершена.';
+        break;
       case 'not_player':
         message = 'Вы не участник этой игры.';
         break;

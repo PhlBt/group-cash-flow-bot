@@ -92,25 +92,25 @@ async function handleEndGame(msg, services) {
   const userId = msg.from.id;
 
   try {
-    // Найти активную игру пользователя
+    // Найти незавершенную игру пользователя
     const userGames = await gameService.getUserGames(userId);
-    const activeGame = userGames.find(game => game.status === 'active');
+    const game = userGames.find(game => game.status !== 'finished');
 
-    if (!activeGame) {
+    if (!game) {
       await messageService.sendEndGameErrorMessage(chatId, 'not_active');
       return;
     }
 
     // Если игрок один, сразу завершить игру
-    if (activeGame.players.length === 1) {
-      await gameService.finishGame(activeGame.gameId);
-      await messageService.sendGameFinishedMessage(chatId, activeGame.gameId);
+    if (game.players.length === 1) {
+      await gameService.finishGame(game.gameId);
+      await messageService.sendGameFinishedMessage(chatId, game.gameId);
       return;
     }
 
     // Инициировать голосование
-    const messageId = await messageService.sendEndGameVoteMessage(chatId, activeGame, [userId]);
-    const result = await gameService.initiateEndGameVote(userId, activeGame.gameId, messageId);
+    const messageId = await messageService.sendEndGameVoteMessage(chatId, game, [userId]);
+    const result = await gameService.initiateEndGameVote(userId, game.gameId, messageId);
 
     if (!result.success) {
       await messageService.sendEndGameErrorMessage(chatId, result.error);
@@ -187,6 +187,7 @@ async function handleCallbackQuery(query, services) {
           // Присоединиться к существующей игре
           const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
           if (joinResult.success) {
+            console.log('???', existingGame, joinResult)
             await messageService.sendJoinSuccessMessage(chatId, existingGame.gameId);
             await messageService.sendPlayerCard(chatId, joinResult.player);
           } else {

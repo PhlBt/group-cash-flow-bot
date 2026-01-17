@@ -238,8 +238,8 @@ class DatabaseService {
       return { success: false, error: 'not_found' };
     }
 
-    if (game.status !== 'active') {
-      return { success: false, error: 'not_active' };
+    if (game.status === 'finished') {
+      return { success: false, error: 'already_finished' };
     }
 
     if (!game.players.some(player => player.userId === userId)) {
@@ -268,8 +268,8 @@ class DatabaseService {
       return { success: false, error: 'not_found' };
     }
 
-    if (game.status !== 'active') {
-      return { success: false, error: 'not_active' };
+    if (game.status === 'finished') {
+      return { success: false, error: 'already_finished' };
     }
 
     if (!game.players.some(player => player.userId === userId)) {
@@ -304,8 +304,8 @@ class DatabaseService {
       return { success: false, error: 'not_found' };
     }
 
-    if (game.status !== 'active') {
-      return { success: false, error: 'not_active' };
+    if (game.status === 'finished') {
+      return { success: false, error: 'already_finished' };
     }
 
     await gamesCollection.updateOne(
