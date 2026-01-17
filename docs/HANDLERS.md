@@ -94,7 +94,8 @@ Handlers - модуль функций-обработчиков команд Tel
   - Извлекает chatId, userId из query, data из query.data
   - Подтверждает получение callback с bot.answerCallbackQuery()
   - В зависимости от data:
-    - 'play': Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), отправляет сообщение о присоединении и карточку игрока через messageService.sendPlayerCard(). Иначе создает новую игру через gameService.createGame(), отправляет сообщение о создании игры и карточку игрока создателю через messageService.sendPlayerCard()
+    - 'play': Удаляет приветственное сообщение через messageService.deleteMessage(). Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), отправляет карточку игрока через messageService.sendPlayerCard(), удаляет старое сообщение комнаты ожидания (если есть) и отправляет новое через messageService.sendWaitingRoomMessage(), сохраняет ID через gameService.setWaitingMessageId(). Иначе создает новую игру через gameService.createGame(), отправляет карточку игрока создателю через messageService.sendPlayerCard(), отправляет сообщение комнаты ожидания через messageService.sendWaitingRoomMessage() и сохраняет ID через gameService.setWaitingMessageId()
+    - 'start_game': Находит активную игру в чате через gameService.getActiveGameByChatId(), проверяет, что пользователь является создателем, вызывает gameService.startGame(), в случае успеха отправляет сообщение через messageService.sendPlaySuccessMessage()
     - 'rules': Отправляет правила через messageService.sendRulesMessage()
     - 'help': Отправляет справку через messageService.sendHelpMessage()
     - 'end_game_vote': Вызывает handleEndGameVote() для обработки голосования

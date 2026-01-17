@@ -28,7 +28,26 @@ const endGameVoteKeyboard = {
   ]
 };
 
+/**
+ * Клавиатура для комнаты ожидания
+ */
+const waitingRoomKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🎮 Играть!', callback_data: 'play' }
+    ],
+    [
+      { text: '📋 Правила игры', callback_data: 'rules' },
+      { text: '❓ Помощь', callback_data: 'help' }
+    ],
+    [
+      { text: '🚀 Начать игру', callback_data: 'start_game' }
+    ]
+  ]
+};
+
 module.exports = {
   welcomeKeyboard,
-  endGameVoteKeyboard
+  endGameVoteKeyboard,
+  waitingRoomKeyboard
 };

@@ -181,8 +181,6 @@ async function handleCallbackQuery(query, services) {
   try {
     switch (data) {
       case 'play':
-        // Удалить сообщение с кнопками
-        await messageService.deleteMessage(chatId, query.message.message_id);
 
         // Проверить наличие активной игры для чата
         const existingGame = await gameService.getActiveGameByChatId(chatId);
@@ -190,16 +188,24 @@ async function handleCallbackQuery(query, services) {
           // Присоединиться к существующей игре
           const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
           if (joinResult.success) {
-            console.log('???', existingGame, joinResult)
-            await messageService.sendJoinSuccessMessage(chatId, existingGame.gameId);
+            // Удалить сообщение с кнопками
+            await messageService.deleteMessage(chatId, query.message.message_id);
+            // Отправить карточку игрока
             await messageService.sendPlayerCard(chatId, joinResult.player);
+
+            // Удалить старое сообщение комнаты ожидания и отправить новое
+            if (existingGame.waitingMessageId) {
+              await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
+            }
+            const updatedGame = await gameService.getGame(existingGame.gameId);
+            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+            await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
           } else {
             await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
         } else {
           // Создать новую игру для чата
           const gameId = await gameService.createGame(chatId, userId, username);
-          await messageService.sendGameCreatedMessage(chatId, gameId);
 
           // Отправить карточку игрока создателю
           const game = await gameService.getGame(gameId);
@@ -207,6 +213,25 @@ async function handleCallbackQuery(query, services) {
           if (player) {
             await messageService.sendPlayerCard(chatId, player);
           }
+
+          // Отправить сообщение комнаты ожидания
+          const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
+          await gameService.setWaitingMessageId(gameId, messageId);
+        }
+        break;
+
+      case 'start_game':
+        // Найти активную игру в чате
+        const gameToStart = await gameService.getActiveGameByChatId(chatId);
+        if (gameToStart && gameToStart.creatorId === userId) {
+          const startResult = await gameService.startGame(userId, gameToStart.gameId);
+          if (startResult.success) {
+            await messageService.sendPlaySuccessMessage(chatId, gameToStart.gameId);
+          } else {
+            await messageService.sendPlayErrorMessage(chatId, startResult.error);
+          }
+        } else {
+          await messageService.sendPlayErrorMessage(chatId, 'not_creator');
         }
         break;
 

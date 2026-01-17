@@ -94,7 +94,8 @@ class DatabaseService {
       status: 'waiting',
       createdAt: new Date(),
       endGameVotes: [],
-      endGameMessageId: null
+      endGameMessageId: null,
+      waitingMessageId: null
     });
 
     return gameId;
@@ -311,6 +312,28 @@ class DatabaseService {
     await gamesCollection.updateOne(
       { gameId },
       { $set: { status: 'finished', finishedAt: new Date() } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает ID сообщения комнаты ожидания
+   * @param {string} gameId - ID игры
+   * @param {number} messageId - ID сообщения
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setWaitingMessageId(gameId, messageId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { waitingMessageId: messageId } }
     );
 
     return { success: true };

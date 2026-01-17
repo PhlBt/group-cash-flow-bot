@@ -1,4 +1,4 @@
-const { welcomeKeyboard, endGameVoteKeyboard } = require('../keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard } = require('../keyboards');
 const { formatNumber } = require('../utils');
 
 class MessageService {
@@ -311,6 +311,25 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение комнаты ожидания
+   * @param {number} chatId - ID чата
+   * @param {Object} game - Объект игры
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendWaitingRoomMessage(chatId, game) {
+    const playersList = game.players.map(player => `- ${player.username}`).join('\n');
+    const waitingText = game.players.length === 1 ? 'этот игрок ждёт вас' : 'эти игроки ждут вас';
+
+    const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
+
+    const sentMessage = await this.bot.sendMessage(chatId, message, {
+      reply_markup: waitingRoomKeyboard
+    });
+
+    return sentMessage.message_id;
   }
 
   /**

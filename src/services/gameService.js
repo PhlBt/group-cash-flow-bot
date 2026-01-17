@@ -91,6 +91,16 @@ class GameService {
   async finishGame(gameId) {
     return await this.databaseService.finishGame(gameId);
   }
+
+  /**
+   * Устанавливает ID сообщения комнаты ожидания
+   * @param {string} gameId - ID игры
+   * @param {number} messageId - ID сообщения
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setWaitingMessageId(gameId, messageId) {
+    return await this.databaseService.setWaitingMessageId(gameId, messageId);
+  }
 }
 
 module.exports = GameService;
