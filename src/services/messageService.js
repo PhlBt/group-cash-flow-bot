@@ -1,5 +1,5 @@
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard } = require('../keyboards');
 const { formatNumber } = require('../utils');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard } = require('../utils/keyboards');
 
 class MessageService {
   constructor(bot) {
