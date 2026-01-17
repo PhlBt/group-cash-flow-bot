@@ -106,7 +106,7 @@ class GameManager {
     // Восстанавливаем простые поля
     game.gameStarted = gameData.gameStarted;
     game.gameFinished = gameData.gameFinished;
-    game.currentPlayerId = gameData.currentPlayerId;
+    game.currentPlayerId = gameData.currentPlayerId ? parseInt(gameData.currentPlayerId) : null; // Конвертируем в число
     game.currentCard = gameData.currentCard;
     game.waitingForAction = gameData.waitingForAction;
 
@@ -133,7 +133,7 @@ class GameManager {
   // Восстанавливаем объект Player из данных БД
   reconstructPlayerFromData(playerData) {
     const Player = require('../game/player');
-    const player = new Player(playerData.userId, playerData.username, playerData.profession);
+    const player = new Player(parseInt(playerData.userId), playerData.username, playerData.profession); // Конвертируем userId в число
 
     // Восстанавливаем поля
     player.salary = playerData.salary;
