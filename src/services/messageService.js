@@ -364,7 +364,7 @@ CashFlow - настольная игра о финансовом планиро�
   async sendPlayerTurnMessage(chatId, player) {
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
 
-    let message = `🎯 Ваш ход, ${player.username} (${player.profession})!\n\n`;
+    let message = `🎯 Ваш ход, ${player.profession} ${player.username}!\n\n`;
     message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;

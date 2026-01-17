@@ -273,6 +273,9 @@ async function handleCallbackQuery(query, services) {
             await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
         } else {
+          // Удалить сообщение с кнопками
+          await messageService.deleteMessage(chatId, query.message.message_id);
+
           // Создать новую игру для чата
           const gameId = await gameService.createGame(chatId, userId, username);
 
@@ -295,6 +298,9 @@ async function handleCallbackQuery(query, services) {
         if (gameToStart && gameToStart.creatorId === userId) {
           const startResult = await gameService.startGame(userId, gameToStart.gameId);
           if (startResult.success) {
+            // Удалить сообщение с кнопками
+            await messageService.deleteMessage(chatId, query.message.message_id);
+
             // Начать игру - отправить ход первому игроку
             const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
             if (firstPlayer) {
