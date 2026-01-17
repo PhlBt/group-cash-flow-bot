@@ -9,10 +9,14 @@ CashFlow Telegram Bot - это приложение для игры в наст�
 ```
 cashFlow/
 ├── src/
+│   ├── handlers.js             # Обработчики команд бота
 │   ├── main.js                 # Главный файл приложения, точка входа
 │   └── services/
+│       ├── gameService.js      # Сервис для логики игры
 │       └── messageService.js   # Сервис для отправки сообщений
 ├── docs/
+│   ├── GAME.md          # Описание логики GameService
+│   ├── HANDLERS.md      # Описание логики обработчиков команд
 │   ├── PROJECT.md       # Описание проекта и структура
 │   └── COMMANDS.md      # Описание команд бота
 ├── docker/
