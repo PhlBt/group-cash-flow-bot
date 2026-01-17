@@ -192,12 +192,6 @@ async function handleRollDice(query, diceCount, services) {
     // Бросить кубик(и)
     const steps = gameService.rollDice(diceCount);
 
-    // Отправить результат броска
-    await messageService.sendDiceRollMessage(chatId, diceCount, steps);
-
-    // Запомнить старую позицию для сообщения
-    const oldPosition = currentPlayer.position;
-
     // Переместить игрока
     const moveResult = await gameService.movePlayer(game.gameId, userId, steps);
     if (!moveResult.success) {
@@ -205,15 +199,16 @@ async function handleRollDice(query, diceCount, services) {
       return;
     }
 
-    // Отправить сообщение о перемещении
-    await messageService.sendMoveMessage(chatId, currentPlayer, oldPosition, moveResult.newPosition, moveResult.fieldType, moveResult.inFastTrack);
-
-    // Обработать события PAYDAY
-    if (moveResult.paydayEvents && moveResult.paydayEvents.length > 0) {
-      for (const paydayEvent of moveResult.paydayEvents) {
-        await messageService.sendPaydayMessage(chatId, currentPlayer, paydayEvent.cashFlow, paydayEvent.newCash);
-      }
-    }
+    // Отправить комбинированное сообщение с броском, перемещением и выплатами
+    await messageService.sendCombinedRollMovePaydayMessage(
+      chatId,
+      currentPlayer,
+      steps,
+      moveResult.newPosition,
+      moveResult.fieldType,
+      moveResult.inFastTrack,
+      moveResult.paydayEvents || []
+    );
 
     // Уменьшить счетчик ходов благотворительности
     if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {

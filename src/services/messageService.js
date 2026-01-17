@@ -382,62 +382,6 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет результат броска кубика
-   * @param {number} chatId - ID чата
-   * @param {number} diceCount - Количество кубиков
-   * @param {number} totalSteps - Сумма очков
-   */
-  async sendDiceRollMessage(chatId, diceCount, totalSteps) {
-    let diceEmojis = '';
-    for (let i = 0; i < diceCount; i++) {
-      const roll = Math.floor(Math.random() * 6) + 1;
-      diceEmojis += this.getDiceEmoji(roll) + ' ';
-    }
-
-    const message = `🎲 Бросок ${diceCount} кубика(ов): ${diceEmojis}\nВыпало: ${totalSteps} шагов`;
-    await this.bot.sendMessage(chatId, message);
-  }
-
-  /**
-   * Отправляет сообщение о перемещении игрока
-   * @param {number} chatId - ID чата
-   * @param {Object} player - Объект игрока
-   * @param {number} oldPosition - Старая позиция
-   * @param {number} newPosition - Новая позиция
-   * @param {string} fieldType - Тип поля
-   * @param {boolean} inFastTrack - На Fast Track
-   */
-  async sendMoveMessage(chatId, player, oldPosition, newPosition, fieldType, inFastTrack) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
-    const fieldName = this.getFieldName(fieldType);
-
-    let message = `🚶 ${player.username} перемещается:\n`;
-    message += `${trackName}, поле ${oldPosition + 1} → поле ${newPosition + 1}\n`;
-    message += `📍 Попали на: ${fieldName}`;
-
-    await this.bot.sendMessage(chatId, message);
-  }
-
-  /**
-   * Отправляет сообщение о выплате денежного потока
-   * @param {number} chatId - ID чата
-   * @param {Object} player - Объект игрока
-   * @param {number} cashFlow - Сумма денежного потока
-   * @param {number} newCash - Новый баланс игрока
-   */
-  async sendPaydayMessage(chatId, player, cashFlow, newCash) {
-    const action = cashFlow >= 0 ? 'Получено' : 'Уплачено';
-    const emoji = cashFlow >= 0 ? '💰' : '💸';
-    const absCashFlow = Math.abs(cashFlow);
-
-    let message = `${emoji} День выплат!\n`;
-    message += `${action}: ${formatNumber(absCashFlow)} ₽\n`;
-    message += `💰 Новый баланс: ${formatNumber(newCash)} ₽`;
-
-    await this.bot.sendMessage(chatId, message);
-  }
-
-  /**
    * Возвращает эмодзи для грани кубика
    * @param {number} value - Значение грани (1-6)
    * @returns {string} Эмодзи
@@ -445,6 +389,52 @@ CashFlow - настольная игра о финансовом планиро�
   getDiceEmoji(value) {
     const emojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
     return emojis[value - 1] || '🎲';
+  }
+
+  /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и ходом игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {string} fieldType - Тип поля
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   */
+  async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, inFastTrack, paydayEvents = []) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const fieldName = this.getFieldName(fieldType);
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} тыс ₽\n\n`;
+    }
+
+    message += `📍 ${fieldName}\n\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)} тыс ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+    message += `Выберите действие:`;
+
+    const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
+
+    await this.bot.sendMessage(chatId, message, {
+      reply_markup: keyboard
+    });
   }
 
   /**
