@@ -388,7 +388,7 @@ class CashFlowGame {
 
       // Оплачиваем полную стоимость
       player.pay(card.cost);
-      message += `💵 Оплачено: ${ card.cost}\n`;
+      message += `💵 Оплачено: ${formatNumber(card.cost)} ₽\n`;
     }
 
     const asset = {
@@ -517,7 +517,7 @@ class CashFlowGame {
     this.currentCard = null;
     this.waitingForAction = false;
 
-    let message = `✅ Оплачено: ${ card.cost} за ${card.title}`;
+    let message = `✅ Оплачено: ${formatNumber(card.cost)} ₽ за ${card.title}`;
 
     // Проверяем банкротство после оплаты
     const bankruptCheck = this.checkBankruptcy(player);
@@ -793,9 +793,9 @@ class CashFlowGame {
     this.waitingForAction = false;
 
     let message = `✅ Куплено с рынка: ${asset.title}\n`;
-    message += `💵 Оплачено: ${ asset.cost}\n`;
-    message += `📈 Пассивный доход: +${ asset.cashFlow}/месяц\n`;
-    message += `💹 Ваш денежный поток: ${ player.cashFlow}/месяц`;
+    message += `💵 Оплачено: ${formatNumber(asset.cost)} ₽\n`;
+    message += `📈 Пассивный доход: +${formatNumber(asset.cashFlow)} ₽/месяц\n`;
+    message += `💹 Ваш денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц`;
 
     // Проверяем выход из крысиных бегов
     const escapeCheck = this.checkEscapeRatRace(player);
@@ -881,13 +881,13 @@ class CashFlowGame {
     this.currentCard = null;
     this.waitingForAction = false;
 
-    let message = `💳 Оплачено кредитной картой: ${ card.cost} за ${card.title}\n\n`;
+    let message = `💳 Оплачено кредитной картой: ${formatNumber(card.cost)} ₽ за ${card.title}\n\n`;
     message += `💰 ВЫДАН КРЕДИТ КАРТОЙ:\n`;
-    message += `💵 Сумма кредита: ${ amount}\n`;
+    message += `💵 Сумма кредита: ${formatNumber(amount)} ₽\n`;
     message += `📊 Процентная ставка: 24% годовых\n`;
-    message += `💸 Ежемесячный платеж: ${ creditCard.monthlyPayment} (2% от суммы)\n`;
+    message += `💸 Ежемесячный платеж: ${ creditCard.monthlyPayment} ₽ (2% от суммы)\n`;
     message += `⚠️ Кредитная карта - дорогой способ! Рассмотрите другие варианты\n\n`;
-    message += `💹 Ваш денежный поток: ${ player.cashFlow}/месяц`;
+    message += `💹 Ваш денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц`;
 
     this.nextTurn();
 
@@ -1429,15 +1429,15 @@ class CashFlowGame {
       if (event.penalty) {
         const loss = Math.floor(player.fastTrackCash * event.penalty);
         player.fastTrackCash -= loss;
-        message = `💔 Потеряно: ${ loss}`;
+        message = `💔 Потеряно: ${formatNumber(loss)} ₽`;
       } else if (event.cost) {
         player.fastTrackCash -= event.cost;
-        message = `⚖️ Оплачено: ${ event.cost}`;
+        message = `⚖️ Оплачено: ${formatNumber(event.cost)} ₽`;
       }
     } else if (accept) {
       // Добровольные события
       if (event.cost && player.fastTrackCash < event.cost) {
-        return { success: false, message: `Недостаточно средств! Нужно: ${ event.cost}` };
+        return { success: false, message: `Недостаточно средств! Нужно: ${formatNumber(event.cost)} ₽` };
       }
 
       if (event.cost) {

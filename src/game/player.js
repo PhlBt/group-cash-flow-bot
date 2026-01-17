@@ -1,3 +1,5 @@
+const { formatNumber } = require('../utils/formatters');
+
 class Player {
   constructor(userId, username, profession) {
     this.userId = userId;
@@ -325,7 +327,7 @@ class Player {
 
     return {
       success: true,
-      message: `💼 УВОЛЬНЕНИЕ!\n💸 Оплачено: ₽${expenseAmount} (общие расходы)\n⏭️ Пропускаете 2 хода\n🎗️ Благотворительность отменена`,
+      message: `💼 УВОЛЬНЕНИЕ!\n💸 Оплачено: ${formatNumber(expenseAmount)} ₽ (общие расходы)\n⏭️ Пропускаете 2 хода\n🎗️ Благотворительность отменена`,
       expenseAmount: expenseAmount,
       skipTurns: 2
     };

@@ -1684,9 +1684,9 @@ bot.on('callback_query', async (query) => {
 
       if (player.cash >= cost) {
         player.pay(cost);
-        await sendMessage(chatId, `✅ Оплачено: $${cost}\n${game.currentCard.description}`);
+        await sendMessage(chatId, `✅ Оплачено: ${formatNumber(cost)} ₽\n${game.currentCard.description}`);
       } else {
-        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: $${cost}, у вас: $${player.cash}`);
+        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ${formatNumber(cost)} ₽, у вас: ${formatNumber(player.cash)} ₽`);
       }
 
       game.currentCard = null;
@@ -1828,9 +1828,9 @@ bot.on('callback_query', async (query) => {
 
       if (player.cash >= cost) {
         player.pay(cost);
-        await sendMessage(chatId, `✅ Оплачено: ₽${cost}\n${game.currentCard.description}`);
+        await sendMessage(chatId, `✅ Оплачено: ${formatNumber(cost)} ₽\n${game.currentCard.description}`);
       } else {
-        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ₽${cost}, у вас: ₽${player.cash}`);
+        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ${formatNumber(cost)} ₽, у вас: ${formatNumber(player.cash)} ₽`);
       }
 
       game.currentCard = null;
