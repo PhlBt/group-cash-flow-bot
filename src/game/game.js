@@ -1197,11 +1197,7 @@ class CashFlowGame {
     this.currentCard = null;
     this.waitingForAction = false;
 
-    const previousPosition = player.position;
     const newPosition = (player.position + totalDice) % 24;
-
-    // Проверяем, прошел ли игрок полный круг
-    const completedLap = previousPosition + totalDice >= 24;
 
     player.position = newPosition;
 

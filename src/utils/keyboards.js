@@ -264,7 +264,19 @@ function getPlayerTurnKeyboard(player) {
   if (player.inFastTrack) {
     return getFastTrackRollKeyboard();
   }
+  if (player.charityTurnsLeft > 0) {
+    return getCharityTurnKeyboard();
+  }
   return getGameActionsKeyboard();
+}
+
+function getCharityTurnKeyboard() {
+  return {
+    inline_keyboard: [
+      [{ text: '🎲 Бросить 1 кубик', callback_data: 'roll_one' },{ text: '🎲 Бросить 2 кубика', callback_data: 'roll_two' }],
+      [{ text: '📊 Статус игры', callback_data: 'cmd_status' }]
+    ]
+  };
 }
 
 // Динамическая клавиатура для выбора игрока при продаже сделки
