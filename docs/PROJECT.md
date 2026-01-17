@@ -19,15 +19,22 @@ CashFlow Telegram Bot - это приложение для игры в наст�
 cashFlow/
 ├── src/
 │   ├── handlers.js             # Обработчики команд бота
+│   ├── keyboards.js            # Inline клавиатуры для бота
 │   ├── main.js                 # Главный файл приложения, точка входа
-│   └── services/
-│       ├── databaseService.js  # Сервис для работы с MongoDB
-│       ├── gameService.js      # Сервис для логики игры (фасад для DatabaseService)
-│       └── messageService.js   # Сервис для отправки сообщений
+│   ├── game/
+│   │   ├── board.js            # Определение игрового поля и типов полей
+│   │   └── professions.js      # Профессии игроков с начальными данными
+│   ├── services/
+│   │   ├── databaseService.js  # Сервис для работы с MongoDB
+│   │   ├── gameService.js      # Сервис для логики игры (фасад для DatabaseService)
+│   │   └── messageService.js   # Сервис для отправки сообщений
+│   └── utils/
+│       └── index.js            # Вспомогательные функции (форматирование чисел)
 ├── docs/
 │   ├── DATABASE.md      # Описание DatabaseService
 │   ├── GAME.md          # Описание логики GameService
 │   ├── HANDLERS.md      # Описание логики обработчиков команд
+│   ├── MESSAGESERVICE.md # Описание MessageService
 │   ├── PROJECT.md       # Описание проекта и структура
 │   └── COMMANDS.md      # Описание команд бота
 ├── docker/

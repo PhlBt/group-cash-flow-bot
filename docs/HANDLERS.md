@@ -76,7 +76,7 @@ Handlers - модуль функций-обработчиков команд Tel
 - **Назначение**: Обработка голосования за окончание игры
 - **Параметры**:
   - `query` (Object): Callback query от Telegram
-  - `services` (Object): Объект с сервисами { messageService, gameService, bot }
+  - `services` (Object): Объект с сервисами { gameService, messageService, bot }
 - **Функционал**:
   - Извлекает chatId, userId из query
   - Находит активную игру в чате
@@ -84,6 +84,25 @@ Handlers - модуль функций-обработчиков команд Tel
   - Обновляет сообщение через messageService.updateEndGameVoteMessage()
   - Если достигнуто majority - завершает игру через gameService.finishGame() и messageService.sendGameFinishedMessage()
   - Обрабатывает ошибки через messageService.sendEndGameErrorMessage()
+
+### handleRollDice(query, diceCount, services)
+- **Назначение**: Обработка броска кубика
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `diceCount` (number): Количество кубиков (1 или 2)
+  - `services` (Object): Объект с сервисами { gameService, messageService, bot }
+- **Функционал**:
+  - Извлекает chatId, userId из query
+  - Находит активную игру в чате
+  - Проверяет, что пользователь - текущий игрок
+  - Бросает кубик(и) через gameService.rollDice()
+  - Отправляет результат броска через messageService.sendDiceRollMessage()
+  - Перемещает игрока через gameService.movePlayer()
+  - Отправляет сообщение о перемещении через messageService.sendMoveMessage()
+  - Уменьшает счетчик благотворительности через gameService.decreaseCharityTurns() (если активен)
+  - Передает ход следующему игроку через gameService.nextTurn()
+  - Отправляет сообщение следующему игроку через messageService.sendPlayerTurnMessage()
+  - Обрабатывает ошибки через messageService.sendErrorMessage()
 
 ### handleCallbackQuery(query, services)
 - **Назначение**: Обработка callback_query от inline кнопок
@@ -95,9 +114,12 @@ Handlers - модуль функций-обработчиков команд Tel
   - Подтверждает получение callback с bot.answerCallbackQuery()
   - В зависимости от data:
     - 'play': Удаляет приветственное сообщение через messageService.deleteMessage(). Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), отправляет карточку игрока через messageService.sendPlayerCard(), удаляет старое сообщение комнаты ожидания (если есть) и отправляет новое через messageService.sendWaitingRoomMessage(), сохраняет ID через gameService.setWaitingMessageId(). Иначе создает новую игру через gameService.createGame(), отправляет карточку игрока создателю через messageService.sendPlayerCard(), отправляет сообщение комнаты ожидания через messageService.sendWaitingRoomMessage() и сохраняет ID через gameService.setWaitingMessageId()
-    - 'start_game': Находит активную игру в чате через gameService.getActiveGameByChatId(), проверяет, что пользователь является создателем, вызывает gameService.startGame(), в случае успеха отправляет сообщение через messageService.sendPlaySuccessMessage()
+    - 'start_game': Находит активную игру в чате через gameService.getActiveGameByChatId(), проверяет, что пользователь является создателем, вызывает gameService.startGame(), в случае успеха начинает игру с первого игрока через messageService.sendPlayerTurnMessage()
     - 'rules': Отправляет правила через messageService.sendRulesMessage()
     - 'help': Отправляет справку через messageService.sendHelpMessage()
+    - 'roll_dice': Вызывает handleRollDice() с 1 кубиком
+    - 'roll_dice_1': Вызывает handleRollDice() с 1 кубиком (режим благотворительности)
+    - 'roll_dice_2': Вызывает handleRollDice() с 2 кубиками (режим благотворительности)
     - 'end_game_vote': Вызывает handleEndGameVote() для обработки голосования
   - Обрабатывает ошибки и отправляет сообщение об ошибке пользователю
 

@@ -119,6 +119,67 @@ GameService - это класс, реализующий паттерн Фаса�
 - **Функционал**:
   - Сохраняет ID сообщения комнаты ожидания для возможности его обновления или удаления
 
+### rollDice(diceCount)
+- **Назначение**: Бросает кубик(и) и возвращает сумму очков
+- **Параметры**:
+  - `diceCount` (number): Количество кубиков (1 или 2)
+- **Возвращает**: number - Сумма выпавших очков
+- **Функционал**:
+  - Генерирует случайные числа от 1 до 6 для каждого кубика
+  - Возвращает сумму результатов
+
+### movePlayer(gameId, userId, steps)
+- **Назначение**: Перемещает игрока на заданное количество полей
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `steps` (number): Количество шагов
+- **Возвращает**: Promise<{success: boolean, error?: string, newPosition?: number, fieldType?: string, inFastTrack?: boolean}> - результат операции
+- **Функционал**:
+  - Вычисляет новую позицию игрока
+  - Обрабатывает переход между Rat Race и Fast Track
+  - Обновляет позицию в базе данных
+  - Определяет тип поля, на которое попал игрок
+
+### getCurrentPlayer(gameId)
+- **Назначение**: Возвращает текущего игрока
+- **Параметры**:
+  - `gameId` (string): ID игры
+- **Возвращает**: Promise<Object|null> - Текущий игрок или null
+- **Функционал**:
+  - Получает игру по ID
+  - Возвращает игрока по индексу currentPlayerIndex
+
+### nextTurn(gameId)
+- **Назначение**: Передает ход следующему игроку
+- **Параметры**:
+  - `gameId` (string): ID игры
+- **Возвращает**: Promise<{success: boolean, error?: string, nextPlayer?: Object}> - результат операции
+- **Функционал**:
+  - Переключает currentPlayerIndex на следующего игрока
+  - Возвращает объект следующего игрока
+
+### setCharityEffect(gameId, userId, effect, turnsLeft)
+- **Назначение**: Устанавливает эффект благотворительности для игрока
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `effect` (boolean): Включить/выключить эффект
+  - `turnsLeft` (number): Количество ходов (если effect = true)
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Устанавливает флаги charityEffect и charityTurnsLeft в базе данных
+
+### decreaseCharityTurns(gameId, userId)
+- **Назначение**: Уменьшает счетчик ходов благотворительности
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+- **Возвращает**: Promise<{success: boolean, error?: string, turnsLeft?: number, effectEnded?: boolean}> - результат операции
+- **Функционал**:
+  - Уменьшает charityTurnsLeft на 1
+  - Отключает эффект при достижении 0
+
 ## Бизнес-правила и проверки
 
 ### Правила создания игры

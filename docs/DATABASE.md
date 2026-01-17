@@ -211,6 +211,50 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Функционал**:
   - Сохраняет ID сообщения комнаты ожидания для возможности его удаления
 
+### updatePlayerPosition(gameId, userId, newPosition, inFastTrack)
+- **Назначение**: Обновляет позицию игрока
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `newPosition` (number): Новая позиция
+  - `inFastTrack` (boolean): Находится ли на Fast Track
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Находит игрока по userId в массиве players
+  - Обновляет поля position и inFastTrack
+
+### setCharityEffect(gameId, userId, effect, turnsLeft)
+- **Назначение**: Устанавливает эффект благотворительности для игрока
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `effect` (boolean): Включить/выключить эффект
+  - `turnsLeft` (number): Количество ходов (если effect = true)
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Находит игрока по userId в массиве players
+  - Устанавливает charityEffect и charityTurnsLeft
+
+### decreaseCharityTurns(gameId, userId)
+- **Назначение**: Уменьшает счетчик ходов благотворительности
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+- **Возвращает**: Promise<{success: boolean, error?: string, turnsLeft?: number, effectEnded?: boolean}> - результат операции
+- **Функционал**:
+  - Находит игрока по userId в массиве players
+  - Уменьшает charityTurnsLeft на 1
+  - Отключает эффект при достижении 0
+
+### nextTurn(gameId)
+- **Назначение**: Передает ход следующему игроку
+- **Параметры**:
+  - `gameId` (string): ID игры
+- **Возвращает**: Promise<{success: boolean, error?: string, nextPlayerIndex?: number}> - результат операции
+- **Функционал**:
+  - Вычисляет следующий индекс игрока (currentPlayerIndex + 1) % players.length
+  - Обновляет currentPlayerIndex в документе игры
+
 ## Бизнес-правила и проверки
 
 ### Правила создания игры

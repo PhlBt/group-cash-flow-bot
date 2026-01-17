@@ -11,8 +11,9 @@ Telegram бот для игры в настольную игру CashFlow. По�
 
 2. Создайте файл `.env` в корне проекта и добавьте переменные окружения:
    ```
-   TELEGRAM_TOKEN=ваш_токен_бота
-   MONGODB_URI=mongodb://localhost:27017/cashflow
+   BOT_TOKEN=ваш_токен_бота
+   MONGODB_URL=mongodb://localhost:27017
+   MONGODB_DATABASE=cashflow
    ```
 
 ## Запуск
