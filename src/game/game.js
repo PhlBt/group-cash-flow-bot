@@ -1089,24 +1089,24 @@ class CashFlowGame {
         break;
       case 'lottery_win':
         player.receive(100000);
-        message = `🎰 Выигрыш в лотерею! 💰 Получено: ₽100000`;
+        message = `🎰 Выигрыш в лотерею! 💰 Получено: ${formatNumber(100000)} ₽`;
         break;
       case 'lawsuit_win':
         player.receive(500000);
-        message = `⚖️ Коллективный иск выиграл! 💰 Получено: ₽500000`;
+        message = `⚖️ Коллективный иск выиграл! 💰 Получено: ${formatNumber(500000)} ₽`;
         break;
       case 'inheritance':
         player.receive(2000000);
-        message = `🤑 Получено наследство! 💰 Получено: ₽2000000`;
+        message = `🤑 Получено наследство! 💰 Получено: ${formatNumber(2000000)} ₽`;
         break;
       case 'car_accident':
-        message = `🚗 Вы попали в аварию. Нужно заплатить ₽150000`;
+        message = `🚗 Вы попали в аварию. Нужно заплатить ${formatNumber(150000)} ₽`;
         return { message, cost: 150000, canSkip: true };
       case 'surgery':
-        message = `🏥 Необходима операция. Нужно заплатить ₽200000`;
+        message = `🏥 Необходима операция. Нужно заплатить ${formatNumber(200000)} ₽`;
         return { message, cost: 200000, canSkip: true };
       case 'home_improvement':
-        message = `🏠 Улучшение дома. Нужно заплатить ₽250000`;
+        message = `🏠 Улучшение дома. Нужно заплатить ${formatNumber(250000)} ₽`;
         return { message, cost: 250000, canSkip: true };
       case 'charity':
         // Благотворительность: 10% от общего дохода за бонус 3 ходов
@@ -1364,7 +1364,7 @@ class CashFlowGame {
         type: 'business',
         icon: '🏢',
         title: 'Бизнес-возможность',
-        description: 'Инвестируйте ₽5,000,000 в новый бизнес. Доход: +₽500,000/мес',
+        description: `Инвестируйте ${formatNumber(5000000)} ₽ в новый бизнес. Доход: +${formatNumber(500000)} ₽/мес`,
         cost: 5000000,
         income: 500000
       },
@@ -1372,7 +1372,7 @@ class CashFlowGame {
         type: 'investment',
         icon: '📈',
         title: 'Инвестиция в акции',
-        description: 'Купите акции за ₽3,000,000. Потенциальная прибыль: ₽2,000,000',
+        description: `Купите акции за ${formatNumber(3000000)} ₽. Потенциальная прибыль: ${formatNumber(2000000)} ₽`,
         cost: 3000000,
         profit: 2000000
       },
@@ -1380,7 +1380,7 @@ class CashFlowGame {
         type: 'charity',
         icon: '🎗️',
         title: 'Благотворительность',
-        description: 'Пожертвуйте ₽1,000,000 на благотворительность. Бонус: дополнительный ход',
+        description: `Пожертвуйте ${formatNumber(1000000)} ₽ на благотворительность. Бонус: дополнительный ход`,
         cost: 1000000,
         bonus: 'extra_turn'
       },
@@ -1402,7 +1402,7 @@ class CashFlowGame {
         type: 'lawsuit',
         icon: '⚖️',
         title: 'Судебный иск',
-        description: 'Заплатите ₽2,500,000 на юридические расходы',
+        description: `Заплатите ${formatNumber(2500000)} ₽ на юридические расходы`,
         cost: 2500000
       }
     ];

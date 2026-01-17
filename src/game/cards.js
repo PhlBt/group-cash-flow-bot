@@ -265,37 +265,37 @@ function generateOpportunityCard() {
     {
       type: "opportunity",
       title: "Выигрыш в лотерею",
-      description: "Вы выиграли в лотерею. Получите ₽100000",
+      description: `Вы выиграли в лотерею. Получите ${formatNumber(100000)} ₽`,
       effect: "lottery_win",
     },
     {
       type: "opportunity",
       title: "Коллективный иск",
-      description: "Вы выиграли коллективный судебный процесс. Получите ₽500000",
+      description: `Вы выиграли коллективный судебный процесс. Получите ${formatNumber(500000)} ₽`,
       effect: "lawsuit_win",
     },
     {
       type: "opportunity",
       title: "Наследство",
-      description: "Вы получили наследство от дальнего родственника. Получите ₽2000000",
+      description: `Вы получили наследство от дальнего родственника. Получите ${formatNumber(2000000)} ₽`,
       effect: "inheritance",
     },
     {
       type: "opportunity",
       title: "Автокатастрофа",
-      description: "Вы попали в аварию. Заплатите ₽150000 за ремонт",
+      description: `Вы попали в аварию. Заплатите ${formatNumber(150000)} ₽ за ремонт`,
       effect: "car_accident",
     },
     {
       type: "opportunity",
       title: "Операция",
-      description: "Необходима срочная операция. Заплатите ₽200000",
+      description: `Необходима срочная операция. Заплатите ${formatNumber(200000)} ₽`,
       effect: "surgery",
     },
     {
       type: "opportunity",
       title: "Ремонт дома",
-      description: "Капитальный ремонт дома. Заплатите ₽250000",
+      description: `Капитальный ремонт дома. Заплатите ${formatNumber(250000)} ₽`,
       effect: "home_improvement",
     }
   ];
