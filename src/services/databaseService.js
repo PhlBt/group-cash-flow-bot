@@ -83,7 +83,9 @@ class DatabaseService {
       inFastTrack: false,
       fastTrackCash: 0,
       fastTrackIncome: 0,
-      dreamCost: 0
+      dreamCost: 0,
+      charityEffect: false,
+      charityTurnsLeft: 0
     };
 
     await gamesCollection.insertOne({
@@ -147,7 +149,9 @@ class DatabaseService {
       inFastTrack: false,
       fastTrackCash: 0,
       fastTrackIncome: 0,
-      dreamCost: 0
+      dreamCost: 0,
+      charityEffect: false,
+      charityTurnsLeft: 0
     };
 
     await gamesCollection.updateOne(
@@ -192,7 +196,7 @@ class DatabaseService {
 
     await gamesCollection.updateOne(
       { gameId },
-      { $set: { status: 'active', startedAt: new Date() } }
+      { $set: { status: 'active', startedAt: new Date(), currentPlayerIndex: 0 } }
     );
 
     return { success: true };
@@ -337,6 +341,148 @@ class DatabaseService {
     );
 
     return { success: true };
+  }
+
+  /**
+   * Обновляет позицию игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - Находится ли на Fast Track
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async updatePlayerPosition(gameId, userId, newPosition, inFastTrack = false) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const updateField = `players.${playerIndex}`;
+    await gamesCollection.updateOne(
+      { gameId },
+      {
+        $set: {
+          [`${updateField}.position`]: newPosition,
+          [`${updateField}.inFastTrack`]: inFastTrack
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает эффект благотворительности для игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {boolean} effect - Включить/выключить эффект
+   * @param {number} turnsLeft - Количество ходов (если effect = true)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCharityEffect(gameId, userId, effect, turnsLeft = 0) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const updateData = {
+      [`players.${playerIndex}.charityEffect`]: effect
+    };
+
+    if (effect) {
+      updateData[`players.${playerIndex}.charityTurnsLeft`] = turnsLeft;
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: updateData }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Уменьшает счетчик ходов благотворительности
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, turnsLeft?: number, effectEnded?: boolean}>} Результат операции
+   */
+  async decreaseCharityTurns(gameId, userId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    if (!player.charityEffect || player.charityTurnsLeft <= 0) {
+      return { success: true, turnsLeft: 0, effectEnded: false };
+    }
+
+    const newTurnsLeft = player.charityTurnsLeft - 1;
+    const effectEnded = newTurnsLeft <= 0;
+
+    const updateData = {
+      [`players.${playerIndex}.charityTurnsLeft`]: Math.max(0, newTurnsLeft)
+    };
+
+    if (effectEnded) {
+      updateData[`players.${playerIndex}.charityEffect`] = false;
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: updateData }
+    );
+
+    return {
+      success: true,
+      turnsLeft: Math.max(0, newTurnsLeft),
+      effectEnded
+    };
+  }
+
+  /**
+   * Передает ход следующему игроку
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string, nextPlayerIndex?: number}>} Результат операции
+   */
+  async nextTurn(gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const nextPlayerIndex = (game.currentPlayerIndex + 1) % game.players.length;
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { currentPlayerIndex: nextPlayerIndex } }
+    );
+
+    return { success: true, nextPlayerIndex };
   }
 
   /**

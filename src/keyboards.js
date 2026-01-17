@@ -46,8 +46,33 @@ const waitingRoomKeyboard = {
   ]
 };
 
+/**
+ * Основная игровая клавиатура (обычный режим)
+ */
+const gameKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🎲 Бросить кубик', callback_data: 'roll_dice' }
+    ]
+  ]
+};
+
+/**
+ * Клавиатура при эффекте благотворительности
+ */
+const charityKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🎲 Бросить кубик', callback_data: 'roll_dice_1' },
+      { text: '🎲 Бросить 2 кубика', callback_data: 'roll_dice_2' }
+    ]
+  ]
+};
+
 module.exports = {
   welcomeKeyboard,
   endGameVoteKeyboard,
-  waitingRoomKeyboard
+  waitingRoomKeyboard,
+  gameKeyboard,
+  charityKeyboard
 };

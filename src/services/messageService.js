@@ -1,4 +1,4 @@
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard } = require('../keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard } = require('../keyboards');
 const { formatNumber } = require('../utils');
 
 class MessageService {
@@ -353,6 +353,106 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendErrorMessage(chatId, errorText) {
     await this.bot.sendMessage(chatId, errorText);
+  }
+
+  /**
+   * Отправляет сообщение с ходом игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendPlayerTurnMessage(chatId, player) {
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎯 Ваш ход, ${player.username} (${player.profession})!\n\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
+    message += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
+    message += `Выберите действие:`;
+
+    const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
+
+    const sentMessage = await this.bot.sendMessage(chatId, message, {
+      reply_markup: keyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Отправляет результат броска кубика
+   * @param {number} chatId - ID чата
+   * @param {number} diceCount - Количество кубиков
+   * @param {number} totalSteps - Сумма очков
+   */
+  async sendDiceRollMessage(chatId, diceCount, totalSteps) {
+    let diceEmojis = '';
+    for (let i = 0; i < diceCount; i++) {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      diceEmojis += this.getDiceEmoji(roll) + ' ';
+    }
+
+    const message = `🎲 Бросок ${diceCount} кубика(ов): ${diceEmojis}\nВыпало: ${totalSteps} шагов`;
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение о перемещении игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} oldPosition - Старая позиция
+   * @param {number} newPosition - Новая позиция
+   * @param {string} fieldType - Тип поля
+   * @param {boolean} inFastTrack - На Fast Track
+   */
+  async sendMoveMessage(chatId, player, oldPosition, newPosition, fieldType, inFastTrack) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const fieldName = this.getFieldName(fieldType);
+
+    let message = `🚶 ${player.username} перемещается:\n`;
+    message += `${trackName}, поле ${oldPosition + 1} → поле ${newPosition + 1}\n`;
+    message += `📍 Попали на: ${fieldName}`;
+
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Возвращает эмодзи для грани кубика
+   * @param {number} value - Значение грани (1-6)
+   * @returns {string} Эмодзи
+   */
+  getDiceEmoji(value) {
+    const emojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    return emojis[value - 1] || '🎲';
+  }
+
+  /**
+   * Возвращает название типа поля
+   * @param {string} fieldType - Тип поля
+   * @returns {string} Название поля
+   */
+  getFieldName(fieldType) {
+    const { FIELD_TYPES } = require('../game/board');
+
+    switch (fieldType) {
+      case FIELD_TYPES.DEAL: return 'Сделка';
+      case FIELD_TYPES.MARKET: return 'Рынок';
+      case FIELD_TYPES.PAYDAY: return 'День выплат';
+      case FIELD_TYPES.CHARITY: return 'Благотворительность';
+      case FIELD_TYPES.MISCELLANEOUS: return 'Всякая всячина';
+      case FIELD_TYPES.CHILD: return 'Ребенок';
+      case FIELD_TYPES.DISMISSAL: return 'Увольнение';
+      case FIELD_TYPES.OPPORTUNITY: return 'Возможность';
+      case FIELD_TYPES.LAWSUIT: return 'Судебный иск';
+      case FIELD_TYPES.TAX_AUDIT: return 'Налоговая проверка';
+      case FIELD_TYPES.BAD_PARTNER: return 'Плохой партнер';
+      case FIELD_TYPES.DIVORCE: return 'Развод';
+      case FIELD_TYPES.UNEXPECTED_REPAIR: return 'Неожиданный ремонт';
+      case FIELD_TYPES.HEALTH_CARE: return 'Забота о здоровье';
+      default: return 'Неизвестное поле';
+    }
   }
 }
 

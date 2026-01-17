@@ -164,6 +164,73 @@ async function handleEndGameVote(query, services) {
 }
 
 /**
+ * Обрабатывает бросок кубика
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} diceCount - Количество кубиков (1 или 2)
+ * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
+ */
+async function handleRollDice(query, diceCount, services) {
+  const { gameService, messageService, bot } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Бросить кубик(и)
+    const steps = gameService.rollDice(diceCount);
+
+    // Отправить результат броска
+    await messageService.sendDiceRollMessage(chatId, diceCount, steps);
+
+    // Запомнить старую позицию для сообщения
+    const oldPosition = currentPlayer.position;
+
+    // Переместить игрока
+    const moveResult = await gameService.movePlayer(game.gameId, userId, steps);
+    if (!moveResult.success) {
+      await messageService.sendErrorMessage(chatId, 'Ошибка перемещения: ' + moveResult.error);
+      return;
+    }
+
+    // Отправить сообщение о перемещении
+    await messageService.sendMoveMessage(chatId, currentPlayer, oldPosition, moveResult.newPosition, moveResult.fieldType, moveResult.inFastTrack);
+
+    // Уменьшить счетчик ходов благотворительности
+    if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+      await gameService.decreaseCharityTurns(game.gameId, userId);
+    }
+
+    // TODO: Обработать событие на поле (финансовые изменения, эффекты)
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      // Отправить сообщение следующему игроку
+      const nextPlayerChatId = nextTurnResult.nextPlayer.userId; // Предполагаем, что chatId совпадает с userId для личных сообщений
+      // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handleRollDice:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при броске кубика.');
+  }
+}
+
+/**
  * Обрабатывает callback_query от inline кнопок
  * @param {Object} query - Callback query от Telegram
  * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
@@ -226,7 +293,11 @@ async function handleCallbackQuery(query, services) {
         if (gameToStart && gameToStart.creatorId === userId) {
           const startResult = await gameService.startGame(userId, gameToStart.gameId);
           if (startResult.success) {
-            await messageService.sendPlaySuccessMessage(chatId, gameToStart.gameId);
+            // Начать игру - отправить ход первому игроку
+            const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
+            if (firstPlayer) {
+              await messageService.sendPlayerTurnMessage(chatId, firstPlayer);
+            }
           } else {
             await messageService.sendPlayErrorMessage(chatId, startResult.error);
           }
@@ -243,6 +314,21 @@ async function handleCallbackQuery(query, services) {
       case 'help':
         // Показать помощь
         await messageService.sendHelpMessage(chatId);
+        break;
+
+      case 'roll_dice':
+        // Бросок 1 кубика (обычный режим)
+        await handleRollDice(query, 1, services);
+        break;
+
+      case 'roll_dice_1':
+        // Бросок 1 кубика (режим благотворительности)
+        await handleRollDice(query, 1, services);
+        break;
+
+      case 'roll_dice_2':
+        // Бросок 2 кубиков (режим благотворительности)
+        await handleRollDice(query, 2, services);
         break;
 
       case 'end_game_vote':
