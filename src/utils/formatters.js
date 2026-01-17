@@ -1,26 +1,36 @@
+function formatNumber(num) {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)} млн.`;
+  } else if (num >= 1000) {
+    return `${(num / 1000).toFixed(0)} тыс.`;
+  } else {
+    return num.toString();
+  }
+}
+
 function formatPlayerInfo(player) {
   let info = `👤 ${player.username}\n`;
   info += `💼 Профессия: ${player.profession}\n`;
-  info += `💰 Деньги: ₽${player.cash}\n`;
-  info += `💵 Зарплата: ₽${player.salary}/месяц\n`;
-  info += `💸 Базовые расходы: ₽${player.expenses}/месяц\n`;
+  info += `💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+  info += `💵 Зарплата: ${formatNumber(player.salary)} ₽/месяц\n`;
+  info += `💸 Базовые расходы: ${formatNumber(player.expenses)} ₽/месяц\n`;
 
   if (player.childrenCount && player.childrenCount > 0) {
-    info += `👶 Детей: ${player.childrenCount} (расходы: ₽${player.childrenExpenses}/месяц)\n`;
+    info += `👶 Детей: ${player.childrenCount} (расходы: ${formatNumber(player.childrenExpenses)} ₽/месяц)\n`;
   }
 
-  info += `📈 Пассивный доход: ₽${player.passiveIncome}/месяц\n`;
-  info += `📊 Общий доход: ₽${player.totalIncome}/месяц\n`;
-  info += `📉 Общие расходы: ₽${player.totalExpenses}/месяц\n`;
-  info += `💹 Денежный поток: ₽${player.cashFlow}/месяц\n`;
+  info += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n`;
+  info += `📊 Общий доход: ${formatNumber(player.totalIncome)} ₽/месяц\n`;
+  info += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/месяц\n`;
+  info += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n`;
   info += `🏠 Активов: ${player.assetsCount}\n`;
   info += `📋 Пассивов: ${player.liabilitiesCount}\n`;
 
   // Информация о кредитах
   if (player.loansCount && player.loansCount > 0) {
     info += `💳 Кредитов: ${player.loansCount}\n`;
-    info += `📊 Общая сумма кредитов: ₽${player.totalLoans}\n`;
-    info += `💸 Платежи по кредитам: ₽${player.totalLoanPayments}/месяц\n`;
+    info += `📊 Общая сумма кредитов: ${formatNumber(player.totalLoans)} ₽\n`;
+    info += `💸 Платежи по кредитам: ${formatNumber(player.totalLoanPayments)} ₽/месяц\n`;
   }
 
   info += `📍 Позиция: ${player.position + 1}\n`;
@@ -37,9 +47,9 @@ function formatPlayerInfo(player) {
 
   if (player.inFastTrack) {
     info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
-    info += `\n💰 Капитал: ₽${player.fastTrackCash || 0}`;
-    info += `\n💵 Доход: ₽${player.fastTrackIncome || 0}/мес`;
-    info += `\n🎯 Цель (мечта): ₽${player.dreamCost || 0}`;
+    info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
+    info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
+    info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
   }
 
   return info;
@@ -48,24 +58,25 @@ function formatPlayerInfo(player) {
 function formatCard(card) {
   let text = `📋 ${card.title}\n${card.description}\n`;
   if (card.cost) {
-    text += `💰 Стоимость: $${card.cost}\n`;
+    text += `💰 Стоимость: ${formatNumber(card.cost)} ₽\n`;
   }
   if (card.downPayment) {
-    text += `💵 Первый взнос: $${card.downPayment}\n`;
+    text += `💵 Первый взнос: ${formatNumber(card.downPayment)} ₽\n`;
   }
   if (card.cashFlow) {
-    text += `📊 Денежный поток: +$${card.cashFlow}/месяц\n`;
+    text += `📊 Денежный поток: +${formatNumber(card.cashFlow)} ₽/месяц\n`;
   }
   return text;
 }
 
 function formatAssetsForSale(player) {
   return player.assets.map((a, i) =>
-    `${i + 1}. ${a.title} - $${a.cost} (доход: $${a.passiveIncome}/мес)`
+    `${i + 1}. ${a.title} - ${formatNumber(a.cost)} ₽ (доход: ${formatNumber(a.passiveIncome)} ₽/мес)`
   ).join('\n');
 }
 
 module.exports = {
+  formatNumber,
   formatPlayerInfo,
   formatCard,
   formatAssetsForSale

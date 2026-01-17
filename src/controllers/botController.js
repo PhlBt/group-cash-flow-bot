@@ -1,3 +1,5 @@
+const { formatNumber } = require('../utils/formatters');
+
 module.exports = function(bot, gameManager, messageQueue, sendMessage, getStartInlineKeyboard, formatPlayerInfo, getJoinSuccessKeyboard, getGameActionsKeyboard, getCardKeyboard, getLoansKeyboard, getSellAssetKeyboard, getDealActionsKeyboard, getFastTrackKeyboard, getFastTrackRollKeyboard, getPlayerTurnKeyboard, getSellDealPlayerSelectKeyboard, getKickVotePlayerSelectKeyboard, formatCard, formatAssetsForSale) {
 
 // Команда /start
@@ -32,8 +34,8 @@ bot.onText(/\/mystats/, async (msg) => {
     message += `🎮 Игр сыграно: ${playerStats.gamesPlayed}\n`;
     message += `🏆 Побед: ${playerStats.gamesWon}\n`;
     message += `💀 Банкротств: ${playerStats.gamesBankrupt}\n`;
-    message += `📈 Лучший денежный поток: $${playerStats.bestCashFlow}\n`;
-    message += `💰 Средний денежный поток: $${Math.round(playerStats.averageCashFlow)}\n`;
+    message += `📈 Лучший денежный поток: ₽${playerStats.bestCashFlow}\n`;
+    message += `💰 Средний денежный поток: ₽${Math.round(playerStats.averageCashFlow)}\n`;
 
     if (playerStats.fastTrackEntries > 0) {
       message += `\n🚀 FAST TRACK:\n`;
@@ -103,12 +105,12 @@ bot.onText(/\/leaderboard(?: (wins|cash|games))?/, async (msg, match) => {
       if (sortBy === 'gamesWon') {
         message += `   🏆 ${player.gamesWon} побед\n`;
       } else if (sortBy === 'bestCashFlow') {
-        message += `   💰 $${player.bestCashFlow} макс. поток\n`;
+        message += `   💰 ₽${player.bestCashFlow} макс. поток\n`;
       } else if (sortBy === 'gamesPlayed') {
         message += `   🎮 ${player.gamesPlayed} игр\n`;
       }
 
-      message += `   💸 $${player.totalCashEarned} заработано\n\n`;
+      message += `   💸 ₽${player.totalCashEarned} заработано\n\n`;
     });
 
     message += `Используйте:\n`;
@@ -341,7 +343,7 @@ bot.onText(/\/small_deal/, async (msg) => {
   game.currentCard = card;
 
   const player = game.players.get(userId);
-  const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: $${player.cash}`;
+  const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ₽${player.cash}`;
   await sendMessage(chatId, message, { reply_markup: getDealActionsKeyboard(card) });
 });
 
@@ -369,7 +371,7 @@ bot.onText(/\/big_deal/, async (msg) => {
   game.currentCard = card;
 
   const player = game.players.get(userId);
-  const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: $${player.cash}`;
+  const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ₽${player.cash}`;
   await sendMessage(chatId, message, { reply_markup: getDealActionsKeyboard(card) });
 });
 
@@ -851,12 +853,12 @@ bot.onText(/\/status/, async (msg) => {
   message += `Игроки:\n`;
   status.players.forEach((player, index) => {
     message += `\n${index + 1}. ${player.username} (${player.profession})\n`;
-    message += `   💰 Деньги: $${player.cash}\n`;
-    message += `   📊 Денежный поток: $${player.cashFlow}/месяц\n`;
-    message += `   📈 Пассивный доход: $${player.passiveIncome}/месяц\n`;
+    message += `   💰 Деньги: ₽${player.cash}\n`;
+    message += `   📊 Денежный поток: ₽${player.cashFlow}/месяц\n`;
+    message += `   📈 Пассивный доход: ₽${player.passiveIncome}/месяц\n`;
     message += `   🏠 Активы: ${player.assetsCount}\n`;
     if (player.loansCount && player.loansCount > 0) {
-      message += `   💳 Кредитов: ${player.loansCount} ($${player.totalLoans})\n`;
+      message += `   💳 Кредитов: ${player.loansCount} (₽${player.totalLoans})\n`;
     }
     if (player.inFastTrack) {
       message += `   ⚡ На быстром треке!\n`;
@@ -1650,7 +1652,7 @@ bot.on('callback_query', async (query) => {
         game.currentCard = null;
         game.waitingForAction = false;
 
-        const message = `✅ Благотворительность принята!\n💸 Пожертвовано: ₽${charityAmount}\n🎲 Следующие 3 хода: право бросать 1 или 2 кубика\n💰 Баланс: ₽${player.cash}`;
+        const message = `✅ Благотворительность принята!\n💸 Пожертвовано: ₽${formatNumber(charityAmount)}\n🎲 Следующие 3 хода: право бросать 1 или 2 кубика\n💰 Баланс: ₽${formatNumber(player.cash)}`;
         await sendMessage(chatId, message);
         await gameManager.saveGame(chatId);
         game.nextTurn();
