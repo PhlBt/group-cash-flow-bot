@@ -129,18 +129,21 @@ GameService - это класс, реализующий паттерн Фаса�
   - Возвращает сумму результатов
 
 ### movePlayer(gameId, userId, steps)
-- **Назначение**: Перемещает игрока на заданное количество полей
+- **Назначение**: Перемещает игрока на заданное количество полей и обрабатывает события на пройденных полях
 - **Параметры**:
   - `gameId` (string): ID игры
   - `userId` (string): ID игрока
   - `steps` (number): Количество шагов
-- **Возвращает**: Promise<{success: boolean, error?: string, newPosition?: number, fieldType?: string, inFastTrack?: boolean}> - результат операции
+- **Возвращает**: Promise<{success: boolean, error?: string, newPosition?: number, fieldType?: string, inFastTrack?: boolean, paydayEvents?: Array<{position: number, cashFlow: number, newCash: number}>}> - результат операции
 - **Функционал**:
+  - Проходит по всем полям от текущей позиции до новой
+  - Для каждого поля типа PAYDAY вызывает processPayday и собирает результаты в paydayEvents
   - Вычисляет новую позицию игрока с зацикливанием в текущем треке
   - Rat Race: зацикливание по 24 полям
   - Fast Track: зацикливание по 40 полям
   - Обновляет позицию в базе данных
   - Определяет тип поля, на которое попал игрок
+  - Возвращает массив событий PAYDAY для отправки сообщений
 
 ### getCurrentPlayer(gameId)
 - **Назначение**: Возвращает текущего игрока
@@ -180,6 +183,29 @@ GameService - это класс, реализующий паттерн Фаса�
 - **Функционал**:
   - Уменьшает charityTurnsLeft на 1
   - Отключает эффект при достижении 0
+
+### processPayday(gameId, userId)
+- **Назначение**: Обрабатывает событие поля "День выплат" - начисляет месячный денежный поток
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+- **Возвращает**: Promise<{success: boolean, error?: string, cashFlow?: number, newCash?: number}> - результат операции
+- **Функционал**:
+  - Рассчитывает месячный денежный поток: salary + passiveIncome - totalExpenses
+  - Добавляет/вычитает сумму к/из баланса игрока (cash)
+  - Обновляет поле cashFlow в данных игрока
+  - Сохраняет изменения в базе данных
+
+### recalculateTotalExpenses(gameId, userId)
+- **Назначение**: Пересчитывает общие расходы игрока при изменениях
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+- **Возвращает**: Promise<{success: boolean, error?: string, totalExpenses?: number}> - результат операции
+- **Функционал**:
+  - Суммирует все расходы: expenses + childrenExpenses + totalLoanPayments
+  - Обновляет поле totalExpenses в данных игрока
+  - Сохраняет изменения в базе данных
 
 ## Бизнес-правила и проверки
 

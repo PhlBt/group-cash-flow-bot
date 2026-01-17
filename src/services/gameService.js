@@ -116,11 +116,11 @@ class GameService {
   }
 
   /**
-   * Перемещает игрока на заданное количество полей
+   * Перемещает игрока на заданное количество полей и обрабатывает события на пройденных полях
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
    * @param {number} steps - Количество шагов
-   * @returns {Promise<{success: boolean, error?: string, newPosition?: number, fieldType?: string}>} Результат операции
+   * @returns {Promise<{success: boolean, error?: string, newPosition?: number, fieldType?: string, inFastTrack?: boolean, paydayEvents?: Array}>} Результат операции
    */
   async movePlayer(gameId, userId, steps) {
     const game = await this.databaseService.getGame(gameId);
@@ -133,20 +133,34 @@ class GameService {
       return { success: false, error: 'player_not_found' };
     }
 
-    const { RAT_RACE_FIELDS, FAST_TRACK_FIELDS, RAT_RACE_SIZE, FAST_TRACK_SIZE } = require('../game/board');
+    const { RAT_RACE_FIELDS, FAST_TRACK_FIELDS, RAT_RACE_SIZE, FAST_TRACK_SIZE, FIELD_TYPES } = require('../game/board');
 
     let currentPosition = player.position;
     let inFastTrack = player.inFastTrack;
-    let newPosition;
+    const currentTrack = inFastTrack ? FAST_TRACK_FIELDS : RAT_RACE_FIELDS;
+    const trackSize = inFastTrack ? FAST_TRACK_SIZE : RAT_RACE_SIZE;
+    const paydayEvents = [];
 
-    // Зацикливание в зависимости от текущего трека
-    if (!inFastTrack) {
-      // Находимся на "Крысиных бегах"
-      newPosition = (currentPosition + steps) % RAT_RACE_SIZE;
-    } else {
-      // Уже на Fast Track
-      newPosition = (currentPosition + steps) % FAST_TRACK_SIZE;
+    // Проходим по всем полям в пути
+    for (let i = 1; i <= steps; i++) {
+      const position = (currentPosition + i) % trackSize;
+      const field = currentTrack[position];
+
+      if (field.type === FIELD_TYPES.PAYDAY) {
+        // Обрабатываем PAYDAY
+        const paydayResult = await this.processPayday(gameId, userId);
+        if (paydayResult.success) {
+          paydayEvents.push({
+            position,
+            cashFlow: paydayResult.cashFlow,
+            newCash: paydayResult.newCash
+          });
+        }
+      }
     }
+
+    // Вычисляем новую позицию
+    const newPosition = (currentPosition + steps) % trackSize;
 
     // Обновляем позицию в базе данных
     const updateResult = await this.databaseService.updatePlayerPosition(gameId, userId, newPosition, inFastTrack);
@@ -155,14 +169,14 @@ class GameService {
     }
 
     // Определяем тип поля, на которое попал игрок
-    const currentTrack = inFastTrack ? FAST_TRACK_FIELDS : RAT_RACE_FIELDS;
     const fieldType = currentTrack[newPosition].type;
 
     return {
       success: true,
       newPosition,
       fieldType,
-      inFastTrack
+      inFastTrack,
+      paydayEvents
     };
   }
 
@@ -220,6 +234,77 @@ class GameService {
    */
   async decreaseCharityTurns(gameId, userId) {
     return await this.databaseService.decreaseCharityTurns(gameId, userId);
+  }
+
+  /**
+   * Обрабатывает событие поля "День выплат" - начисляет месячный денежный поток
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, cashFlow?: number, newCash?: number}>} Результат операции
+   */
+  async processPayday(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const cashFlow = player.salary + player.passiveIncome - player.totalExpenses;
+    const newCash = player.cash + cashFlow;
+
+    // Обновляем данные игрока
+    const updateData = {
+      [`players.${playerIndex}.cash`]: newCash,
+      [`players.${playerIndex}.cashFlow`]: cashFlow
+    };
+
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: updateData }
+    );
+
+    return {
+      success: true,
+      cashFlow,
+      newCash
+    };
+  }
+
+  /**
+   * Пересчитывает общие расходы игрока при изменениях
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, totalExpenses?: number}>} Результат операции
+   */
+  async recalculateTotalExpenses(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const totalExpenses = player.expenses + player.childrenExpenses + player.totalLoanPayments;
+
+    // Обновляем totalExpenses
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.totalExpenses`]: totalExpenses } }
+    );
+
+    return {
+      success: true,
+      totalExpenses
+    };
   }
 }
 

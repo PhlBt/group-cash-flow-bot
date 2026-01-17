@@ -97,7 +97,8 @@ Handlers - модуль функций-обработчиков команд Tel
   - Проверяет, что пользователь - текущий игрок
   - Бросает кубик(и) через gameService.rollDice()
   - Отправляет результат броска через messageService.sendDiceRollMessage()
-  - Перемещает игрока через gameService.movePlayer()
+  - Перемещает игрока через gameService.movePlayer() и получает события PAYDAY
+  - Отправляет сообщения о выплатах через messageService.sendPaydayMessage() для каждого события PAYDAY
   - Отправляет сообщение о перемещении через messageService.sendMoveMessage()
   - Уменьшает счетчик благотворительности через gameService.decreaseCharityTurns() (если активен)
   - Передает ход следующему игроку через gameService.nextTurn()

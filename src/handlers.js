@@ -208,12 +208,19 @@ async function handleRollDice(query, diceCount, services) {
     // Отправить сообщение о перемещении
     await messageService.sendMoveMessage(chatId, currentPlayer, oldPosition, moveResult.newPosition, moveResult.fieldType, moveResult.inFastTrack);
 
+    // Обработать события PAYDAY
+    if (moveResult.paydayEvents && moveResult.paydayEvents.length > 0) {
+      for (const paydayEvent of moveResult.paydayEvents) {
+        await messageService.sendPaydayMessage(chatId, currentPlayer, paydayEvent.cashFlow, paydayEvent.newCash);
+      }
+    }
+
     // Уменьшить счетчик ходов благотворительности
     if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
       await gameService.decreaseCharityTurns(game.gameId, userId);
     }
 
-    // TODO: Обработать событие на поле (финансовые изменения, эффекты)
+    // TODO: Обработать другие события на поле (финансовые изменения, эффекты)
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);

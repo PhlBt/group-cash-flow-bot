@@ -419,6 +419,25 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет сообщение о выплате денежного потока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} cashFlow - Сумма денежного потока
+   * @param {number} newCash - Новый баланс игрока
+   */
+  async sendPaydayMessage(chatId, player, cashFlow, newCash) {
+    const action = cashFlow >= 0 ? 'Получено' : 'Уплачено';
+    const emoji = cashFlow >= 0 ? '💰' : '💸';
+    const absCashFlow = Math.abs(cashFlow);
+
+    let message = `${emoji} День выплат!\n`;
+    message += `${action}: ${formatNumber(absCashFlow)} ₽\n`;
+    message += `💰 Новый баланс: ${formatNumber(newCash)} ₽`;
+
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
    * Возвращает эмодзи для грани кубика
    * @param {number} value - Значение грани (1-6)
    * @returns {string} Эмодзи
