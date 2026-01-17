@@ -137,22 +137,15 @@ class GameService {
 
     let currentPosition = player.position;
     let inFastTrack = player.inFastTrack;
-    let newPosition = currentPosition + steps;
+    let newPosition;
 
-    // Определяем круг и обрабатываем переходы
+    // Зацикливание в зависимости от текущего трека
     if (!inFastTrack) {
       // Находимся на "Крысиных бегах"
-      if (newPosition >= RAT_RACE_SIZE) {
-        // Переход на Fast Track
-        inFastTrack = true;
-        newPosition = newPosition - RAT_RACE_SIZE;
-        if (newPosition >= FAST_TRACK_SIZE) {
-          newPosition = newPosition % FAST_TRACK_SIZE; // Зацикливание на Fast Track
-        }
-      }
+      newPosition = (currentPosition + steps) % RAT_RACE_SIZE;
     } else {
       // Уже на Fast Track
-      newPosition = newPosition % FAST_TRACK_SIZE;
+      newPosition = (currentPosition + steps) % FAST_TRACK_SIZE;
     }
 
     // Обновляем позицию в базе данных
