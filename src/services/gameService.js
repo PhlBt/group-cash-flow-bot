@@ -61,6 +61,36 @@ class GameService {
   async getActiveGameByChatId(chatId) {
     return await this.databaseService.getActiveGameByChatId(chatId);
   }
+
+  /**
+   * Инициирует голосование за окончание игры
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @param {number} messageId - ID сообщения голосования
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async initiateEndGameVote(userId, gameId, messageId) {
+    return await this.databaseService.initiateEndGameVote(userId, gameId, messageId);
+  }
+
+  /**
+   * Голосует за окончание игры
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string, shouldFinish?: boolean}>} Результат операции
+   */
+  async voteToEndGame(userId, gameId) {
+    return await this.databaseService.voteToEndGame(userId, gameId);
+  }
+
+  /**
+   * Завершает игру
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async finishGame(gameId) {
+    return await this.databaseService.finishGame(gameId);
+  }
 }
 
 module.exports = GameService;

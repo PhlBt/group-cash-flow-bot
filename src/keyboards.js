@@ -17,6 +17,18 @@ const welcomeKeyboard = {
   ]
 };
 
+/**
+ * Клавиатура для голосования за окончание игры
+ */
+const endGameVoteKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🛑 Завершить игру', callback_data: 'end_game_vote' }
+    ]
+  ]
+};
+
 module.exports = {
-  welcomeKeyboard
+  welcomeKeyboard,
+  endGameVoteKeyboard
 };

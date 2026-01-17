@@ -82,6 +82,88 @@ async function handlePlay(msg, match, services) {
 }
 
 /**
+ * Обрабатывает команду /endgame
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService }
+ */
+async function handleEndGame(msg, services) {
+  const { gameService, messageService } = services;
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Найти активную игру пользователя
+    const userGames = await gameService.getUserGames(userId);
+    const activeGame = userGames.find(game => game.status === 'active');
+
+    if (!activeGame) {
+      await messageService.sendEndGameErrorMessage(chatId, 'not_active');
+      return;
+    }
+
+    // Если игрок один, сразу завершить игру
+    if (activeGame.players.length === 1) {
+      await gameService.finishGame(activeGame.gameId);
+      await messageService.sendGameFinishedMessage(chatId, activeGame.gameId);
+      return;
+    }
+
+    // Инициировать голосование
+    const messageId = await messageService.sendEndGameVoteMessage(chatId, activeGame, [userId]);
+    const result = await gameService.initiateEndGameVote(userId, activeGame.gameId, messageId);
+
+    if (!result.success) {
+      await messageService.sendEndGameErrorMessage(chatId, result.error);
+    }
+  } catch (error) {
+    console.error('Error in handleEndGame:', error);
+    await messageService.sendEndGameErrorMessage(chatId, 'general');
+  }
+}
+
+/**
+ * Обрабатывает голосование за окончание игры
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
+ */
+async function handleEndGameVote(query, services) {
+  const { gameService, messageService, bot } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const activeGame = await gameService.getActiveGameByChatId(chatId);
+
+    if (!activeGame || !activeGame.endGameMessageId) {
+      await messageService.sendEndGameErrorMessage(chatId, 'not_active');
+      return;
+    }
+
+    // Голосовать
+    const voteResult = await gameService.voteToEndGame(userId, activeGame.gameId);
+
+    if (!voteResult.success) {
+      await messageService.sendEndGameErrorMessage(chatId, voteResult.error);
+      return;
+    }
+
+    // Обновить сообщение
+    const updatedGame = await gameService.getGame(activeGame.gameId);
+    await messageService.updateEndGameVoteMessage(chatId, activeGame.endGameMessageId, updatedGame, updatedGame.endGameVotes);
+
+    // Если majority достигнуто, завершить игру
+    if (voteResult.shouldFinish) {
+      await gameService.finishGame(activeGame.gameId);
+      await messageService.sendGameFinishedMessage(chatId, activeGame.gameId);
+    }
+  } catch (error) {
+    console.error('Error in handleEndGameVote:', error);
+    await messageService.sendEndGameErrorMessage(chatId, 'general');
+  }
+}
+
+/**
  * Обрабатывает callback_query от inline кнопок
  * @param {Object} query - Callback query от Telegram
  * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
@@ -127,6 +209,11 @@ async function handleCallbackQuery(query, services) {
         await messageService.sendHelpMessage(chatId);
         break;
 
+      case 'end_game_vote':
+        // Обработать голос за окончание игры
+        await handleEndGameVote(query, services);
+        break;
+
       default:
         console.warn('Unknown callback data:', data);
     }
@@ -141,5 +228,6 @@ module.exports = {
   handleHelp,
   handleNewGame,
   handlePlay,
+  handleEndGame,
   handleCallbackQuery
 };

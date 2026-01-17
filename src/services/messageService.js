@@ -1,4 +1,4 @@
-const { welcomeKeyboard } = require('../keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard } = require('../keyboards');
 const { formatNumber } = require('../utils');
 
 class MessageService {
@@ -33,6 +33,7 @@ class MessageService {
 /help - Показать эту справку
 /newgame - Создать новую игру
 /play - Начать игру
+/endgame - Начать голосование за окончание игры
 
 *О игре:*
 CashFlow - настольная игра о финансовом планировании.
@@ -209,6 +210,104 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     await this.bot.sendMessage(chatId, info);
+  }
+
+  /**
+   * Отправляет сообщение о голосовании за окончание игры
+   * @param {number} chatId - ID чата
+   * @param {Object} game - Объект игры
+   * @param {Array} votedUsers - Массив ID проголосовавших пользователей
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendEndGameVoteMessage(chatId, game, votedUsers) {
+    const totalPlayers = game.players.length;
+    const majority = Math.ceil(totalPlayers / 2);
+    const votedCount = votedUsers.length;
+
+    let votersList = '';
+    if (votedUsers.length > 0) {
+      const voterNames = votedUsers.map(userId => {
+        const player = game.players.find(p => p.userId === userId);
+        return player ? player.username : 'Неизвестный';
+      });
+      votersList = `\n\nЗа завершение проголосовали:\n${voterNames.join('\n')}`;
+    }
+
+    const message = `🛑 ${votedUsers.length === 1 ? 'Игрок' : 'Игроки'} хочет завершить игру!\n\nГолосов: ${votedCount}/${majority} (нужно большинство)${votersList}`;
+
+    const sentMessage = await this.bot.sendMessage(chatId, message, {
+      reply_markup: endGameVoteKeyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Обновляет сообщение о голосовании за окончание игры
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения
+   * @param {Object} game - Объект игры
+   * @param {Array} votedUsers - Массив ID проголосовавших пользователей
+   */
+  async updateEndGameVoteMessage(chatId, messageId, game, votedUsers) {
+    const totalPlayers = game.players.length;
+    const majority = Math.ceil(totalPlayers / 2);
+    const votedCount = votedUsers.length;
+
+    let votersList = '';
+    if (votedUsers.length > 0) {
+      const voterNames = votedUsers.map(userId => {
+        const player = game.players.find(p => p.userId === userId);
+        return player ? player.username : 'Неизвестный';
+      });
+      votersList = `\n\nЗа завершение проголосовали:\n${voterNames.join('\n')}`;
+    }
+
+    const message = `🛑 ${votedUsers.length === 1 ? 'Игрок' : 'Игроки'} хочет завершить игру!\n\nГолосов: ${votedCount}/${majority} (нужно большинство)${votersList}`;
+
+    await this.bot.editMessageText(message, {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: endGameVoteKeyboard
+    });
+  }
+
+  /**
+   * Отправляет сообщение о завершении игры
+   * @param {number} chatId - ID чата
+   * @param {string} gameId - ID игры
+   */
+  async sendGameFinishedMessage(chatId, gameId) {
+    const message = `🎉 Игра ${gameId} завершена по голосованию игроков!`;
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение об ошибке окончания игры
+   * @param {number} chatId - ID чата
+   * @param {string} errorType - Тип ошибки
+   */
+  async sendEndGameErrorMessage(chatId, errorType) {
+    let message;
+
+    switch (errorType) {
+      case 'not_found':
+        message = 'Игра не найдена.';
+        break;
+      case 'not_active':
+        message = 'Игра не активна.';
+        break;
+      case 'not_player':
+        message = 'Вы не участник этой игры.';
+        break;
+      case 'already_voted':
+        message = 'Вы уже проголосовали.';
+        break;
+      default:
+        message = 'Ошибка при голосовании. Попробуйте еще раз.';
+    }
+
+    await this.bot.sendMessage(chatId, message);
   }
 
   /**

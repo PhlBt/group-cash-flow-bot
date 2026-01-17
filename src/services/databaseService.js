@@ -92,7 +92,9 @@ class DatabaseService {
       creatorId: userId,
       players: [player],
       status: 'waiting',
-      createdAt: new Date()
+      createdAt: new Date(),
+      endGameVotes: [],
+      endGameMessageId: null
     });
 
     return gameId;
@@ -219,6 +221,99 @@ class DatabaseService {
       chatId,
       status: { $in: ['waiting', 'active'] }
     });
+  }
+
+  /**
+   * Инициирует голосование за окончание игры
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @param {number} messageId - ID сообщения голосования
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async initiateEndGameVote(userId, gameId, messageId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.status !== 'active') {
+      return { success: false, error: 'not_active' };
+    }
+
+    if (!game.players.some(player => player.userId === userId)) {
+      return { success: false, error: 'not_player' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { endGameVotes: [userId], endGameMessageId: messageId } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Голосует за окончание игры
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string, shouldFinish?: boolean}>} Результат операции
+   */
+  async voteToEndGame(userId, gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.status !== 'active') {
+      return { success: false, error: 'not_active' };
+    }
+
+    if (!game.players.some(player => player.userId === userId)) {
+      return { success: false, error: 'not_player' };
+    }
+
+    if (game.endGameVotes.includes(userId)) {
+      return { success: false, error: 'already_voted' };
+    }
+
+    const newVotes = [...game.endGameVotes, userId];
+    const majority = Math.ceil(game.players.length / 2);
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { endGameVotes: newVotes } }
+    );
+
+    return { success: true, shouldFinish: newVotes.length >= majority };
+  }
+
+  /**
+   * Завершает игру
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async finishGame(gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.status !== 'active') {
+      return { success: false, error: 'not_active' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { status: 'finished', finishedAt: new Date() } }
+    );
+
+    return { success: true };
   }
 
   /**

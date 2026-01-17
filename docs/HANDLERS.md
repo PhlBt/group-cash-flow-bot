@@ -60,6 +60,31 @@ Handlers - модуль функций-обработчиков команд Tel
   - В случае успеха вызывает messageService.sendPlaySuccessMessage()
   - В случае ошибки вызывает messageService.sendPlayErrorMessage() с соответствующим кодом
 
+### handleEndGame(msg, services)
+- **Назначение**: Обработка команды /endgame - окончание игры
+- **Параметры**:
+  - `msg` (Object): Сообщение Telegram
+  - `services` (Object): Объект с сервисами { messageService, gameService }
+- **Функционал**:
+  - Извлекает chatId, userId из сообщения
+  - Находит активную игру пользователя
+  - Если игрок один - сразу завершает игру через gameService.finishGame() и messageService.sendGameFinishedMessage()
+  - Если игроков много - инициирует голосование: отправляет сообщение через messageService.sendEndGameVoteMessage(), сохраняет messageId через gameService.initiateEndGameVote()
+  - Обрабатывает ошибки через messageService.sendEndGameErrorMessage()
+
+### handleEndGameVote(query, services)
+- **Назначение**: Обработка голосования за окончание игры
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { messageService, gameService, bot }
+- **Функционал**:
+  - Извлекает chatId, userId из query
+  - Находит активную игру в чате
+  - Вызывает gameService.voteToEndGame() для голосования
+  - Обновляет сообщение через messageService.updateEndGameVoteMessage()
+  - Если достигнуто majority - завершает игру через gameService.finishGame() и messageService.sendGameFinishedMessage()
+  - Обрабатывает ошибки через messageService.sendEndGameErrorMessage()
+
 ### handleCallbackQuery(query, services)
 - **Назначение**: Обработка callback_query от inline кнопок
 - **Параметры**:
@@ -72,6 +97,7 @@ Handlers - модуль функций-обработчиков команд Tel
     - 'play': Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), иначе создает новую игру через gameService.createGame(chatId, userId)
     - 'rules': Отправляет правила через messageService.sendRulesMessage()
     - 'help': Отправляет справку через messageService.sendHelpMessage()
+    - 'end_game_vote': Вызывает handleEndGameVote() для обработки голосования
   - Обрабатывает ошибки и отправляет сообщение об ошибке пользователю
 
 ## Бизнес-правила и проверки

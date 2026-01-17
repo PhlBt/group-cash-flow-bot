@@ -59,6 +59,11 @@ bot.onText(/\/play (.+)/, async (msg, match) => {
   await handlers.handlePlay(msg, match, services);
 });
 
+// Обработчик команды /endgame
+bot.onText(/\/endgame/, async (msg) => {
+  await handlers.handleEndGame(msg, services);
+});
+
 // Обработчик callback_query от inline кнопок
 bot.on('callback_query', async (query) => {
   await handlers.handleCallbackQuery(query, services);
@@ -70,7 +75,8 @@ async function setBotCommands() {
     { command: 'start', description: 'Запуск бота и приветствие пользователя' },
     { command: 'help', description: 'Показать список всех доступных команд' },
     { command: 'newgame', description: 'Создать новую игровую сессию' },
-    { command: 'play', description: 'Начать игру' }
+    { command: 'play', description: 'Начать игру' },
+    { command: 'endgame', description: 'Начать голосование за окончание игры' }
   ];
 
   try {
