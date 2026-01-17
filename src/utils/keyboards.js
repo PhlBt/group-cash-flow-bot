@@ -50,7 +50,8 @@ function getJoinSuccessKeyboard(hasGame) {
   return keyboard;
 }
 
-function getCardKeyboard(cardType) {
+function getCardKeyboard(card) {
+  const cardType = card.type;
   const keyboard = {
     inline_keyboard: []
   };
@@ -88,12 +89,24 @@ function getCardKeyboard(cardType) {
       { text: '❌ Отказаться', callback_data: 'decline_deal' }
     ]);
   } else if (cardType === 'market_trade') {
+    // Купить всегда
     keyboard.inline_keyboard.push([
       { text: '✅ Купить', callback_data: 'buy_market' }
     ]);
+
+    // Продать только если есть актив
+    if (card.hasAsset) {
+      keyboard.inline_keyboard.push([
+        { text: '💰 Продать', callback_data: 'sell_market' }
+      ]);
+    }
+
+    // Предложить игроку всегда
     keyboard.inline_keyboard.push([
-      { text: '💰 Продать', callback_data: 'sell_market' }
+      { text: '🤝 Предложить игроку', callback_data: 'offer_market' }
     ]);
+
+    // Пропустить
     keyboard.inline_keyboard.push([
       { text: '❌ Пропустить', callback_data: 'skip' }
     ]);
@@ -114,8 +127,8 @@ function getCardKeyboard(cardType) {
     ]);
   } else if (cardType === 'dice_choice') {
     keyboard.inline_keyboard.push([
-      { text: '🎲 Бросить 1 кубик', callback_data: 'roll_one' },
-      { text: '🎲 Бросить 2 кубика', callback_data: 'roll_two' }
+      { text: '1️⃣ Один кубик', callback_data: 'roll_one' },
+      { text: '2️⃣ Два кубика', callback_data: 'roll_two' }
     ]);
   } else if (cardType === 'opportunity') {
     keyboard.inline_keyboard.push([

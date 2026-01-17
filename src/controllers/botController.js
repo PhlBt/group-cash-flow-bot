@@ -244,9 +244,15 @@ bot.onText(/\/join/, async (msg) => {
 
   if (result.success) {
     await gameManager.saveGame(chatId);
+    // Обновляем баланс игрока
+    const player = game.players.get(userId);
+    await gameManager.updatePlayerBalance(chatId, userId, player.cash, player.cashFlow);
+
     await sendMessage(chatId, formatPlayerInfo(result.player));
     const keyboard = getJoinSuccessKeyboard(game.gameStarted);
     await sendMessage(chatId, `Выберите действие:`, { reply_markup: keyboard });
+  } else {
+    await sendMessage(chatId, result.message);
   }
 });
 
@@ -406,7 +412,7 @@ bot.onText(/\/roll_one/, async (msg) => {
 
 
     if (result.card && !result.card.skip) {
-      const keyboard = getCardKeyboard(result.card.type);
+      const keyboard = getCardKeyboard(result.card);
       const currentPlayer = game.getCurrentPlayer();
       await sendMessage(chatId, `${currentPlayer.username} выберите действие:`, { reply_markup: keyboard });
     }
@@ -462,7 +468,7 @@ bot.onText(/\/roll_two/, async (msg) => {
 
 
     if (result.card && !result.card.skip) {
-      const keyboard = getCardKeyboard(result.card.type);
+      const keyboard = getCardKeyboard(result.card);
       const currentPlayer = game.getCurrentPlayer();
       await sendMessage(chatId, `${currentPlayer.username} выберите действие:`, { reply_markup: keyboard });
     }
@@ -1294,7 +1300,7 @@ bot.on('callback_query', async (query) => {
       await gameManager.saveGame(chatId);
       await sendMessage(chatId, result.message);
       if (result.card && !result.card.skip) {
-        const keyboard = getCardKeyboard(result.card.type);
+        const keyboard = getCardKeyboard(result.card);
         const currentPlayer = game.getCurrentPlayer();
         await sendMessage(chatId, `${currentPlayer.username} выберите действие:`, { reply_markup: keyboard });
       }
@@ -1633,7 +1639,7 @@ bot.on('callback_query', async (query) => {
 
       const player = game.players.get(userId);
       const message = `🎯 МАЛАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
-      await sendMessage(chatId, message, { reply_markup: getCardKeyboard(card.type) });
+      await sendMessage(chatId, message, { reply_markup: getCardKeyboard(card) });
     }
   } else if (data === 'big_deal') {
     const game = await gameManager.getGame(chatId);
@@ -1645,7 +1651,7 @@ bot.on('callback_query', async (query) => {
 
       const player = game.players.get(userId);
       const message = `💼 БОЛЬШАЯ СДЕЛКА:\n${game.formatCard(card)}\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
-      await sendMessage(chatId, message, { reply_markup: getCardKeyboard(card.type) });
+      await sendMessage(chatId, message, { reply_markup: getCardKeyboard(card) });
     }
   } else if (data === 'charity_accept') {
     const game = await gameManager.getGame(chatId);
@@ -1757,7 +1763,7 @@ bot.on('callback_query', async (query) => {
       const targetPlayerIndex = parseInt(data.split('_')[2]);
       const result = game.offerDealToPlayer(targetPlayerIndex);
       if (result.success) {
-        await sendMessage(chatId, result.message, { reply_markup: getCardKeyboard('sell_deal_markup') });
+        await sendMessage(chatId, result.message, { reply_markup: getCardKeyboard({type: 'sell_deal_markup'}) });
       } else {
         await sendMessage(chatId, result.message);
       }
@@ -1822,6 +1828,59 @@ bot.on('callback_query', async (query) => {
       } else {
         await sendMessage(chatId, result.message);
       }
+    }
+  } else if (data === 'offer_market') {
+    const game = await gameManager.getGame(chatId);
+    if (game && game.currentPlayerId === userId) {
+      const result = game.startOfferMarket();
+      if (result.success) {
+        // Получаем список других игроков для клавиатуры
+        const otherPlayers = Array.from(game.players.values())
+          .filter(p => p.userId !== userId);
+        const keyboard = getSellDealPlayerSelectKeyboard(otherPlayers);
+        await sendMessage(chatId, result.message, { reply_markup: keyboard });
+      } else {
+        await sendMessage(chatId, result.message);
+      }
+    }
+  } else if (data.startsWith('offer_market_')) {
+    const game = await gameManager.getGame(chatId);
+    if (game && game.currentPlayerId === userId) {
+      const targetPlayerIndex = parseInt(data.split('_')[2]);
+      const result = game.offerMarketToPlayer(targetPlayerIndex);
+      if (result.success) {
+        await sendMessage(chatId, result.message, { reply_markup: getCardKeyboard({type: 'sell_deal_markup'}) });
+      } else {
+        await sendMessage(chatId, result.message);
+      }
+    }
+  } else if (data.startsWith('set_market_markup_')) {
+    const game = await gameManager.getGame(chatId);
+    if (game && game.currentPlayerId === userId) {
+      const markupPercent = parseInt(data.split('_')[3]);
+      const result = game.setMarketMarkupAndOffer(markupPercent);
+      await sendMessage(chatId, result.message);
+      // Сообщение автоматически отправляется всем игрокам
+    }
+  } else if (data === 'accept_market_offer') {
+    const game = await gameManager.getGame(chatId);
+    if (game && game.currentPlayerId === userId) {
+      const result = game.acceptMarketOffer();
+      if (result.success) {
+        await gameManager.saveGame(chatId);
+        if (!game.gameFinished) {
+          const nextPlayer = game.getCurrentPlayer();
+          await sendMessage(chatId, `Следующий ход: ${nextPlayer.username}`, { reply_markup: getGameActionsKeyboard() });
+        }
+      } else {
+        await sendMessage(chatId, result.message);
+      }
+    }
+  } else if (data === 'decline_market_offer') {
+    const game = await gameManager.getGame(chatId);
+    if (game && game.currentPlayerId === userId) {
+      const result = game.declineMarketOffer();
+      await sendMessage(chatId, result.message);
     }
   }
 
@@ -1891,7 +1950,7 @@ bot.on('callback_query', async (query) => {
       await gameManager.updatePlayerMove(chatId, userId);
       await sendMessage(chatId, result.message);
       if (result.card && !result.card.skip) {
-        const keyboard = getCardKeyboard(result.card.type);
+        const keyboard = getCardKeyboard(result.card);
         const currentPlayer = game.getCurrentPlayer();
         await sendMessage(chatId, `${currentPlayer.username} выберите действие:`, { reply_markup: keyboard });
       }
@@ -1925,7 +1984,7 @@ bot.on('callback_query', async (query) => {
       await gameManager.updatePlayerMove(chatId, userId);
       await sendMessage(chatId, result.message);
       if (result.card && !result.card.skip) {
-        const keyboard = getCardKeyboard(result.card.type);
+        const keyboard = getCardKeyboard(result.card);
         const currentPlayer = game.getCurrentPlayer();
         await sendMessage(chatId, `${currentPlayer.username} выберите действие:`, { reply_markup: keyboard });
       }

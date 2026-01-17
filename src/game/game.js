@@ -151,6 +151,7 @@ class CashFlowGame {
         } else if (card.subtype === "trade") {
           // Торговое предложение - один актив с выбором купить/продать
           card.type = 'market_trade'; // Изменяем тип для правильного отображения кнопок
+          card.hasAsset = player.assets.some(a => a.title === card.asset.title);
           this.currentCard = card;
           this.waitingForAction = true;
           message += `\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
@@ -1767,6 +1768,188 @@ class CashFlowGame {
       votes: this.kickVotes.get(targetUserId).size,
       needed: Math.floor(this.players.size / 2) + 1
     };
+  }
+
+  // Начало предложения рынка другому игроку
+  startOfferMarket() {
+    if (!this.waitingForAction || !this.currentCard || this.currentCard.subtype !== 'trade') {
+      return { success: false, message: "Нет активного рыночного предложения!" };
+    }
+
+    const seller = this.getCurrentPlayer();
+    if (!seller) {
+      return { success: false, message: "Игрок не найден!" };
+    }
+
+    // Получаем список других игроков
+    const otherPlayers = Array.from(this.players.values())
+      .filter(p => p.userId !== seller.userId);
+
+    if (otherPlayers.length === 0) {
+      return { success: false, message: "Нет других игроков для предложения рынка!" };
+    }
+
+    // Устанавливаем состояние предложения рынка
+    this.currentCard.offerMarketState = 'select_player';
+    this.currentCard.sellerId = seller.userId;
+
+    const playerList = otherPlayers.map((p, i) =>
+      `${i + 1}. ${p.username} (💰 ${ p.cash})`
+    ).join('\n');
+
+    const message = `🤝 ПРЕДЛОЖЕНИЕ РЫНКА\n\n${this.formatCard(this.currentCard)}\n\nВыберите игрока для предложения рынка:\n\n${playerList}\n\nИспользуйте кнопки для выбора`;
+
+    return { success: true, message };
+  }
+
+  // Предложение рынка игроку с выбором наценки
+  offerMarketToPlayer(targetPlayerIndex) {
+    if (!this.waitingForAction || !this.currentCard || !this.currentCard.offerMarketState) {
+      return { success: false, message: "Нет активного процесса предложения рынка!" };
+    }
+
+    const seller = this.getCurrentPlayer();
+    if (!seller) {
+      return { success: false, message: "Продавец не найден!" };
+    }
+
+    // Получаем список других игроков
+    const otherPlayers = Array.from(this.players.values())
+      .filter(p => p.userId !== seller.userId);
+
+    if (targetPlayerIndex < 1 || targetPlayerIndex > otherPlayers.length) {
+      return { success: false, message: `Неверный номер игрока! Выберите от 1 до ${otherPlayers.length}` };
+    }
+
+    const targetPlayer = otherPlayers[targetPlayerIndex - 1];
+    this.currentCard.targetPlayerId = targetPlayer.userId;
+    this.currentCard.offerMarketState = 'select_markup';
+
+    const message = `🤝 ПРЕДЛОЖЕНИЕ РЫНКА\n\nИгроку: ${targetPlayer.username}\n\n${this.formatCard(this.currentCard)}\n\nВыберите наценку:\n\n1️⃣ +1% к стоимости\n2️⃣ +3% к стоимости\n3️⃣ +5% к стоимости\n\nИспользуйте кнопки для выбора`;
+
+    return { success: true, message };
+  }
+
+  // Установка наценки для рынка и отправка предложения
+  setMarketMarkupAndOffer(markupPercent) {
+    if (!this.waitingForAction || !this.currentCard || this.currentCard.offerMarketState !== 'select_markup') {
+      return { success: false, message: "Нет активного предложения рынка!" };
+    }
+
+    const validMarkups = [1, 3, 5];
+    if (!validMarkups.includes(markupPercent)) {
+      return { success: false, message: "Неверная наценка! Выберите 1, 3 или 5%" };
+    }
+
+    const seller = this.players.get(this.currentCard.sellerId);
+    const buyer = this.players.get(this.currentCard.targetPlayerId);
+
+    if (!seller || !buyer) {
+      return { success: false, message: "Игроки не найдены!" };
+    }
+
+    // Рассчитываем цену с наценкой
+    const basePrice = this.currentCard.asset.cost;
+    const markupAmount = Math.floor(basePrice * (markupPercent / 100));
+    const finalPrice = basePrice + markupAmount;
+
+    // Сохраняем информацию о предложении
+    this.currentCard.finalPrice = finalPrice;
+    this.currentCard.markupPercent = markupPercent;
+    this.currentCard.offerMarketState = 'waiting_response';
+
+    const message = `💰 РЫНОК ПРЕДЛОЖЕН!\n\nПродавец: ${seller.username}\nПокупатель: ${buyer.username}\n\n${this.formatCard(this.currentCard)}\n\n💵 Цена с наценкой ${markupPercent}%: ${ finalPrice} (+${ markupAmount})\n\n${buyer.username}, согласны ли вы купить этот рынок?\n\n• Принять рынок\n• Отказаться`;
+
+    return { success: true, message, buyer: buyer.username };
+  }
+
+  // Принятие рынка покупателем
+  acceptMarketOffer() {
+    if (!this.waitingForAction || !this.currentCard || this.currentCard.offerMarketState !== 'waiting_response') {
+      return { success: false, message: "Нет активного предложения рынка!" };
+    }
+
+    const seller = this.players.get(this.currentCard.sellerId);
+    const buyer = this.players.get(this.currentCard.targetPlayerId);
+
+    if (!seller || !buyer) {
+      return { success: false, message: "Игроки не найдены!" };
+    }
+
+    const finalPrice = this.currentCard.finalPrice;
+    const markupPercent = this.currentCard.markupPercent;
+    const basePrice = this.currentCard.asset.cost;
+    const markupAmount = finalPrice - basePrice;
+
+    // Проверяем, достаточно ли денег у покупателя
+    if (buyer.cash < finalPrice) {
+      // Предложение отменяется
+      this.currentCard = null;
+      this.waitingForAction = false;
+      this.nextTurn();
+
+      return {
+        success: false,
+        message: `❌ Предложение отменено!\n${buyer.username} не имеет достаточно денег (нужно ${ finalPrice}, есть ${ buyer.cash})`
+      };
+    }
+
+    // Совершаем сделку
+    buyer.pay(finalPrice);
+    seller.receive(markupAmount); // Продавец получает только наценку!
+
+    // Добавляем актив покупателю
+    const asset = {
+      id: Date.now(),
+      title: this.currentCard.asset.title,
+      cost: basePrice, // Стоимость актива остается базовой
+      downPayment: basePrice,
+      passiveIncome: this.currentCard.asset.cashFlow,
+      type: 'market',
+      loanId: null
+    };
+
+    buyer.addAsset(asset);
+
+    this.currentCard = null;
+    this.waitingForAction = false;
+
+    let message = `✅ РЫНОК ПРИОБРЕТЕН!\n\n`;
+    message += `🏠 Актив: ${asset.title}\n`;
+    message += `💵 Базовая стоимость: ${ basePrice}\n`;
+    message += `📈 Наценка ${markupPercent}%: +${ markupAmount}\n`;
+    message += `💰 Итоговая цена: ${ finalPrice}\n`;
+    message += `📊 Доход: +${ asset.cashFlow}/месяц\n\n`;
+    message += `Продавец ${seller.username} получил наценку ${ markupAmount}\n`;
+    message += `Покупатель ${buyer.username} получил актив`;
+
+    // Проверяем выход из крысиных бегов для покупателя
+    const escapeCheck = this.checkEscapeRatRace(buyer);
+    if (escapeCheck.escaped) {
+      message += escapeCheck.message;
+    } else {
+      this.nextTurn();
+    }
+
+    return { success: true, message, seller: seller.username, buyer: buyer.username };
+  }
+
+  // Отказ от предложения рынка
+  declineMarketOffer() {
+    if (!this.waitingForAction || !this.currentCard || this.currentCard.offerMarketState !== 'waiting_response') {
+      return { success: false, message: "Нет активного предложения рынка!" };
+    }
+
+    const seller = this.players.get(this.currentCard.sellerId);
+    const buyer = this.players.get(this.currentCard.targetPlayerId);
+
+    this.currentCard = null;
+    this.waitingForAction = false;
+    this.nextTurn();
+
+    const message = `❌ Предложение отклонено!\n${buyer.username} отказался от предложения ${seller.username}`;
+
+    return { success: true, message };
   }
 
   // Проверка банкротства игрока
