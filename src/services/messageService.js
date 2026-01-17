@@ -321,7 +321,7 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendWaitingRoomMessage(chatId, game) {
     const playersList = game.players.map(player => `- ${player.username}`).join('\n');
-    const waitingText = game.players.length === 1 ? 'этот игрок ждёт вас' : 'эти игроки ждут вас';
+    const waitingText = game.players.length === 1 ? 'Этот игрок ждёт вас' : 'Эти игроки ждут вас';
 
     const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
 
