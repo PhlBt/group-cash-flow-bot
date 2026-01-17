@@ -67,8 +67,7 @@ function getCardKeyboard(cardType) {
   } else if (cardType === 'doodad') {
     keyboard.inline_keyboard.push([
       { text: '💸 Оплатить', callback_data: 'pay' },
-      { text: '💳 Кредитная карта', callback_data: 'use_credit_card' },
-      { text: '💰 Взять кредит', callback_data: 'paywithloan' }
+      { text: '💳 Кредитная карта', callback_data: 'use_credit_card' }
     ]);
   } else if (cardType === 'sell_deal_select_player') {
     // Клавиатура для выбора игрока при продаже сделки

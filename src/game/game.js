@@ -147,11 +147,11 @@ class CashFlowGame {
           const marketResult = this.applyMarketEffectToAll(card);
           message += "\n" + marketResult.message;
           this.nextTurn();
-  } else if (card.subtype === "trade") {
-    // Торговое предложение - один актив с выбором купить/продать
-    card.type = 'market_trade'; // Изменяем тип для правильного отображения кнопок
-    this.currentCard = card;
-    this.waitingForAction = true;
+        } else if (card.subtype === "trade") {
+          // Торговое предложение - один актив с выбором купить/продать
+          card.type = 'market_trade'; // Изменяем тип для правильного отображения кнопок
+          this.currentCard = card;
+          this.waitingForAction = true;
         }
         break;
       case 'opportunity':
@@ -298,8 +298,8 @@ class CashFlowGame {
 
     // Проверяем, является ли актив недвижимостью
     const isRealEstate = card.title.includes('квартира') || card.title.includes('дом') ||
-                        card.title.includes('центр') || card.title.includes('Многоквартирный') ||
-                        card.title.includes('Торговый');
+      card.title.includes('центр') || card.title.includes('Многоквартирный') ||
+      card.title.includes('Торговый');
 
     if (useLoan && hasDownPayment) {
       // Покупка в кредит: платим первый взнос, остальное в кредит
@@ -455,51 +455,34 @@ class CashFlowGame {
       const monthlyPayment = Math.ceil(shortage * 0.01);
 
       if (useLoan) {
-        // Пытаемся взять кредит (обычный)
-        if (monthlyPayment >= player.cashFlow) {
-          // Кредит не дают - предлагаем кредитную карту или продажу активов
-          const creditCardPayment = Math.ceil(shortage * 0.02); // 2% для кредитной карты
+        // Кредит не дают - предлагаем кредитную карту или продажу активов
+        const creditCardPayment = Math.ceil(shortage * 0.02); // 2% для кредитной карты
 
-          if (creditCardPayment < player.cashFlow) {
-            // Предлагаем кредитную карту
-            return {
-              success: false,
-              message: `❌ Кредит не одобрен! Но можно использовать кредитную карту:\n💳 Сумма: ₽${shortage}\n💸 Платёж: ₽${creditCardPayment}/мес (24% годовых)\n\nИспользуйте /use_credit_card для оплаты`,
-              canUseCreditCard: true,
-              shortage: shortage,
-              creditCardPayment: creditCardPayment
-            };
-          } else if (player.assets.length > 0) {
-            // Предлагаем продать активы
-            return {
-              success: false,
-              message: `❌ Кредит не одобрен! Платёж (₽${monthlyPayment}) >= денежный поток (₽${player.cashFlow})\n\n📦 У вас есть активы для продажи:\n${this.formatAssetsForSale(player)}`,
-              needSellAsset: true
-            };
-          } else {
-            // Нет активов - банкротство
-            const bankruptResult = this.forceBankruptcy(player);
-            return {
-              success: false,
-              message: `❌ Кредит не одобрен и нет активов для продажи!\n${bankruptResult.message}`,
-              bankrupt: true
-            };
-          }
+        if (creditCardPayment < player.cashFlow) {
+          // Предлагаем кредитную карту
+          return {
+            success: false,
+            message: `❌ Кредит не одобрен! Но можно использовать кредитную карту:\n💳 Сумма: ₽${shortage}\n💸 Платёж: ₽${creditCardPayment}/мес (24% годовых)\n\nИспользуйте /use_credit_card для оплаты`,
+            canUseCreditCard: true,
+            shortage: shortage,
+            creditCardPayment: creditCardPayment
+          };
+        } else if (player.assets.length > 0) {
+          // Предлагаем продать активы
+          return {
+            success: false,
+            message: `❌ Кредит не одобрен! Платёж (₽${monthlyPayment}) >= денежный поток (₽${player.cashFlow})\n\n📦 У вас есть активы для продажи:\n${this.formatAssetsForSale(player)}`,
+            needSellAsset: true
+          };
+        } else {
+          // Нет активов - банкротство
+          const bankruptResult = this.forceBankruptcy(player);
+          return {
+            success: false,
+            message: `❌ Кредит не одобрен и нет активов для продажи!\n${bankruptResult.message}`,
+            bankrupt: true
+          };
         }
-
-        // Берём обычный кредит
-        const loan = player.takeLoan(shortage, `Расход: ${card.title}`);
-        player.pay(card.cost - loan.amount);
-
-        this.currentCard = null;
-        this.waitingForAction = false;
-        this.nextTurn();
-
-        return {
-          success: true,
-          message: `💸 Оплачено: ₽${card.cost} за ${card.title}\n💳 Взят кредит: ₽${shortage}\n💸 Ежемесячный платёж: ₽${loan.monthlyPayment} (12% годовых)`,
-          player: player.getStatus()
-        };
       } else {
         // Предлагаем варианты
         let message = `❌ Недостаточно денег! Нужно: ₽${card.cost}, у вас: ₽${player.cash}\n\n`;
@@ -510,14 +493,6 @@ class CashFlowGame {
           message += `💳 Можно использовать кредитную карту:\n`;
           message += `Сумма: ₽${shortage}\n`;
           message += `Платёж: ₽${creditCardPayment}/мес (24% годовых)\n\n`;
-        }
-
-        if (monthlyPayment < player.cashFlow) {
-          message += `💰 Можно взять кредит:\n`;
-          message += `Сумма: ₽${shortage}\n`;
-          message += `Платёж: ₽${monthlyPayment}/мес (12% годовых)\n\n`;
-        } else if (creditCardPayment >= player.cashFlow) {
-          message += `❌ Кредиты недоступны (платёж >= денежный поток ₽${player.cashFlow})\n\n`;
         }
 
         if (player.assets.length > 0) {
@@ -747,15 +722,15 @@ class CashFlowGame {
       switch (assetType) {
         case 'real_estate':
           return asset.title.includes('квартира') || asset.title.includes('дом') ||
-                 asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
-                 asset.title.includes('Торговый');
+            asset.title.includes('центр') || asset.title.includes('Многоквартирный') ||
+            asset.title.includes('Торговый');
         case 'stocks':
           return asset.title.includes('Акции') || asset.title.includes('акции') ||
-                 asset.title.includes('Облигации');
+            asset.title.includes('Облигации');
         case 'business':
           return asset.title.includes('франшиза') || asset.title.includes('бизнес') ||
-                 asset.title.includes('компания') || asset.title.includes('магазин') ||
-                 asset.title.includes('кафе') || asset.title.includes('автомоек');
+            asset.title.includes('компания') || asset.title.includes('магазин') ||
+            asset.title.includes('кафе') || asset.title.includes('автомоек');
         default:
           return false;
       }

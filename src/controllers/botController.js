@@ -515,7 +515,7 @@ bot.onText(/\/buy/, async (msg) => {
     const keyboard = {
       inline_keyboard: [
         [
-          { text: '💳 Купить с кредитом', callback_data: 'buywithloan' },
+          { text: '💳 Купить в кредит', callback_data: 'buywithloan' },
           { text: '❌ Отмена', callback_data: 'skip' }
         ]
       ]
@@ -814,8 +814,8 @@ bot.onText(/\/pay/, async (msg) => {
 
   const result = game.payExpense();
 
-  const inline_keyboard = result.canUseLoan
-    ? [{ text: '💳 С кредитом', callback_data: 'paywithloan' }]
+  const inline_keyboard = result.canUseCreditCard
+    ? [{ text: '💳 Кредитная карта', callback_data: 'use_credit_card' }]
     : []
 
   await sendMessage(chatId, result.message, { reply_markup: inline_keyboard });
