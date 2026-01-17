@@ -58,7 +58,7 @@ function getCardKeyboard(cardType) {
   if (cardType === 'small' || cardType === 'big') {
     keyboard.inline_keyboard.push([
       { text: '✅ Купить', callback_data: 'buy' },
-      { text: '💳 Купить с кредитом', callback_data: 'buywithloan' }
+      { text: '💳 Купить в кредит', callback_data: 'buywithloan' }
     ]);
     keyboard.inline_keyboard.push([
       { text: '🤝 Продать сделку', callback_data: 'sell_deal' }

@@ -1458,7 +1458,7 @@ bot.on('callback_query', async (query) => {
         const keyboard = {
           inline_keyboard: [
             [
-              { text: '💳 Купить с кредитом', callback_data: 'buywithloan' },
+              { text: '💳 Купить в кредит', callback_data: 'buywithloan' },
               { text: '❌ Отмена', callback_data: 'skip' }
             ]
           ]
@@ -1778,6 +1778,7 @@ bot.on('callback_query', async (query) => {
     if (game && game.currentPlayerId === userId) {
       const result = game.buyMarketAsset();
       if (result.success) {
+        await sendMessage(chatId, result.message);
         await gameManager.saveGame(chatId);
         if (!game.gameFinished) {
           const nextPlayer = game.getCurrentPlayer();
@@ -1792,6 +1793,7 @@ bot.on('callback_query', async (query) => {
     if (game && game.currentPlayerId === userId) {
       const result = game.sellMarketAsset();
       if (result.success) {
+        await sendMessage(chatId, result.message);
         await gameManager.saveGame(chatId);
         if (!game.gameFinished) {
           const nextPlayer = game.getCurrentPlayer();
@@ -1823,21 +1825,13 @@ bot.on('callback_query', async (query) => {
   else if (data === 'pay_opportunity') {
     const game = await gameManager.getGame(chatId);
     if (game && game.currentPlayerId === userId) {
-      const player = game.getCurrentPlayer();
-      const cost = game.currentCard.cost;
-
-      if (player.cash >= cost) {
-        player.pay(cost);
-        await sendMessage(chatId, `✅ Оплачено: ${formatNumber(cost)} ₽\n${game.currentCard.description}`);
-      } else {
-        await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ${formatNumber(cost)} ₽, у вас: ${formatNumber(player.cash)} ₽`);
+      const result = game.payOpportunity();
+      await sendMessage(chatId, result.message, { reply_markup: result.canUseCreditCard ? [{ text: '💳 Кредитная карта', callback_data: 'use_credit_card_opportunity' }] : undefined });
+      if (result.success && !result.bankrupt) {
+        await gameManager.saveGame(chatId);
+        const nextPlayer = game.getCurrentPlayer();
+        await sendMessage(chatId, `Следующий ход: ${nextPlayer.username}`, { reply_markup: getGameActionsKeyboard() });
       }
-
-      game.currentCard = null;
-      game.waitingForAction = false;
-      await gameManager.saveGame(chatId);
-      const nextPlayer = game.getCurrentPlayer();
-      await sendMessage(chatId, `Следующий ход: ${nextPlayer.username}`, { reply_markup: getGameActionsKeyboard() });
     }
   }
 
@@ -1845,7 +1839,7 @@ bot.on('callback_query', async (query) => {
   else if (data === 'use_credit_card_opportunity') {
     const game = await gameManager.getGame(chatId);
     if (game && game.currentPlayerId === userId) {
-      const result = game.useCreditCard();
+      const result = game.useCreditCardForOpportunity();
       await sendMessage(chatId, result.message);
       if (result.success) {
         await gameManager.saveGame(chatId);

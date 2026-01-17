@@ -153,6 +153,7 @@ class CashFlowGame {
           card.type = 'market_trade'; // Изменяем тип для правильного отображения кнопок
           this.currentCard = card;
           this.waitingForAction = true;
+          message += `\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
         }
         break;
       case 'opportunity':
@@ -852,6 +853,100 @@ class CashFlowGame {
     return { success: true, message, player: player.getStatus() };
   }
 
+  // Оплата возможности (автокатастрофа, операция и т.д.)
+  payOpportunity(useLoan = false) {
+    if (!this.waitingForAction || !this.currentCard || !this.currentCard.cost) {
+      return { success: false, message: "Нет активной возможности!" };
+    }
+
+    const player = this.getCurrentPlayer();
+    if (!player) {
+      return { success: false, message: "Игрок не найден!" };
+    }
+
+    const card = this.currentCard;
+
+    // Если денег хватает - просто платим
+    if (player.cash >= card.cost) {
+      player.pay(card.cost);
+      this.currentCard = null;
+      this.waitingForAction = false;
+
+      let message = `✅ Оплачено: ${formatNumber(card.cost)} ₽ за ${card.title}`;
+
+      // Проверяем банкротство после оплаты
+      const bankruptCheck = this.checkBankruptcy(player);
+      if (bankruptCheck.bankrupt) {
+        message += bankruptCheck.message;
+        return { success: true, message, player: player.getStatus(), bankrupt: true };
+      }
+
+      this.nextTurn();
+      return { success: true, message, player: player.getStatus() };
+    }
+
+    // Денег не хватает
+    const shortage = card.cost - player.cash;
+    const monthlyPayment = Math.ceil(shortage * 0.01);
+
+    if (useLoan) {
+      // Предлагаем кредитную карту
+      const creditCardPayment = Math.ceil(shortage * 0.02); // 2% для кредитной карты
+
+      if (creditCardPayment >= player.cashFlow) {
+        return {
+          success: false,
+          message: `❌ Кредитная карта недоступна! Платёж (${ creditCardPayment}) >= денежный поток (${ player.cashFlow})`
+        };
+      }
+
+      // Используем кредитную карту
+      const creditCard = player.useCreditCard(shortage, card.title);
+
+      // Оплачиваем наличными часть
+      player.pay(player.cash);
+      this.currentCard = null;
+      this.waitingForAction = false;
+
+      let message = `💳 Оплачено кредитной картой: ${formatNumber(card.cost)} ₽ за ${card.title}\n\n`;
+      message += `💰 ВЫДАН КРЕДИТ КАРТОЙ:\n`;
+      message += `💵 Сумма кредита: ${formatNumber(shortage)} ₽\n`;
+      message += `📊 Процентная ставка: 24% годовых\n`;
+      message += `💸 Ежемесячный платеж: ${ creditCard.monthlyPayment} ₽ (2% от суммы)\n`;
+      message += `⚠️ Кредитная карта - дорогой способ! Рассмотрите другие варианты\n\n`;
+      message += `💹 Ваш денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц`;
+
+      this.nextTurn();
+
+      return { success: true, message, player: player.getStatus() };
+    } else {
+      // Предлагаем варианты
+      let message = `❌ Недостаточно денег! Нужно: ${ card.cost}, у вас: ${ player.cash}\n\n`;
+
+      const creditCardPayment = Math.ceil(shortage * 0.02); // 2% для кредитной карты
+
+      if (creditCardPayment < player.cashFlow) {
+        message += `💳 Можно использовать кредитную карту:\n`;
+        message += `Сумма: ${ shortage}\n`;
+        message += `Платёж: ${ creditCardPayment}/мес (24% годовых)\n\n`;
+      }
+
+      if (player.assets.length > 0) {
+        message += `📦 Можно продать активы:\n${this.formatAssetsForSale(player)}\n`;
+      } else if (creditCardPayment >= player.cashFlow && monthlyPayment >= player.cashFlow) {
+        message += `⚠️ Нет активов для продажи - грозит банкротство!`;
+      }
+
+      return {
+        success: false,
+        message,
+        canUseLoan: monthlyPayment < player.cashFlow,
+        canUseCreditCard: creditCardPayment < player.cashFlow,
+        needSellAsset: player.assets.length > 0
+      };
+    }
+  }
+
   // Использование кредитной карты для оплаты расходов
   useCreditCard() {
     if (!this.waitingForAction || !this.currentCard || this.currentCard.type !== 'doodad') {
@@ -884,6 +979,50 @@ class CashFlowGame {
     let message = `💳 Оплачено кредитной картой: ${formatNumber(card.cost)} ₽ за ${card.title}\n\n`;
     message += `💰 ВЫДАН КРЕДИТ КАРТОЙ:\n`;
     message += `💵 Сумма кредита: ${formatNumber(amount)} ₽\n`;
+    message += `📊 Процентная ставка: 24% годовых\n`;
+    message += `💸 Ежемесячный платеж: ${ creditCard.monthlyPayment} ₽ (2% от суммы)\n`;
+    message += `⚠️ Кредитная карта - дорогой способ! Рассмотрите другие варианты\n\n`;
+    message += `💹 Ваш денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц`;
+
+    this.nextTurn();
+
+    return { success: true, message, player: player.getStatus() };
+  }
+
+  // Использование кредитной карты для оплаты возможности
+  useCreditCardForOpportunity() {
+    if (!this.waitingForAction || !this.currentCard || !this.currentCard.cost) {
+      return { success: false, message: "Нет активной возможности!" };
+    }
+
+    const player = this.getCurrentPlayer();
+    if (!player) {
+      return { success: false, message: "Игрок не найден!" };
+    }
+
+    const card = this.currentCard;
+    const shortage = card.cost - player.cash;
+    const creditCardPayment = Math.ceil(shortage * 0.02); // 2% в месяц
+
+    // Проверяем, что платеж по кредитной карте меньше денежного потока
+    if (creditCardPayment >= player.cashFlow) {
+      return {
+        success: false,
+        message: `❌ Кредитная карта недоступна! Платёж (${ creditCardPayment}) >= денежный поток (${ player.cashFlow})`
+      };
+    }
+
+    // Используем кредитную карту
+    const creditCard = player.useCreditCard(shortage, card.title);
+
+    // Оплачиваем наличными часть
+    player.pay(player.cash);
+    this.currentCard = null;
+    this.waitingForAction = false;
+
+    let message = `💳 Оплачено кредитной картой: ${formatNumber(card.cost)} ₽ за ${card.title}\n\n`;
+    message += `💰 ВЫДАН КРЕДИТ КАРТОЙ:\n`;
+    message += `💵 Сумма кредита: ${formatNumber(shortage)} ₽\n`;
     message += `📊 Процентная ставка: 24% годовых\n`;
     message += `💸 Ежемесячный платеж: ${ creditCard.monthlyPayment} ₽ (2% от суммы)\n`;
     message += `⚠️ Кредитная карта - дорогой способ! Рассмотрите другие варианты\n\n`;
