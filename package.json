@@ -2,9 +2,11 @@
   "name": "cashflow-telegram-bot",
   "version": "1.0.0",
   "description": "Telegram bot for playing CashFlow game",
-  "main": "bot.js",
+  "main": "src/index.js",
   "scripts": {
-    "serve": "pm2-runtime bot.js --watch"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "serve": "pm2-runtime src/index.js --watch"
   },
   "keywords": [
     "telegram",
@@ -15,7 +17,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^17.2.3",
+    "mongodb": "^5.9.2",
+    "mongoose": "^7.8.8",
     "node-telegram-bot-api": "^0.64.0",
     "pm2": "^6.0.14"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
   }
 }

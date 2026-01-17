@@ -1,13 +1,15 @@
-services:
+version: '3.8'
 
-  cash-flow:
+services:
+  # CashFlow Telegram Bot
+  cashflow-bot:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
-    image: cash-flow
-    container_name: cashFlow
-    working_dir: /app
-    volumes:
-      - ./:/app
-    command: sh -c "npm i && npm run serve"
-    restart: always
+      dockerfile: Dockerfile
+    image: cashflow-bot:latest
+    container_name: cashflow_bot
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env

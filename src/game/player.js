@@ -8,13 +8,17 @@ class Player {
     this.cash = profession.savings;
     this.passiveIncome = 0;
     this.totalIncome = this.salary + this.passiveIncome;
-    this.totalExpenses = this.expenses;
+    this.childrenCount = 0; // Количество детей
+    this.childrenExpenses = 0; // Расходы на детей
+    this.totalExpenses = this.expenses + this.childrenExpenses;
     this.cashFlow = this.totalIncome - this.totalExpenses;
     this.assets = [];
     this.liabilities = [];
     this.loans = []; // Кредиты игрока
     this.position = 0; // позиция на игровом поле
     this.inFastTrack = false;
+    this.charityTurnsLeft = 0; // Оставшиеся ходы с бонусом от благотворительности
+    this.skipTurns = 0; // Количество ходов, которые нужно пропустить
   }
 
   addAsset(asset) {
@@ -65,13 +69,14 @@ class Player {
     this.cash += amount;
   }
 
-  // Взять кредит для покупки актива
+  // Взять кредит для покупки актива (обычный кредит)
   takeLoan(amount, assetTitle = '') {
-    // Процентная ставка: 10% годовых, ежемесячный платеж = 1% от суммы кредита
-    const monthlyPayment = Math.ceil(amount * 0.01); // 1% в месяц (примерно 12% годовых)
+    // Процентная ставка: 12% годовых, ежемесячный платеж = 1% от суммы кредита
+    const monthlyPayment = Math.ceil(amount * 0.01); // 1% в месяц
 
     const loan = {
       id: Date.now(),
+      type: 'loan', // Обычный кредит
       amount: amount,
       remainingAmount: amount,
       monthlyPayment: monthlyPayment,
@@ -86,6 +91,57 @@ class Player {
     this.cashFlow = this.totalIncome - this.totalExpenses;
 
     return loan;
+  }
+
+  // Взять ипотеку для недвижимости (более выгодные условия)
+  takeMortgage(amount, assetTitle = '') {
+    // Процентная ставка: 6% годовых, ежемесячный платеж = 0.5% от суммы кредита
+    const monthlyPayment = Math.ceil(amount * 0.005); // 0.5% в месяц
+
+    const mortgage = {
+      id: Date.now(),
+      type: 'mortgage', // Ипотека
+      amount: amount,
+      remainingAmount: amount,
+      monthlyPayment: monthlyPayment,
+      assetTitle: assetTitle,
+      createdAt: Date.now()
+    };
+
+    this.loans.push(mortgage);
+
+    // Добавляем ежемесячный платеж к расходам
+    this.totalExpenses += monthlyPayment;
+    this.cashFlow = this.totalIncome - this.totalExpenses;
+
+    return mortgage;
+  }
+
+  // Использовать кредитную карту для расходов
+  useCreditCard(amount, expenseTitle = '') {
+    // Процентная ставка: 24% годовых, ежемесячный платеж = 2% от суммы долга
+    const monthlyPayment = Math.ceil(amount * 0.02); // 2% в месяц
+
+    const creditCard = {
+      id: Date.now(),
+      type: 'credit_card', // Кредитная карта
+      amount: amount,
+      remainingAmount: amount,
+      monthlyPayment: monthlyPayment,
+      assetTitle: expenseTitle,
+      createdAt: Date.now()
+    };
+
+    this.loans.push(creditCard);
+
+    // Добавляем ежемесячный платеж к расходам
+    this.totalExpenses += monthlyPayment;
+    this.cashFlow = this.totalIncome - this.totalExpenses;
+
+    // Зачисляем деньги на счет (покрываем расход)
+    this.receive(amount);
+
+    return creditCard;
   }
 
   // Погасить кредит (полностью или частично)
@@ -171,19 +227,19 @@ class Player {
     return this.passiveIncome >= this.totalExpenses;
   }
 
-  // Выход на Fast Track (скоростную дорожку)
+  // Выход на Скоростную дорожку
   enterFastTrack() {
     if (!this.canEscapeRatRace()) {
       return { success: false, message: "Пассивный доход должен быть >= расходов!" };
     }
 
     this.inFastTrack = true;
-    // На Fast Track начальный капитал = пассивный доход * 100
+    // На Скоростная дорожка начальный капитал = пассивный доход * 100
     this.fastTrackCash = this.passiveIncome * 100;
-    // Цель на Fast Track - купить мечту стоимостью пассивный доход * 100 + $50,000
+    // Цель на Скоростная дорожка - купить мечту стоимостью пассивный доход * 100 + $50,000
     this.dreamCost = this.passiveIncome * 100 + 50000;
     this.fastTrackPosition = 0;
-    this.fastTrackIncome = this.passiveIncome * 100; // Доход на Fast Track
+    this.fastTrackIncome = this.passiveIncome * 100; // Доход на Скоростная дорожка
 
     return {
       success: true,
@@ -191,7 +247,7 @@ class Player {
     };
   }
 
-  // Проверка победы (достижение мечты на Fast Track)
+  // Проверка победы (достижение мечты на Скоростная дорожка)
   checkWin() {
     if (!this.inFastTrack) return false;
     return this.fastTrackIncome >= this.dreamCost;
@@ -203,17 +259,99 @@ class Player {
     if (this.cash <= 0 && this.cashFlow < 0) {
       return true;
     }
-    // Банкротство на Fast Track: капитал стал отрицательным
+    // Банкротство на Скоростная дорожка: капитал стал отрицательным
     if (this.inFastTrack && this.fastTrackCash < 0) {
       return true;
     }
     return false;
   }
 
-  // Увеличить доход на Fast Track (при удачных инвестициях)
+  // Увеличить доход на Скоростная дорожка (при удачных инвестициях)
   addFastTrackIncome(amount) {
     this.fastTrackIncome += amount;
     this.fastTrackCash += amount; // Также добавляем к наличным
+  }
+
+  // Добавить ребенка (увеличивает расходы)
+  addChild() {
+    if (this.childrenCount >= 3) {
+      return { success: false, message: "У вас уже максимум детей (3)!" };
+    }
+
+    this.childrenCount += 1;
+    // Каждый ребенок добавляет ₽50,000 в месяц на расходы
+    const childExpense = 50000;
+    this.childrenExpenses += childExpense;
+    this.totalExpenses += childExpense;
+    this.cashFlow = this.totalIncome - this.totalExpenses;
+
+    return {
+      success: true,
+      message: `👶 У вас родился ребенок! Теперь у вас ${this.childrenCount} ${this.childrenCount === 1 ? 'ребенок' : this.childrenCount === 2 ? 'ребенка' : 'детей'}.\n💸 Расходы увеличились на ₽${childExpense}/месяц\n📊 Денежный поток: ₽${this.cashFlow}/месяц`
+    };
+  }
+
+  // Получить количество детей
+  getChildrenCount() {
+    return this.childrenCount;
+  }
+
+  // Получить расходы на детей
+  getChildrenExpenses() {
+    return this.childrenExpenses;
+  }
+
+  // Увольнение - уплатить расходы и пропустить 2 хода
+  getFired() {
+    // Уплачиваем общие расходы
+    const expenseAmount = this.totalExpenses;
+    const canPay = this.pay(expenseAmount);
+
+    if (!canPay) {
+      // Если не можем оплатить - банкротство
+      return {
+        success: false,
+        message: `💼 УВОЛЬНЕНИЕ!\n❌ Недостаточно средств для оплаты расходов!\nНужно: ₽${expenseAmount}, у вас: ₽${this.cash}\n\n💀 БАНКРОТСТВО!`,
+        bankrupt: true,
+        expenseAmount: expenseAmount
+      };
+    }
+
+    // Отменяем благотворительность
+    this.charityTurnsLeft = 0;
+
+    // Пропускаем 2 хода
+    this.skipTurns = 2;
+
+    return {
+      success: true,
+      message: `💼 УВОЛЬНЕНИЕ!\n💸 Оплачено: ₽${expenseAmount} (общие расходы)\n⏭️ Пропускаете 2 хода\n🎗️ Благотворительность отменена`,
+      expenseAmount: expenseAmount,
+      skipTurns: 2
+    };
+  }
+
+  // Проверить, нужно ли пропустить ход
+  shouldSkipTurn() {
+    return this.skipTurns > 0;
+  }
+
+  // Обработать пропуск хода
+  processSkipTurn() {
+    if (this.skipTurns > 0) {
+      this.skipTurns -= 1;
+      return {
+        skipped: true,
+        remainingSkips: this.skipTurns,
+        message: `⏭️ ${this.username} пропускает ход (${this.skipTurns} осталось)`
+      };
+    }
+    return { skipped: false };
+  }
+
+  // Получить оставшиеся пропущенные ходы
+  getSkipTurnsLeft() {
+    return this.skipTurns;
   }
 
   getStatus() {
@@ -222,6 +360,8 @@ class Player {
       profession: this.profession.name,
       salary: this.salary,
       expenses: this.expenses,
+      childrenCount: this.childrenCount,
+      childrenExpenses: this.childrenExpenses,
       cash: this.cash,
       passiveIncome: this.passiveIncome,
       totalIncome: this.totalIncome,
