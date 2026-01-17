@@ -64,6 +64,36 @@ class GameService {
   }
 
   /**
+   * Начинает игру (меняет статус на 'active')
+   * @param {string} userId - ID пользователя (должен быть создателем)
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async startGame(userId, gameId) {
+    const gamesCollection = this.db.collection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.creatorId !== userId) {
+      return { success: false, error: 'not_creator' };
+    }
+
+    if (game.status !== 'waiting') {
+      return { success: false, error: 'already_started' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { status: 'active', startedAt: new Date() } }
+    );
+
+    return { success: true };
+  }
+
+  /**
    * Получает список активных игр пользователя
    * @param {string} userId - ID пользователя
    * @returns {Promise<Array>} Массив игр пользователя

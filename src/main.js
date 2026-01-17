@@ -55,13 +55,31 @@ bot.onText(/\/newgame/, async (msg) => {
   await handlers.handleNewGame(msg, services);
 });
 
-// Обработчик команды /join
-bot.onText(/\/join (.+)/, async (msg, match) => {
-  await handlers.handleJoin(msg, match, services);
+// Обработчик команды /play
+bot.onText(/\/play (.+)/, async (msg, match) => {
+  await handlers.handlePlay(msg, match, services);
 });
+
+// Установка команд для бота
+async function setBotCommands() {
+  const commands = [
+    { command: 'start', description: 'Запуск бота и приветствие пользователя' },
+    { command: 'help', description: 'Показать список всех доступных команд' },
+    { command: 'newgame', description: 'Создать новую игровую сессию' },
+    { command: 'play', description: 'Начать игру' }
+  ];
+
+  try {
+    await bot.setMyCommands(commands);
+    console.log('Bot commands set successfully');
+  } catch (error) {
+    console.error('Error setting bot commands:', error);
+  }
+}
 
 // Запуск подключения к MongoDB и бота
 async function startBot() {
+  await setBotCommands();
   await connectToMongoDB();
   console.log('Bot is running...');
 }

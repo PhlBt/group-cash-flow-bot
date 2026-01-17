@@ -8,6 +8,7 @@ Handlers - модуль функций-обработчиков команд Tel
 - Координацию между gameService и messageService
 - Обработку ошибок и исключений
 - Формирование ответов пользователю
+- Управление началом игровых сессий
 
 Архитектурно модуль:
 - Экспортирует функции-обработчики для каждой команды
@@ -46,8 +47,8 @@ Handlers - модуль функций-обработчиков команд Tel
   - В случае успеха вызывает messageService.sendGameCreatedMessage()
   - В случае ошибки вызывает messageService.sendGameCreationErrorMessage()
 
-### handleJoin(msg, match, services)
-- **Назначение**: Обработка команды /join - присоединение к игре
+### handlePlay(msg, match, services)
+- **Назначение**: Обработка команды /play - начало игры
 - **Параметры**:
   - `msg` (Object): Сообщение Telegram
   - `match` (Array): Результат парсинга команды (match[1] = gameId)
@@ -55,9 +56,9 @@ Handlers - модуль функций-обработчиков команд Tel
 - **Функционал**:
   - Извлекает chatId, userId из сообщения, gameId из match
   - Валидирует gameId (проверка на пустоту)
-  - Вызывает gameService.joinGame() для присоединения
-  - В случае успеха вызывает messageService.sendJoinSuccessMessage()
-  - В случае ошибки вызывает messageService.sendJoinErrorMessage() с соответствующим кодом
+  - Вызывает gameService.startGame() для начала игры
+  - В случае успеха вызывает messageService.sendPlaySuccessMessage()
+  - В случае ошибки вызывает messageService.sendPlayErrorMessage() с соответствующим кодом
 
 ## Бизнес-правила и проверки
 
@@ -71,7 +72,7 @@ Handlers - модуль функций-обработчиков команд Tel
 - **handleStart**: userName по умолчанию 'игрок' если не указан
 - **handleHelp**: Только извлечение chatId, дополнительных проверок нет
 - **handleNewGame**: userId обязателен (из msg.from.id)
-- **handleJoin**: gameId валидируется на пустоту перед передачей в gameService
+- **handlePlay**: gameId валидируется на пустоту перед передачей в gameService
 
 ### Обработка ошибок
 - Исключения в gameService перехватываются и обрабатываются

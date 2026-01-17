@@ -49,12 +49,12 @@ async function handleNewGame(msg, services) {
 }
 
 /**
- * Обрабатывает команду /join
+ * Обрабатывает команду /play
  * @param {Object} msg - Сообщение Telegram
  * @param {Array} match - Результат парсинга команды (match[1] = gameId)
  * @param {Object} services - Объект с сервисами { gameService, messageService }
  */
-async function handleJoin(msg, match, services) {
+async function handlePlay(msg, match, services) {
   const { gameService, messageService } = services;
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -62,21 +62,21 @@ async function handleJoin(msg, match, services) {
 
   // Валидация gameId
   if (!gameId || gameId.trim() === '') {
-    await messageService.sendJoinErrorMessage(chatId, 'general');
+    await messageService.sendPlayErrorMessage(chatId, 'general');
     return;
   }
 
   try {
-    const result = await gameService.joinGame(userId, gameId);
+    const result = await gameService.startGame(userId, gameId);
 
     if (result.success) {
-      await messageService.sendJoinSuccessMessage(chatId, gameId);
+      await messageService.sendPlaySuccessMessage(chatId, gameId);
     } else {
-      await messageService.sendJoinErrorMessage(chatId, result.error);
+      await messageService.sendPlayErrorMessage(chatId, result.error);
     }
   } catch (error) {
-    console.error('Error in handleJoin:', error);
-    await messageService.sendJoinErrorMessage(chatId, 'general');
+    console.error('Error in handlePlay:', error);
+    await messageService.sendPlayErrorMessage(chatId, 'general');
   }
 }
 
@@ -84,5 +84,5 @@ module.exports = {
   handleStart,
   handleHelp,
   handleNewGame,
-  handleJoin
+  handlePlay
 };

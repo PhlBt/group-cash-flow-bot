@@ -24,7 +24,7 @@ class MessageService {
 /start - Начать игру
 /help - Показать эту справку
 /newgame - Создать новую игру
-/join - Присоединиться к игре
+/play - Начать игру
 
 *О игре:*
 CashFlow - настольная игра о финансовом планировании.
@@ -39,7 +39,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {string} gameId - ID созданной игры
    */
   async sendGameCreatedMessage(chatId, gameId) {
-    const message = `Новая игра создана! ID игры: ${gameId}. Другие игроки могут присоединиться с помощью команды /join ${gameId}`;
+    const message = `Новая игра создана! ID игры: ${gameId}. Используйте /play ${gameId} для начала игры.`;
     await this.bot.sendMessage(chatId, message);
   }
 
@@ -82,6 +82,41 @@ CashFlow - настольная игра о финансовом планиро�
         break;
       default:
         message = 'Ошибка при присоединении к игре. Попробуйте еще раз.';
+    }
+
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение об успешном начале игры
+   * @param {number} chatId - ID чата
+   * @param {string} gameId - ID игры
+   */
+  async sendPlaySuccessMessage(chatId, gameId) {
+    const message = `Игра ${gameId} начата!`;
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение об ошибке начала игры
+   * @param {number} chatId - ID чата
+   * @param {string} errorType - Тип ошибки ('not_found', 'not_creator', 'already_started')
+   */
+  async sendPlayErrorMessage(chatId, errorType) {
+    let message;
+
+    switch (errorType) {
+      case 'not_found':
+        message = 'Игра с таким ID не найдена.';
+        break;
+      case 'not_creator':
+        message = 'Только создатель игры может начать ее.';
+        break;
+      case 'already_started':
+        message = 'Игра уже начата.';
+        break;
+      default:
+        message = 'Ошибка при начале игры. Попробуйте еще раз.';
     }
 
     await this.bot.sendMessage(chatId, message);
