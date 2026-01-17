@@ -1,6 +1,6 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { MongoClient } = require('mongodb');
+const DatabaseService = require('./services/databaseService');
 const MessageService = require('./services/messageService');
 const GameService = require('./services/gameService');
 const handlers = require('./handlers');
@@ -26,14 +26,12 @@ const services = {
 };
 
 // Подключение к MongoDB
-let db;
+let databaseService;
 async function connectToMongoDB() {
   try {
-    const client = new MongoClient(MONGODB_URL);
-    await client.connect();
-    db = client.db(MONGODB_DATABASE);
-    gameService = new GameService(db);
-    console.log('Connected to MongoDB');
+    databaseService = new DatabaseService(MONGODB_URL, MONGODB_DATABASE);
+    await databaseService.connect();
+    gameService = new GameService(databaseService);
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);
