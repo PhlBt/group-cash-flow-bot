@@ -419,6 +419,8 @@ bot.onText(/\/roll_one/, async (msg) => {
         // Если нет карты, показываем кнопки для следующего хода
         const nextPlayer = game.getCurrentPlayer();
         if (nextPlayer.charityTurnsLeft > 0) {
+          game.currentCard = { type: 'dice_choice' };
+          game.waitingForAction = true;
           await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}\n\n🎗️ У вас есть эффект от благотворительности!\nВы можете выбрать количество кубиков для броска:`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
         } else {
           await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
@@ -1300,7 +1302,13 @@ bot.on('callback_query', async (query) => {
         await sendMessage(chatId, "🎉 ИГРА ЗАВЕРШЕНА! Победитель вышел из крысиных бегов!");
       } else if (!result.card || result.card.skip) {
         const nextPlayer = game.getCurrentPlayer();
-        await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+        if (nextPlayer.charityTurnsLeft > 0) {
+          game.currentCard = { type: 'dice_choice' };
+          game.waitingForAction = true;
+          await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}\n\n🎗️ У вас есть эффект от благотворительности!\nВы можете выбрать количество кубиков для броска:`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+        } else {
+          await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+        }
       }
     } else {
       await sendMessage(chatId, result.message);
@@ -1657,7 +1665,13 @@ bot.on('callback_query', async (query) => {
         await gameManager.saveGame(chatId);
         game.nextTurn();
         const nextPlayer = game.getCurrentPlayer();
-        await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+        if (nextPlayer.charityTurnsLeft > 0) {
+          game.currentCard = { type: 'dice_choice' };
+          game.waitingForAction = true;
+          await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}\n\n🎗️ У вас есть эффект от благотворительности!\nВы можете выбрать количество кубиков для броска:`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+        } else {
+          await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+        }
       } else {
         await sendMessage(chatId, `❌ Недостаточно средств! Нужно: ${formatNumber(charityAmount)} ₽, у вас: ${formatNumber(player.cash)} ₽`);
       }
@@ -1674,7 +1688,13 @@ bot.on('callback_query', async (query) => {
       await gameManager.saveGame(chatId);
       game.nextTurn();
       const nextPlayer = game.getCurrentPlayer();
-      await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+      if (nextPlayer.charityTurnsLeft > 0) {
+        game.currentCard = { type: 'dice_choice' };
+        game.waitingForAction = true;
+        await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}\n\n🎗️ У вас есть эффект от благотворительности!\nВы можете выбрать количество кубиков для броска:`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+      } else {
+        await sendMessage(chatId, `Ход переходит к игроку: ${nextPlayer.username}`, { reply_markup: getPlayerTurnKeyboard(nextPlayer) });
+      }
     }
   } else if (data === 'pay_opportunity') {
     const game = await gameManager.getGame(chatId);
