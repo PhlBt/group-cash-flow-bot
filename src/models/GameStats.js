@@ -41,10 +41,6 @@ const gameStatsSchema = new mongoose.Schema({
   }
 });
 
-// Индексы для производительности
-gameStatsSchema.index({ gameId: 1 });
-gameStatsSchema.index({ chatId: 1 });
-gameStatsSchema.index({ status: 1 });
-gameStatsSchema.index({ 'players.userId': 1 });
+// Индексы создаются автоматически для unique полей
 
 module.exports = mongoose.model('GameStats', gameStatsSchema);

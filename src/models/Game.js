@@ -21,7 +21,6 @@ gameSchema.pre('save', function(next) {
   next();
 });
 
-// Индексы для производительности
-gameSchema.index({ chatId: 1 });
+// Индексы создаются автоматически для unique полей
 
 module.exports = mongoose.model('Game', gameSchema);

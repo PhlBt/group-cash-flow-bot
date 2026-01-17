@@ -10,7 +10,4 @@ const loanSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Индекс для поля id
-loanSchema.index({ id: 1 });
-
 module.exports = mongoose.model('Loan', loanSchema);

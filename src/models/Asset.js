@@ -10,7 +10,4 @@ const assetSchema = new mongoose.Schema({
   loanId: { type: mongoose.Schema.Types.ObjectId, ref: 'Loan', default: null }
 });
 
-// Индекс для поля id
-assetSchema.index({ id: 1 });
-
 module.exports = mongoose.model('Asset', assetSchema);

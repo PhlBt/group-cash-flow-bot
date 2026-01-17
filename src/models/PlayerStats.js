@@ -47,9 +47,6 @@ playerStatsSchema.pre('save', function(next) {
   next();
 });
 
-// Индексы для производительности
-playerStatsSchema.index({ userId: 1 });
-playerStatsSchema.index({ gamesPlayed: -1 });
-playerStatsSchema.index({ gamesWon: -1 });
+// Индексы создаются автоматически для unique полей
 
 module.exports = mongoose.model('PlayerStats', playerStatsSchema);
