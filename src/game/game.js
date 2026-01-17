@@ -158,16 +158,18 @@ class CashFlowGame {
         card = generateOpportunityCard();
         const oppResult = this.applyOpportunityEffect(player, card);
         message += "\n\n🎁 ВОЗМОЖНОСТЬ:\n" + this.formatCard(card);
+        let resultCard = null;
         if (oppResult.newDeal) {
           // Если получена новая сделка - ждём действия
           this.currentCard = oppResult.newDeal;
           this.waitingForAction = true;
-          card = oppResult.newDeal;
+          resultCard = oppResult.newDeal;
           message += `\n\n💰 Баланс: ₽${player.cash}`;
         } else if (oppResult.cost) {
           // Если есть стоимость - ждём оплаты
           this.currentCard = card;
           this.waitingForAction = true;
+          resultCard = card;
         } else {
           // Применяем эффект сразу
           message += "\n" + oppResult.message;
@@ -175,6 +177,7 @@ class CashFlowGame {
             this.nextTurn();
           }
         }
+        card = resultCard;
         break;
       case 'doodad':
         card = generateDoodadCard();
