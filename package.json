@@ -2,9 +2,9 @@
   "name": "cashflow-telegram-bot",
   "version": "1.0.0",
   "description": "Telegram bot for playing CashFlow game",
-  "main": "bot.js",
+  "main": "src/bot.js",
   "scripts": {
-    "serve": "pm2-runtime bot.js --watch"
+    "serve": "pm2-runtime src/bot.js --watch"
   },
   "keywords": [
     "telegram",
