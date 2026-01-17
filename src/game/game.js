@@ -485,32 +485,32 @@ class CashFlowGame {
             bankrupt: true
           };
         }
-      } else {
-        // Предлагаем варианты
-        let message = `❌ Недостаточно денег! Нужно: ${ card.cost}, у вас: ${ player.cash}\n\n`;
+  } else {
+    // Предлагаем варианты
+    let message = `❌ Недостаточно денег! Нужно: ${formatNumber(card.cost)} ₽, у вас: ${formatNumber(player.cash)} ₽\n\n`;
 
-        const creditCardPayment = Math.ceil(shortage * 0.02); // 2% для кредитной карты
+    const creditCardPayment = Math.ceil(shortage * 0.02); // 2% для кредитной карты
 
-        if (creditCardPayment < player.cashFlow) {
-          message += `💳 Можно использовать кредитную карту:\n`;
-          message += `Сумма: ${ shortage}\n`;
-          message += `Платёж: ${ creditCardPayment}/мес (24% годовых)\n\n`;
-        }
+    if (creditCardPayment < player.cashFlow) {
+      message += `💳 Можно использовать кредитную карту:\n`;
+      message += `Сумма: ${formatNumber(shortage)} ₽\n`;
+      message += `Платёж: ${formatNumber(creditCardPayment)} ₽/мес (24% годовых)\n\n`;
+    }
 
-        if (player.assets.length > 0) {
-          message += `📦 Можно продать активы:\n${this.formatAssetsForSale(player)}\n`;
-        } else if (creditCardPayment >= player.cashFlow && monthlyPayment >= player.cashFlow) {
-          message += `⚠️ Нет активов для продажи - грозит банкротство!`;
-        }
+    if (player.assets.length > 0) {
+      message += `📦 Можно продать активы:\n${this.formatAssetsForSale(player)}\n`;
+    } else if (creditCardPayment >= player.cashFlow && monthlyPayment >= player.cashFlow) {
+      message += `⚠️ Нет активов для продажи - грозит банкротство!`;
+    }
 
-        return {
-          success: false,
-          message,
-          canUseLoan: monthlyPayment < player.cashFlow,
-          canUseCreditCard: creditCardPayment < player.cashFlow,
-          needSellAsset: player.assets.length > 0
-        };
-      }
+    return {
+      success: false,
+      message,
+      canUseLoan: monthlyPayment < player.cashFlow,
+      canUseCreditCard: creditCardPayment < player.cashFlow,
+      needSellAsset: player.assets.length > 0
+    };
+  }
     }
 
     // Денег хватает - просто платим
