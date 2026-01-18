@@ -167,30 +167,37 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendPlayerCard(chatId, player) {
     let info = `👤 ${player.username}\n`;
-    info += `💼 Профессия: ${player.profession}\n`;
-    info += `💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
-    info += `💵 Зарплата: ${formatNumber(player.salary)} ₽/месяц\n`;
-    info += `💸 Базовые расходы: ${formatNumber(player.expenses)} ₽/месяц\n`;
+    if (!player.inFastTrack) {
+      info += `💼 Профессия: ${player.profession}\n\n`;
 
-    if (player.childrenCount && player.childrenCount > 0) {
-      info += `👶 Детей: ${player.childrenCount} (расходы: ${formatNumber(player.childrenExpenses)} ₽/месяц)\n`;
+      info += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+      info += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n\n`;
+
+      info += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/месяц\n`;
+      info += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n\n`;
+
+      info += `💵 Зарплата: ${formatNumber(player.salary)} ₽/месяц\n`;
+      info += `💸 Базовые расходы: ${formatNumber(player.expenses)} ₽/месяц\n`;
+
+      if (player.childrenCount && player.childrenCount > 0) {
+        info += `👶 Детей: ${player.childrenCount} (расходы: ${formatNumber(player.childrenExpenses)} ₽/месяц)\n`;
+      }
+      if (player.loansCount && player.loansCount > 0) {
+        info += `💸 Платежи по кредитам: ${formatNumber(player.totalLoanPayments)} ₽/месяц\n`;
+      }
+
+      info += `📊 Общий доход: ${formatNumber(player.totalIncome)} ₽/месяц\n`;
+      info += `🏠 Активов: ${player.assetsCount}\n`;
+
+      // Информация о кредитах
+      if (player.loansCount && player.loansCount > 0) {
+        info += `💳 Кредитов: ${player.loansCount}\n`;
+        info += `📊 Общая сумма кредитов: ${formatNumber(player.totalLoans)} ₽\n`;
+      }
     }
 
-    info += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n`;
-    info += `📊 Общий доход: ${formatNumber(player.totalIncome)} ₽/месяц\n`;
-    info += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/месяц\n`;
-    info += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n`;
-    info += `🏠 Активов: ${player.assetsCount}\n`;
-    info += `📋 Пассивов: ${player.liabilitiesCount}\n`;
-
-    // Информация о кредитах
-    if (player.loansCount && player.loansCount > 0) {
-      info += `💳 Кредитов: ${player.loansCount}\n`;
-      info += `📊 Общая сумма кредитов: ${formatNumber(player.totalLoans)} ₽\n`;
-      info += `💸 Платежи по кредитам: ${formatNumber(player.totalLoanPayments)} ₽/месяц\n`;
-    }
-
-    info += `📍 Позиция: ${player.position + 1}\n`;
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    message += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
 
     if (player.cashFlow > 0) {
       info += `\n✅ Положительный денежный поток!`;

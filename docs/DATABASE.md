@@ -56,6 +56,7 @@ DatabaseService - это класс, отвечающий за все взаим
 ## Структура данных
 
 ### Документ игры (коллекция 'games')
+Все денежные суммы в рублях по курсу 1$ = 30₽.
 ```javascript
 {
   gameId: "string", // Уникальный ID игры
@@ -66,27 +67,27 @@ DatabaseService - это класс, отвечающий за все взаим
       userId: "string", // ID пользователя Telegram
       username: "string", // Имя пользователя
       profession: "string", // Название профессии
-      cash: number, // Денежные средства
-      salary: number, // Зарплата
-      expenses: number, // Расходы
+      cash: number, // Денежные средства (руб.)
+      salary: number, // Зарплата (руб.)
+      expenses: number, // Базовые расходы без кредитов (руб.)
       childrenCount: number, // Количество детей
-      childrenExpenses: number, // Расходы на детей
-      passiveIncome: number, // Пассивный доход
-      totalIncome: number, // Общий доход
-      totalExpenses: number, // Общие расходы
-      cashFlow: number, // Денежный поток
+      childrenExpenses: number, // Расходы на детей (руб.)
+      passiveIncome: number, // Пассивный доход (руб.)
+      totalIncome: number, // Общий доход (руб.)
+      totalExpenses: number, // Общие расходы включая кредиты (руб.)
+      cashFlow: number, // Денежный поток (руб.)
       assets: Array, // Массив активов игрока
       assetsCount: number, // Количество активов
-      liabilities: Array, // Массив пассивов/кредитов игрока
-      liabilitiesCount: number, // Количество пассивов
+      liabilities: Array, // Массив пассивов/кредитов игрока (включая начальные кредиты профессии)
       loansCount: number, // Количество кредитов
-      totalLoans: number, // Общая сумма кредитов
-      totalLoanPayments: number, // Платежи по кредитам
+      totalLoans: number, // Общая сумма кредитов (руб.)
+      totalLoanPayments: number, // Платежи по кредитам (руб.)
+      kidCost: number, // Расходы на детей по профессии (руб.)
       position: number, // Позиция игрока (0-based)
       inFastTrack: boolean, // Находится ли на скоростной дорожке
-      fastTrackCash: number, // Капитал на скоростной дорожке
-      fastTrackIncome: number, // Доход на скоростной дорожке
-      dreamCost: number // Стоимость мечты
+      fastTrackCash: number, // Капитал на скоростной дорожке (руб.)
+      fastTrackIncome: number, // Доход на скоростной дорожке (руб.)
+      dreamCost: number // Стоимость мечты (руб.)
     }
   ],
   status: "waiting|active|finished", // Статус игры
@@ -280,7 +281,7 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Функционал**:
   - Находит игрока по userId в массиве players
   - Добавляет пассив в массив liabilities
-  - Увеличивает liabilitiesCount и loansCount
+  - Увеличивает  loansCount
   - Пересчитывает totalLoans, totalLoanPayments, totalExpenses и cashFlow
 
 ## Бизнес-правила и проверки

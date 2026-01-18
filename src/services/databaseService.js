@@ -61,26 +61,40 @@ class DatabaseService {
     const gameId = Date.now().toString(); // Простой ID на основе timestamp
 
     const profession = getRandomProfession();
+
+    // Рассчитываем базовые расходы (без кредитов)
+    const creditMonthlyPayments = profession.credits.reduce((sum, credit) => sum + credit.monthlyPayment, 0);
+    const baseExpenses = profession.totalExpenses - creditMonthlyPayments;
+
+    // Инициализируем liabilities с кредитами профессии
+    const liabilities = profession.credits.map(credit => ({
+      title: credit.title,
+      cost: credit.cost,
+      downPayment: 0,
+      loanAmount: credit.cost,
+      monthlyPayment: credit.monthlyPayment
+    }));
+
     const player = {
       userId,
       username,
       profession: profession.name,
       cash: profession.savings,
       salary: profession.salary,
-      expenses: profession.expenses,
+      expenses: baseExpenses,
       childrenCount: 0,
       childrenExpenses: 0,
-      passiveIncome: 0,
+      passiveIncome: profession.passiveIncome,
       totalIncome: profession.salary,
-      totalExpenses: profession.expenses,
-      cashFlow: profession.salary - profession.expenses,
+      totalExpenses: profession.totalExpenses,
+      cashFlow: profession.cashFlow,
       assets: [], // массив активов
       assetsCount: 0,
-      liabilities: [], // массив пассивов/кредитов
-      liabilitiesCount: 0,
-      loansCount: 0,
-      totalLoans: 0,
-      totalLoanPayments: 0,
+      liabilities: liabilities,
+      loansCount: liabilities.length,
+      totalLoans: liabilities.reduce((sum, liab) => sum + liab.loanAmount, 0),
+      totalLoanPayments: creditMonthlyPayments,
+      kidCost: profession.kidCost,
       position: 0,
       inFastTrack: false,
       fastTrackCash: 0,
@@ -130,26 +144,40 @@ class DatabaseService {
     }
 
     const profession = getRandomProfession();
+
+    // Рассчитываем базовые расходы (без кредитов)
+    const creditMonthlyPayments = profession.credits.reduce((sum, credit) => sum + credit.monthlyPayment, 0);
+    const baseExpenses = profession.totalExpenses - creditMonthlyPayments;
+
+    // Инициализируем liabilities с кредитами профессии
+    const liabilities = profession.credits.map(credit => ({
+      title: credit.title,
+      cost: credit.cost,
+      downPayment: 0,
+      loanAmount: credit.cost,
+      monthlyPayment: credit.monthlyPayment
+    }));
+
     const player = {
       userId,
       username,
       profession: profession.name,
       cash: profession.savings,
       salary: profession.salary,
-      expenses: profession.expenses,
+      expenses: baseExpenses,
       childrenCount: 0,
       childrenExpenses: 0,
-      passiveIncome: 0,
+      passiveIncome: profession.passiveIncome,
       totalIncome: profession.salary,
-      totalExpenses: profession.expenses,
-      cashFlow: profession.salary - profession.expenses,
+      totalExpenses: profession.totalExpenses,
+      cashFlow: profession.cashFlow,
       assets: [], // массив активов
       assetsCount: 0,
-      liabilities: [], // массив пассивов/кредитов
-      liabilitiesCount: 0,
-      loansCount: 0,
-      totalLoans: 0,
-      totalLoanPayments: 0,
+      liabilities: liabilities,
+      loansCount: liabilities.length,
+      totalLoans: liabilities.reduce((sum, liab) => sum + liab.loanAmount, 0),
+      totalLoanPayments: creditMonthlyPayments,
+      kidCost: profession.kidCost,
       position: game.players.length, // позиция начиная с 0
       inFastTrack: false,
       fastTrackCash: 0,
@@ -575,8 +603,7 @@ class DatabaseService {
 
     const player = game.players[playerIndex];
     const newLiabilities = [...player.liabilities, liability];
-    const newLiabilitiesCount = newLiabilities.length;
-    const newLoansCount = player.loansCount + 1;
+    const newLoansCount = newLiabilities.length;
     const newTotalLoans = player.totalLoans + liability.loanAmount;
     const newTotalLoanPayments = player.totalLoanPayments + liability.monthlyPayment;
     const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
@@ -587,7 +614,6 @@ class DatabaseService {
       {
         $set: {
           [`players.${playerIndex}.liabilities`]: newLiabilities,
-          [`players.${playerIndex}.liabilitiesCount`]: newLiabilitiesCount,
           [`players.${playerIndex}.loansCount`]: newLoansCount,
           [`players.${playerIndex}.totalLoans`]: newTotalLoans,
           [`players.${playerIndex}.totalLoanPayments`]: newTotalLoanPayments,
