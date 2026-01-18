@@ -84,21 +84,31 @@ const dealTypeKeyboard = {
 };
 
 /**
- * Клавиатура действий с карточкой сделки
+ * Генерирует клавиатуру для карточки сделки
+ * @param {Object} deal - Объект сделки (опционально)
+ * @returns {Object} Клавиатура
  */
-const dealKeyboard = {
-  inline_keyboard: [
-    [
-      { text: '💰 Купить', callback_data: 'buy_deal' }
-    ],
-    [
-      { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
-    ],
-    [
-      { text: '👥 Предложить игроку', callback_data: 'offer_deal' },
+function generateDealKeyboard(deal) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '💰 Купить', callback_data: 'buy_deal' }
+      ],
+      [
+        { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
+      ]
     ]
-  ]
-};
+  };
+
+  // Кнопка предложения игроку (если применимо)
+  if (deal && deal.canSellToOthers) {
+    keyboard.inline_keyboard.push([
+      { text: '👥 Предложить игроку', callback_data: 'offer_deal' }
+    ]);
+  }
+
+  return keyboard;
+}
 
 /**
  * Клавиатура оплаты кредиткой
@@ -121,6 +131,6 @@ module.exports = {
   gameKeyboard,
   charityKeyboard,
   dealTypeKeyboard,
-  dealKeyboard,
+  generateDealKeyboard,
   creditCardKeyboard
 };

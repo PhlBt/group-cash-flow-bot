@@ -1,5 +1,5 @@
 const { formatNumber } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, dealKeyboard, creditCardKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, generateDealKeyboard, creditCardKeyboard } = require('../utils/keyboards');
 
 class MessageService {
   constructor(bot) {
@@ -200,7 +200,7 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
-    message += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
+    info += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
 
     if (player.cashFlow > 0) {
       info += `\n✅ Положительный денежный поток!`;
@@ -572,23 +572,30 @@ CashFlow - настольная игра о финансовом планиро�
       message += `🏠 Ипотека: ${formatNumber(deal.mortgage)} ₽\n`;
     }
 
-    message += `💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n`;
+    if (deal.apartments) {
+      message += `🏢 Квартир: ${deal.apartments}\n`;
+    }
+
+    message += `\n💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n`;
 
     // Стоимость кредитной карты (2% от стоимости)
-    if (deal.cost) {
-      const creditCardCost = Math.floor(deal.cost * 0.02);
-      message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
-    }
+    // if (deal.cost) {
+    //   const creditCardCost = Math.floor(deal.cost * 0.02);
+    //   message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
+    // }
 
-    if (deal.type === 'big') {
-      message += `📊 Ежемесячный платеж: ${formatNumber(Math.floor(deal.cost * 0.01))} ₽\n`;
-    }
+    // if (deal.type === 'big' && !deal.expenses) {
+    //   message += `📊 Ежемесячный платеж: ${formatNumber(Math.floor(deal.cost * 0.01))} ₽\n`;
+    // }
 
     message += `\nЧто вы хотите сделать?`;
 
+    // Генерируем клавиатуру в зависимости от типа сделки
+    const keyboard = this.generateDealKeyboard(deal);
+
     const sentMessage = await this.bot.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
-      reply_markup: dealKeyboard
+      reply_markup: keyboard
     });
 
     return sentMessage.message_id;
@@ -609,10 +616,10 @@ CashFlow - настольная игра о финансовом планиро�
     // Показать денежный поток (cashFlow или passiveIncome)
     const income = deal.passiveIncome || deal.cashFlow;
     if (income !== undefined) {
-      message += `💵 Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
+      message += `� Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
     }
 
-    message += `💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
+    message += `� Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
 
     // Стоимость кредитной карты (2% от стоимости)
     const monthlyPayment = Math.floor(deal.cost * 0.02);

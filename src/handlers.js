@@ -439,8 +439,8 @@ async function handleDealType(query, dealType, services) {
 
     // Сгенерировать сделку
     const { getRandomSmallDeal } = require('./game/cards/smallDeals');
-    const { generateBigDeal } = require('./game/deals');
-    const deal = dealType === 'small' ? getRandomSmallDeal() : generateBigDeal();
+    const { getRandomBigDeal } = require('./game/cards/bigDeals');
+    const deal = dealType === 'small' ? getRandomSmallDeal() : getRandomBigDeal();
 
     // Сохранить сделку в состоянии игры
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);

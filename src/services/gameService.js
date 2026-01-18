@@ -379,7 +379,7 @@ class GameService {
 
     // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
     const monthlyPayment = Math.floor(deal.cost * 0.0001); // 0.01%
-    const loanAmount = deal.cost - deal.downPayment;
+    const loanAmount = deal.mortgage;
 
     // Списываем первоначальный взнос
     const newCash = player.cash - deal.downPayment;
@@ -394,7 +394,7 @@ class GameService {
     const asset = {
       title: deal.title,
       cost: deal.cost,
-      cashFlow: deal.cashFlow,
+      cashFlow: deal.passiveIncome,
       type: 'big_deal',
       description: deal.description
     };
@@ -441,7 +441,7 @@ class GameService {
     const asset = {
       title: deal.title,
       cost: deal.cost,
-      cashFlow: deal.cashFlow,
+      cashFlow: deal.passiveIncome || deal.cashFlow,
       type: deal.type === 'big' ? 'big_deal_credit_card' : 'small_deal_credit_card',
       description: deal.description
     };
