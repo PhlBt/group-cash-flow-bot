@@ -100,6 +100,20 @@ const dealKeyboard = {
   ]
 };
 
+/**
+ * Клавиатура оплаты кредиткой
+ */
+const creditCardKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '💳 Оплатить кредиткой', callback_data: 'buy_deal_credit_card' }
+    ],
+    [
+      { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
+    ]
+  ]
+};
+
 module.exports = {
   welcomeKeyboard,
   endGameVoteKeyboard,
@@ -107,5 +121,6 @@ module.exports = {
   gameKeyboard,
   charityKeyboard,
   dealTypeKeyboard,
-  dealKeyboard
+  dealKeyboard,
+  creditCardKeyboard
 };

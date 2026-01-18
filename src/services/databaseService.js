@@ -99,7 +99,8 @@ class DatabaseService {
       createdAt: new Date(),
       endGameVotes: [],
       endGameMessageId: null,
-      waitingMessageId: null
+      waitingMessageId: null,
+      currentDeal: null
     });
 
     return gameId;
@@ -342,6 +343,28 @@ class DatabaseService {
     await gamesCollection.updateOne(
       { gameId },
       { $set: { waitingMessageId: messageId } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает текущую сделку для игры
+   * @param {string} gameId - ID игры
+   * @param {Object} deal - Объект сделки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCurrentDeal(gameId, deal) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { currentDeal: deal } }
     );
 
     return { success: true };

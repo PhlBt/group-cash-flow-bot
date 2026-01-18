@@ -1,5 +1,5 @@
 const { formatNumber } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, dealKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, dealKeyboard, creditCardKeyboard } = require('../utils/keyboards');
 
 class MessageService {
   constructor(bot) {
@@ -420,11 +420,11 @@ CashFlow - настольная игра о финансовом планиро�
       const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
       const absPayday = Math.abs(totalPayday);
 
-      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} тыс ₽\n\n`;
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
     }
 
     message += `📍 ${fieldName}\n\n`;
-    message += `💰 Баланс: ${formatNumber(updatedCash)} тыс ₽\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -491,14 +491,14 @@ CashFlow - настольная игра о финансовом планиро�
       const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
       const absPayday = Math.abs(totalPayday);
 
-      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)}\n\n`;
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
     }
 
     message += `💼 Вы попали на поле "Сделки"\n\n`;
-    message += `💰 Баланс: ${formatNumber(updatedCash)}\n`;
-    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)}/мес\n`;
-    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)}/мес\n`;
-    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)}/мес\n\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
     message += `Выберите тип сделки:`;
 
     await this.bot.sendMessage(chatId, message, {
@@ -552,6 +552,35 @@ CashFlow - настольная игра о финансовом планиро�
     const sentMessage = await this.bot.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: dealKeyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Отправляет предложение оплаты кредиткой
+   * @param {number} chatId - ID чата
+   * @param {Object} deal - Объект сделки
+   * @param {Object} player - Объект игрока
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendCreditCardOfferMessage(chatId, deal, player) {
+    let message = `💼 **${deal.title}**\n\n`;
+    message += `📝 ${deal.description}\n\n`;
+    message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
+    message += `💵 Денежный поток: ${formatNumber(deal.cashFlow)} ₽/месяц\n`;
+    message += `💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
+
+    // Стоимость кредитной карты (2% от стоимости)
+    const monthlyPayment = Math.floor(deal.cost * 0.02);
+    message += `❌ Недостаточно денег для покупки!\n\n`;
+    message += `💳 Оплатить кредиткой:\n`;
+    message += `📊 Ежемесячный платеж: ${formatNumber(monthlyPayment)} ₽\n\n`;
+    message += `Что вы хотите сделать?`;
+
+    const sentMessage = await this.bot.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: creditCardKeyboard
     });
 
     return sentMessage.message_id;

@@ -414,6 +414,51 @@ class GameService {
 
     return { success: true };
   }
+
+  /**
+   * Покупает сделку с оплатой кредиткой
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buyDealWithCreditCard(gameId, userId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
+    const monthlyPayment = Math.floor(deal.cost * 0.02);
+
+    // Добавляем актив
+    const asset = {
+      title: deal.title,
+      cost: deal.cost,
+      cashFlow: deal.cashFlow,
+      type: deal.type === 'big' ? 'big_deal_credit_card' : 'small_deal_credit_card',
+      description: deal.description
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    // Добавляем кредитку как liability
+    const liability = {
+      title: `Кредитная карта - ${deal.title}`,
+      cost: deal.cost,
+      monthlyPayment: monthlyPayment,
+      type: 'credit_card_loan'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, liability);
+
+    return { success: true };
+  }
 }
 
 module.exports = GameService;

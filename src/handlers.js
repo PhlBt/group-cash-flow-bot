@@ -394,6 +394,11 @@ async function handleCallbackQuery(query, services) {
         await handleSkipDeal(query, services);
         break;
 
+      case 'buy_deal_credit_card':
+        // Покупка сделки кредиткой
+        await handleBuyDealWithCreditCard(query, services);
+        break;
+
       default:
         console.warn('Unknown callback data:', data);
     }
@@ -436,6 +441,9 @@ async function handleDealType(query, dealType, services) {
     const { generateSmallDeal, generateBigDeal } = require('./game/deals');
     const deal = dealType === 'small' ? generateSmallDeal() : generateBigDeal();
 
+    // Сохранить сделку в состоянии игры
+    await gameService.databaseService.setCurrentDeal(game.gameId, deal);
+
     // Отправить карточку сделки
     await messageService.sendDealCardMessage(chatId, deal, currentPlayer);
 
@@ -470,13 +478,14 @@ async function handleBuyDeal(query, services) {
       return;
     }
 
-    // Получить текст сообщения для определения типа сделки
-    const messageText = query.message.text || query.message.caption || '';
-    const isBigDeal = messageText.includes('Первоначальный взнос');
+    // Получить сохраненную сделку из состояния игры
+    const deal = game.currentDeal;
+    if (!deal) {
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      return;
+    }
 
-    // Сгенерировать ту же сделку (простая заглушка, в реальности нужно сохранять состояние)
-    const { generateSmallDeal, generateBigDeal } = require('./game/deals');
-    const deal = isBigDeal ? generateBigDeal() : generateSmallDeal();
+    const isBigDeal = deal.type === 'big';
 
     // Попробовать купить
     let buyResult;
@@ -488,7 +497,10 @@ async function handleBuyDeal(query, services) {
 
     if (!buyResult.success) {
       if (buyResult.error === 'insufficient_funds') {
-        await messageService.sendErrorMessage(chatId, 'Недостаточно денег для покупки! Оплатите кредиткой (функция не реализована).');
+        // Удалить сообщение с карточкой сделки
+        await messageService.deleteMessage(chatId, query.message.message_id);
+        // Отправить предложение оплаты кредиткой
+        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer);
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
       }
@@ -552,6 +564,65 @@ async function handleSkipDeal(query, services) {
     await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске сделки.');
   }
 }
+
+/**
+ * Обрабатывает покупку сделки кредиткой
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleBuyDealWithCreditCard(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Получить сохраненную сделку из состояния игры
+    const deal = game.currentDeal;
+    if (!deal) {
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      return;
+    }
+
+    // Купить кредиткой
+    const buyResult = await gameService.buyDealWithCreditCard(game.gameId, userId, deal);
+    if (!buyResult.success) {
+      await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки кредиткой.');
+      return;
+    }
+
+    // Удалить сообщение с предложением кредитки
+    await messageService.deleteMessage(chatId, query.message.message_id);
+
+    // Отправить сообщение об успешной покупке
+    await messageService.sendErrorMessage(chatId, `✅ Сделка "${deal.title}" успешно куплена кредиткой!`);
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handleBuyDealWithCreditCard:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки кредиткой.');
+  }
+}
+
+
 
 module.exports = {
   handleStart,
