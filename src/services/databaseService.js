@@ -135,6 +135,10 @@ class DatabaseService {
       return { success: false, error: 'not_found' };
     }
 
+    if (game.players.length >= 12) {
+      return { success: false, error: 'max_players_reached' };
+    }
+
     if (game.players.some(player => player.userId === userId)) {
       return { success: false, error: 'already_joined' };
     }
@@ -143,7 +147,8 @@ class DatabaseService {
       return { success: false, error: 'game_started' };
     }
 
-    const profession = getRandomProfession();
+    const excludedProfessions = game.players.map(p => p.profession);
+    const profession = getRandomProfession(excludedProfessions);
 
     // Рассчитываем базовые расходы (без кредитов)
     const creditMonthlyPayments = profession.credits.reduce((sum, credit) => sum + credit.monthlyPayment, 0);

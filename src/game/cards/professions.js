@@ -403,6 +403,13 @@ const PROFESSIONS = [
   }
 ];
 
-const getRandomProfession = () => PROFESSIONS[Math.floor(Math.random() * PROFESSIONS.length)]
+const getRandomProfession = (excludedProfessions = []) => {
+  const availableProfessions = PROFESSIONS.filter(prof => !excludedProfessions.includes(prof.name));
+  if (availableProfessions.length === 0) {
+    // Если все профессии заняты, выбрать любую (хотя это не должно случиться с лимитом 12 игроков)
+    return PROFESSIONS[Math.floor(Math.random() * PROFESSIONS.length)];
+  }
+  return availableProfessions[Math.floor(Math.random() * availableProfessions.length)];
+}
 
 module.exports = { getRandomProfession }
