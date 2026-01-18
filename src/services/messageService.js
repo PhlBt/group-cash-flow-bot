@@ -1,5 +1,5 @@
 const { formatNumber } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, dealKeyboard } = require('../utils/keyboards');
 
 class MessageService {
   constructor(bot) {
@@ -462,6 +462,99 @@ CashFlow - настольная игра о финансовом планиро�
       case FIELD_TYPES.HEALTH_CARE: return 'Забота о здоровье';
       default: return 'Неизвестное поле';
     }
+  }
+
+  /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Сделки"
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   */
+  async sendCombinedRollMoveDealMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)}\n\n`;
+    }
+
+    message += `💼 Вы попали на поле "Сделки"\n\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)}\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)}/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)}/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)}/мес\n\n`;
+    message += `Выберите тип сделки:`;
+
+    await this.bot.sendMessage(chatId, message, {
+      reply_markup: dealTypeKeyboard
+    });
+  }
+
+  /**
+   * Отправляет сообщение выбора типа сделки
+   * @param {number} chatId - ID чата
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendDealTypeMessage(chatId) {
+    const message = `💼 Вы попали на поле "Сделки"!\n\nВыберите тип сделки:`;
+
+    const sentMessage = await this.bot.sendMessage(chatId, message, {
+      reply_markup: dealTypeKeyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Отправляет карточку сделки
+   * @param {number} chatId - ID чата
+   * @param {Object} deal - Объект сделки
+   * @param {Object} player - Объект игрока
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendDealCardMessage(chatId, deal, player) {
+    let message = `💼 **${deal.title}**\n\n`;
+    message += `📝 ${deal.description}\n\n`;
+    message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
+    message += `💵 Денежный поток: ${formatNumber(deal.cashFlow)} ₽/месяц\n`;
+    message += `💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n`;
+
+    // Стоимость кредитной карты (2% от стоимости)
+    const creditCardCost = Math.floor(deal.cost * 0.02);
+
+    if (deal.type === 'big') {
+      message += `\n🏦 Первоначальный взнос: ${formatNumber(deal.downPayment)} ₽\n`;
+      message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
+      message += `💳 Ипотека: ${formatNumber(deal.cost - deal.downPayment)} ₽\n`;
+      message += `📊 Ежемесячный платеж: ${formatNumber(Math.floor(deal.cost * 0.01))} ₽\n`;
+    } else {
+      message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
+    }
+
+    message += `\nЧто вы хотите сделать?`;
+
+    const sentMessage = await this.bot.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: dealKeyboard
+    });
+
+    return sentMessage.message_id;
   }
 }
 

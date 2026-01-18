@@ -306,6 +306,114 @@ class GameService {
       totalExpenses
     };
   }
+
+  /**
+   * Покупает мелкую сделку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buySmallDeal(gameId, userId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Проверяем хватает ли денег
+    if (player.cash < deal.cost) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем стоимость
+    const newCash = player.cash - deal.cost;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+    );
+
+    // Добавляем актив
+    const asset = {
+      title: deal.title,
+      cost: deal.cost,
+      cashFlow: deal.cashFlow,
+      type: 'small_deal',
+      description: deal.description
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    return { success: true };
+  }
+
+  /**
+   * Покупает крупную сделку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buyBigDeal(gameId, userId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Проверяем хватает ли денег на первоначальный взнос
+    if (player.cash < deal.downPayment) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
+    const monthlyPayment = Math.floor(deal.cost * 0.0001); // 0.01%
+    const loanAmount = deal.cost - deal.downPayment;
+
+    // Списываем первоначальный взнос
+    const newCash = player.cash - deal.downPayment;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+    );
+
+    // Добавляем актив
+    const asset = {
+      title: deal.title,
+      cost: deal.cost,
+      cashFlow: deal.cashFlow,
+      type: 'big_deal',
+      description: deal.description
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    // Добавляем кредит
+    const liability = {
+      title: deal.title,
+      cost: deal.cost,
+      downPayment: deal.downPayment,
+      loanAmount: loanAmount,
+      monthlyPayment: monthlyPayment,
+      type: 'big_deal_loan'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, liability);
+
+    return { success: true };
+  }
 }
 
 module.exports = GameService;

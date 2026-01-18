@@ -69,10 +69,43 @@ const charityKeyboard = {
   ]
 };
 
+/**
+ * Клавиатура выбора типа сделки
+ */
+const dealTypeKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '💼 Мелкая сделка', callback_data: 'small_deal' }
+    ],
+    [
+      { text: '🏢 Крупная сделка', callback_data: 'big_deal' }
+    ]
+  ]
+};
+
+/**
+ * Клавиатура действий с карточкой сделки
+ */
+const dealKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '💰 Купить', callback_data: 'buy_deal' }
+    ],
+    [
+      { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
+    ],
+    [
+      { text: '👥 Предложить игроку', callback_data: 'offer_deal' },
+    ]
+  ]
+};
+
 module.exports = {
   welcomeKeyboard,
   endGameVoteKeyboard,
   waitingRoomKeyboard,
   gameKeyboard,
-  charityKeyboard
+  charityKeyboard,
+  dealTypeKeyboard,
+  dealKeyboard
 };

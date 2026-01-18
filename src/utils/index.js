@@ -1,14 +1,19 @@
 /**
  * Форматирует число с разделителями разрядов или краткими формами
  * @param {number} num - Число для форматирования
- * @returns {string} Отформатированное число
+ * @returns {string} Отформатированное число с ₽
  */
 function formatNumber(num) {
-  if (num % 1000000 === 0 && num >= 1000000) {
-    return (num / 1000000) + ' млн';
+  if (num >= 1000000) {
+    // Для миллионов: показываем с десятичными
+    const millions = (num / 1000000).toFixed(1);
+    return millions + ' млн';
   } else if (num % 1000 === 0 && num >= 1000) {
-    return (num / 1000) + ' тыс';
+    // Для круглых тысяч: показываем как "X тыс ₽"
+    const thousands = num / 1000;
+    return thousands + ' тыс';
   } else {
+    // Для остальных чисел: показываем с пробелами и "₽"
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 }

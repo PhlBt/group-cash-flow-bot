@@ -74,7 +74,9 @@ class DatabaseService {
       totalIncome: profession.salary,
       totalExpenses: profession.expenses,
       cashFlow: profession.salary - profession.expenses,
+      assets: [], // массив активов
       assetsCount: 0,
+      liabilities: [], // массив пассивов/кредитов
       liabilitiesCount: 0,
       loansCount: 0,
       totalLoans: 0,
@@ -140,7 +142,9 @@ class DatabaseService {
       totalIncome: profession.salary,
       totalExpenses: profession.expenses,
       cashFlow: profession.salary - profession.expenses,
+      assets: [], // массив активов
       assetsCount: 0,
+      liabilities: [], // массив пассивов/кредитов
       liabilitiesCount: 0,
       loansCount: 0,
       totalLoans: 0,
@@ -483,6 +487,94 @@ class DatabaseService {
     );
 
     return { success: true, nextPlayerIndex };
+  }
+
+  /**
+   * Добавляет актив игроку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} asset - Объект актива (title, cost, cashFlow, type)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async addAsset(gameId, userId, asset) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const newAssets = [...player.assets, asset];
+    const newAssetsCount = newAssets.length;
+    const newPassiveIncome = player.passiveIncome + asset.cashFlow;
+
+    await gamesCollection.updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.assets`]: newAssets,
+          [`players.${playerIndex}.assetsCount`]: newAssetsCount,
+          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+          [`players.${playerIndex}.totalIncome`]: player.salary + newPassiveIncome,
+          [`players.${playerIndex}.cashFlow`]: player.salary + newPassiveIncome - player.totalExpenses
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Добавляет пассив (кредит) игроку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} liability - Объект пассива (title, cost, downPayment, loanAmount, monthlyPayment)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async addLiability(gameId, userId, liability) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const newLiabilities = [...player.liabilities, liability];
+    const newLiabilitiesCount = newLiabilities.length;
+    const newLoansCount = player.loansCount + 1;
+    const newTotalLoans = player.totalLoans + liability.loanAmount;
+    const newTotalLoanPayments = player.totalLoanPayments + liability.monthlyPayment;
+    const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
+    const newCashFlow = player.salary + player.passiveIncome - newTotalExpenses;
+
+    await gamesCollection.updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.liabilities`]: newLiabilities,
+          [`players.${playerIndex}.liabilitiesCount`]: newLiabilitiesCount,
+          [`players.${playerIndex}.loansCount`]: newLoansCount,
+          [`players.${playerIndex}.totalLoans`]: newTotalLoans,
+          [`players.${playerIndex}.totalLoanPayments`]: newTotalLoanPayments,
+          [`players.${playerIndex}.totalExpenses`]: newTotalExpenses,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow
+        }
+      }
+    );
+
+    return { success: true };
   }
 
   /**

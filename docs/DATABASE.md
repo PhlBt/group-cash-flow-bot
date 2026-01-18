@@ -75,7 +75,9 @@ DatabaseService - это класс, отвечающий за все взаим
       totalIncome: number, // Общий доход
       totalExpenses: number, // Общие расходы
       cashFlow: number, // Денежный поток
+      assets: Array, // Массив активов игрока
       assetsCount: number, // Количество активов
+      liabilities: Array, // Массив пассивов/кредитов игрока
       liabilitiesCount: number, // Количество пассивов
       loansCount: number, // Количество кредитов
       totalLoans: number, // Общая сумма кредитов
@@ -254,6 +256,32 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Функционал**:
   - Вычисляет следующий индекс игрока (currentPlayerIndex + 1) % players.length
   - Обновляет currentPlayerIndex в документе игры
+
+### addAsset(gameId, userId, asset)
+- **Назначение**: Добавляет актив игроку
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `asset` (Object): Объект актива {title, cost, cashFlow, type, description}
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Находит игрока по userId в массиве players
+  - Добавляет актив в массив assets
+  - Увеличивает assetsCount
+  - Пересчитывает passiveIncome, totalIncome и cashFlow
+
+### addLiability(gameId, userId, liability)
+- **Назначение**: Добавляет пассив (кредит) игроку
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `liability` (Object): Объект пассива {title, cost, downPayment, loanAmount, monthlyPayment, type}
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Находит игрока по userId в массиве players
+  - Добавляет пассив в массив liabilities
+  - Увеличивает liabilitiesCount и loansCount
+  - Пересчитывает totalLoans, totalLoanPayments, totalExpenses и cashFlow
 
 ## Бизнес-правила и проверки
 
