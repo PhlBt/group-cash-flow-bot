@@ -403,16 +403,6 @@ const PROFESSIONS = [
   }
 ];
 
-function getRandomProfession() {
-  return PROFESSIONS[Math.floor(Math.random() * PROFESSIONS.length)];
-}
+const getRandomProfession = () => PROFESSIONS[Math.floor(Math.random() * PROFESSIONS.length)]
 
-function getAllProfessions() {
-  return PROFESSIONS;
-}
-
-module.exports = {
-  PROFESSIONS,
-  getRandomProfession,
-  getAllProfessions
-};
+module.exports = { getRandomProfession }
