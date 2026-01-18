@@ -202,11 +202,12 @@ GameService - это класс, реализующий паттерн Фаса�
 - **Параметры**:
   - `gameId` (string): ID игры
   - `userId` (string): ID игрока
-  - `deal` (Object): Объект сделки
+  - `deal` (Object): Объект сделки с полями cost, passiveIncome, title, description
 - **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
 - **Функционал**:
-  - Проверяет достаточность средств игрока (player.cash >= deal.cost)
-  - Списывает полную стоимость с баланса игрока
+  - Проверяет достаточность средств игрока (player.cash >= deal.cost, если cost указан)
+  - Списывает полную стоимость с баланса игрока (если cost указан)
+  - Использует passiveIncome или cashFlow как значение денежного потока для актива
   - Добавляет актив через databaseService.addAsset()
   - Возвращает ошибку 'insufficient_funds' при недостатке средств
 

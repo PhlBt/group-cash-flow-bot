@@ -438,8 +438,9 @@ async function handleDealType(query, dealType, services) {
     await messageService.deleteMessage(chatId, query.message.message_id);
 
     // Сгенерировать сделку
-    const { generateSmallDeal, generateBigDeal } = require('./game/deals');
-    const deal = dealType === 'small' ? generateSmallDeal() : generateBigDeal();
+    const { getRandomSmallDeal } = require('./game/cards/smallDeals');
+    const { generateBigDeal } = require('./game/deals');
+    const deal = dealType === 'small' ? getRandomSmallDeal() : generateBigDeal();
 
     // Сохранить сделку в состоянии игры
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);

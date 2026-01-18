@@ -340,10 +340,11 @@ class GameService {
     );
 
     // Добавляем актив
+    const income = deal.passiveIncome || deal.cashFlow || 0;
     const asset = {
       title: deal.title,
       cost: deal.cost,
-      cashFlow: deal.cashFlow,
+      cashFlow: income,
       type: 'small_deal',
       description: deal.description
     };

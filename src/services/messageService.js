@@ -541,20 +541,47 @@ CashFlow - настольная игра о финансовом планиро�
   async sendDealCardMessage(chatId, deal, player) {
     let message = `💼 **${deal.title}**\n\n`;
     message += `📝 ${deal.description}\n\n`;
-    message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
-    message += `💵 Денежный поток: ${formatNumber(deal.cashFlow)} ₽/месяц\n`;
+
+    if (deal.cost) {
+      message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
+    }
+
+    // Показать денежный поток (cashFlow или passiveIncome)
+    const income = deal.passiveIncome || deal.cashFlow;
+    if (income !== undefined) {
+      message += `💵 Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
+    }
+
+    if (deal.roi) {
+      message += `📈 Доходность: ${deal.roi}\n`;
+    }
+
+    if (deal.sellRange) {
+      message += `📊 Диапазон продажи: ${deal.sellRange}\n`;
+    }
+
+    if (deal.range) {
+      message += `📊 Диапазон цен: ${deal.range}\n`;
+    }
+
+    if (deal.downPayment) {
+      message += `🏦 Первоначальный взнос: ${formatNumber(deal.downPayment)} ₽\n`;
+    }
+
+    if (deal.mortgage) {
+      message += `🏠 Ипотека: ${formatNumber(deal.mortgage)} ₽\n`;
+    }
+
     message += `💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n`;
 
     // Стоимость кредитной карты (2% от стоимости)
-    const creditCardCost = Math.floor(deal.cost * 0.02);
+    if (deal.cost) {
+      const creditCardCost = Math.floor(deal.cost * 0.02);
+      message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
+    }
 
     if (deal.type === 'big') {
-      message += `\n🏦 Первоначальный взнос: ${formatNumber(deal.downPayment)} ₽\n`;
-      message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
-      message += `💳 Ипотека: ${formatNumber(deal.cost - deal.downPayment)} ₽\n`;
       message += `📊 Ежемесячный платеж: ${formatNumber(Math.floor(deal.cost * 0.01))} ₽\n`;
-    } else {
-      message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
     }
 
     message += `\nЧто вы хотите сделать?`;
@@ -578,7 +605,13 @@ CashFlow - настольная игра о финансовом планиро�
     let message = `💼 **${deal.title}**\n\n`;
     message += `📝 ${deal.description}\n\n`;
     message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
-    message += `💵 Денежный поток: ${formatNumber(deal.cashFlow)} ₽/месяц\n`;
+
+    // Показать денежный поток (cashFlow или passiveIncome)
+    const income = deal.passiveIncome || deal.cashFlow;
+    if (income !== undefined) {
+      message += `💵 Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
+    }
+
     message += `💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
 
     // Стоимость кредитной карты (2% от стоимости)

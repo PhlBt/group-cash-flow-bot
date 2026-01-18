@@ -137,7 +137,9 @@ Handlers - модуль функций-обработчиков команд Tel
 - **Функционал**:
   - Проверяет, что пользователь - текущий игрок
   - Удаляет сообщение с выбором типа сделки
-  - Генерирует случайную сделку выбранного типа
+  - Для мелких сделок: вызывает getRandomSmallDeal() из src/game/cards/smallDeals.js
+  - Для крупных сделок: вызывает generateBigDeal() из src/game/deals.js
+  - Сохраняет текущую сделку в состоянии игры
   - Отправляет карточку сделки через messageService.sendDealCardMessage()
 
 ### handleBuyDeal(query, services)

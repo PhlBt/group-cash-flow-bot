@@ -1,5 +1,5 @@
 const { MongoClient } = require('mongodb');
-const { getRandomProfession } = require('../cards/professions');
+const { getRandomProfession } = require('../game/cards/professions');
 
 /**
  * Сервис для работы с MongoDB
