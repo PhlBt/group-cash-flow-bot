@@ -24,7 +24,8 @@
   cost: number,                // Стоимость в рублях
   cashFlow: number,            // Месячный денежный поток в рублях
   description: "string",       // Описание сделки
-  downPayment?: number         // Первоначальный взнос (только для big deals, 20% от стоимости)
+  downPayment?: number,        // Первоначальный взнос (только для big deals, 20% от стоимости)
+  apartments?: number          // Количество квартир (только для многоквартирных домов в big deals)
 }
 ```
 

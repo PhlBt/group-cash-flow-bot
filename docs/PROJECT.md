@@ -22,7 +22,12 @@ cashFlow/
 │   ├── main.js                 # Главный файл приложения, точка входа
 │   ├── game/
 │   │   ├── board.js            # Определение игрового поля и типов полей
-│   │   └── professions.js      # Профессии игроков с начальными данными
+│   │   ├── professions.js      # Профессии игроков с начальными данными
+│   │   └── cards/
+│   │       ├── bigDeals.js     # Массив крупных сделок (большие активы)
+│   │       ├── smallDeals.js   # Массив мелких сделок (малые активы)
+│   │       ├── markets.js      # Рыночные карты
+│   │       └── miscellaneous.js # Разные карты
 │   ├── services/
 │   │   ├── databaseService.js  # Сервис для работы с MongoDB
 │   │   ├── gameService.js      # Сервис для логики игры (фасад для DatabaseService)
