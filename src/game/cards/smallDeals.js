@@ -520,6 +520,7 @@ const smallDeals = [
     "group_Id": "gr04us",
     "cost": 300,
     "range": "300 ₽ - 900 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {
@@ -566,6 +567,7 @@ const smallDeals = [
     "group_Id": "gr04us",
     "cost": 600,
     "range": "300 ₽ - 900 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {
@@ -576,6 +578,7 @@ const smallDeals = [
     "group_Id": "gr04us",
     "cost": 900,
     "range": "300 ₽ - 900 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {

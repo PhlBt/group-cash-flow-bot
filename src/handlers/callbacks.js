@@ -1,0 +1,315 @@
+const { formatNumber } = require('../utils');
+const { FIELD_TYPES } = require('../game/board');
+
+// Импорт функций из других модулей
+const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard, handleChangeQuantity, handleSellStocks, handlePayExpenses } = require('./deals');
+const { handleProfile, handleStats, handleAssets, handleCredits } = require('./profile');
+
+/**
+ * Обрабатывает бросок кубика
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} diceCount - Количество кубиков (1 или 2)
+ * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
+ */
+async function handleRollDice(query, diceCount, services) {
+  const { gameService, messageService, bot } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  // Удалить сообщение с кнопкой "Бросить кубик"
+  await messageService.deleteMessage(chatId, query.message.message_id);
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Бросить кубик(и)
+    const steps = gameService.rollDice(diceCount);
+
+    // Переместить игрока
+    const moveResult = await gameService.movePlayer(game.gameId, userId, steps);
+    if (!moveResult.success) {
+      await messageService.sendErrorMessage(chatId, 'Ошибка перемещения: ' + moveResult.error);
+      return;
+    }
+
+    // Проверить тип поля
+    if (moveResult.fieldType === FIELD_TYPES.DEAL) {
+      // Игрок попал на поле "Сделки" - показать комбинированное сообщение
+      await messageService.sendCombinedRollMoveDealMessage(
+        chatId,
+        currentPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || []
+      );
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Для поля DEAL не передаем ход следующему игроку - ждем выбора типа сделки
+    } else {
+      // Обычное поле - отправить стандартное сообщение и передать ход
+      await messageService.sendCombinedRollMovePaydayMessage(
+        chatId,
+        currentPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.fieldType,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || []
+      );
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // TODO: Обработать другие события на поле (финансовые изменения, эффекты)
+
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        // Отправить сообщение следующему игроку
+        const nextPlayerChatId = nextTurnResult.nextPlayer.userId; // Предполагаем, что chatId совпадает с userId для личных сообщений
+        // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in handleRollDice:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при броске кубика.');
+  }
+}
+
+/**
+ * Обрабатывает callback_query от inline кнопок
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
+ */
+async function handleCallbackQuery(query, services) {
+  const { gameService, messageService, bot } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const username = query.from.first_name || query.from.username || 'игрок';
+  const data = query.data;
+
+  // Подтверждаем получение callback
+  await bot.answerCallbackQuery(query.id);
+
+  try {
+    switch (data) {
+      case 'play':
+
+        // Проверить наличие активной игры для чата
+        const existingGame = await gameService.getActiveGameByChatId(chatId);
+        if (existingGame) {
+          // Присоединиться к существующей игре
+          const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
+          if (joinResult.success) {
+            // Удалить сообщение с кнопками
+            await messageService.deleteMessage(chatId, query.message.message_id);
+            // Отправить карточку игрока
+            await messageService.sendPlayerCard(chatId, joinResult.player);
+
+            // Удалить старое сообщение комнаты ожидания и отправить новое
+            if (existingGame.waitingMessageId) {
+              await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
+            }
+            const updatedGame = await gameService.getGame(existingGame.gameId);
+            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+            await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
+          } else {
+            await messageService.sendJoinErrorMessage(chatId, joinResult.error);
+          }
+        } else {
+          // Удалить сообщение с кнопками
+          await messageService.deleteMessage(chatId, query.message.message_id);
+
+          // Создать новую игру для чата
+          const gameId = await gameService.createGame(chatId, userId, username);
+
+          // Отправить карточку игрока создателю
+          const game = await gameService.getGame(gameId);
+          const player = game.players.find(p => p.userId === userId);
+          if (player) {
+            await messageService.sendPlayerCard(chatId, player);
+          }
+
+          // Отправить сообщение комнаты ожидания
+          const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
+          await gameService.setWaitingMessageId(gameId, messageId);
+        }
+        break;
+
+      case 'start_game':
+        // Найти активную игру в чате
+        const gameToStart = await gameService.getActiveGameByChatId(chatId);
+        if (gameToStart && gameToStart.creatorId === userId) {
+          const startResult = await gameService.startGame(userId, gameToStart.gameId);
+          if (startResult.success) {
+            // Удалить сообщение с кнопками
+            await messageService.deleteMessage(chatId, query.message.message_id);
+
+            // Начать игру - отправить ход первому игроку
+            const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
+            if (firstPlayer) {
+              await messageService.sendPlayerTurnMessage(chatId, firstPlayer);
+            }
+          } else {
+            await messageService.sendPlayErrorMessage(chatId, startResult.error);
+          }
+        } else {
+          await messageService.sendPlayErrorMessage(chatId, 'not_creator');
+        }
+        break;
+
+      case 'rules':
+        // Показать правила
+        await messageService.sendRulesMessage(chatId);
+        break;
+
+      case 'help':
+        // Показать помощь
+        await messageService.sendHelpMessage(chatId);
+        break;
+
+      case 'roll_dice':
+        // Бросок 1 кубика (обычный режим)
+        await handleRollDice(query, 1, services);
+        break;
+
+      case 'roll_dice_1':
+        // Бросок 1 кубика (режим благотворительности)
+        await handleRollDice(query, 1, services);
+        break;
+
+      case 'roll_dice_2':
+        // Бросок 2 кубиков (режим благотворительности)
+        await handleRollDice(query, 2, services);
+        break;
+
+      case 'end_game_vote':
+        // Обработать голос за окончание игры
+        const commands = require('./commands');
+        await commands.handleEndGameVote(query, services);
+        break;
+
+      case 'small_deal':
+        // Выбор мелкой сделки
+        await handleDealType(query, 'small', services);
+        break;
+
+      case 'big_deal':
+        // Выбор крупной сделки
+        await handleDealType(query, 'big', services);
+        break;
+
+      case 'buy_deal':
+        // Покупка сделки
+        await handleBuyDeal(query, services);
+        break;
+
+      case 'offer_deal':
+        // Предложить сделку игроку (заглушка)
+        await messageService.sendErrorMessage(chatId, 'Функция "Предложить игроку" пока не реализована.');
+        break;
+
+      case 'skip_deal':
+        // Пропустить сделку
+        await handleSkipDeal(query, services);
+        break;
+
+      case 'buy_deal_credit_card':
+        // Покупка сделки кредиткой
+        await handleBuyDealWithCreditCard(query, services);
+        break;
+
+      case 'increase_quantity_1':
+        // Увеличить количество на 1
+        await handleChangeQuantity(query, 1, services);
+        break;
+
+      case 'decrease_quantity_1':
+        // Уменьшить количество на 1
+        await handleChangeQuantity(query, -1, services);
+        break;
+
+      case 'increase_quantity_10':
+        // Увеличить количество на 10
+        await handleChangeQuantity(query, 10, services);
+        break;
+
+      case 'decrease_quantity_10':
+        // Уменьшить количество на 10
+        await handleChangeQuantity(query, -10, services);
+        break;
+
+      case 'decrease_quantity_100':
+        // Уменьшить количество на 100
+        await handleChangeQuantity(query, -100, services);
+        break;
+
+      case 'increase_quantity_100':
+        // Увеличить количество на 100
+        await handleChangeQuantity(query, 100, services);
+        break;
+
+      case 'sell_stocks':
+        // Продажа акций
+        await handleSellStocks(query, services);
+        break;
+
+      case 'pay_expenses':
+        // Оплата расходов
+        await handlePayExpenses(query, services);
+        break;
+
+      case 'profile':
+        // Показать профиль игрока
+        await handleProfile(query, services);
+        break;
+
+      case 'stats':
+        // Показать статистику игры
+        await handleStats(query, services);
+        break;
+
+      case 'assets':
+        // Показать активы игрока
+        await handleAssets(query, services);
+        break;
+
+      case 'credits':
+        // Показать кредиты игрока
+        await handleCredits(query, services);
+        break;
+
+      default:
+        console.warn('Unknown callback data:', data);
+    }
+  } catch (error) {
+    console.error('Error in handleCallbackQuery:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка. Попробуйте еще раз.');
+  }
+}
+
+module.exports = {
+  handleCallbackQuery,
+  handleRollDice
+};

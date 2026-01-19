@@ -656,6 +656,44 @@ class DatabaseService {
   }
 
   /**
+   * Обновляет финансовые поля игрока после изменений активов/пассивов
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} updates - объект с обновлениями { assets, assetsCount, passiveIncome, totalExpenses, cashFlow }
+   */
+  async updatePlayerFinancialFields(gameId, userId, updates) {
+    const gamesCollection = this.getCollection('games');
+
+    // Найти индекс игрока
+    const game = await gamesCollection.findOne({ gameId });
+    if (!game) return { success: false, error: 'game_not_found' };
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) return { success: false, error: 'player_not_found' };
+
+    const player = game.players[playerIndex];
+
+    // Подготовить обновления
+    const setUpdates = {};
+    Object.keys(updates).forEach(key => {
+      setUpdates[`players.${playerIndex}.${key}`] = updates[key];
+    });
+
+    // Пересчитать производные поля
+    if (updates.passiveIncome !== undefined || updates.totalExpenses !== undefined) {
+      const newPassiveIncome = updates.passiveIncome ?? player.passiveIncome;
+      const newTotalExpenses = updates.totalExpenses ?? player.totalExpenses;
+
+      setUpdates[`players.${playerIndex}.totalIncome`] = player.salary + newPassiveIncome;
+      setUpdates[`players.${playerIndex}.cashFlow`] = player.salary + newPassiveIncome - newTotalExpenses;
+    }
+
+    await gamesCollection.updateOne({ gameId }, { $set: setUpdates });
+
+    return { success: true };
+  }
+
+  /**
    * Закрывает подключение к базе данных
    * @returns {Promise<void>}
    */

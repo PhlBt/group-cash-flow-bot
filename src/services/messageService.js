@@ -469,6 +469,41 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Рассчитывает суммарные выплаты и обновленный баланс
+   * @param {Array} paydayEvents - массив событий выплат
+   * @param {number} playerCash - текущий баланс игрока
+   * @returns {Object} { totalPayday, updatedCash }
+   */
+  calculatePaydaySummary(paydayEvents, playerCash) {
+    let totalPayday = 0;
+    let updatedCash = playerCash;
+
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+    }
+
+    return { totalPayday, updatedCash };
+  }
+
+  /**
+   * Форматирует финансовую статистику игрока
+   * @param {Object} player - объект игрока
+   * @param {number} cash - опциональный баланс (если отличается от player.cash)
+   * @returns {string} отформатированная строка
+   */
+  formatPlayerStats(player, cash = null) {
+    const currentCash = cash !== null ? cash : player.cash;
+
+    return `💰 Баланс: ${formatNumber(currentCash)} ₽\n` +
+           `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n` +
+           `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n` +
+           `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
+  }
+
+  /**
    * Возвращает эмодзи для грани кубика
    * @param {number} value - Значение грани (1-6)
    * @returns {string} Эмодзи
@@ -723,10 +758,10 @@ CashFlow - настольная игра о финансовом планиро�
     // Показать денежный поток (cashFlow или passiveIncome)
     const income = deal.passiveIncome || deal.cashFlow;
     if (income !== undefined) {
-      message += `� Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
+      message += `💵 Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
     }
 
-    message += `� Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
+    message += `💰 Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
 
     // Стоимость кредитной карты (2% от стоимости)
     const monthlyPayment = Math.floor(deal.cost * 0.02);
@@ -741,6 +776,63 @@ CashFlow - настольная игра о финансовом планиро�
     });
 
     return sentMessage.message_id;
+  }
+
+  /**
+   * Отправляет сообщение с активами игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   */
+  async sendPlayerAssetsMessage(chatId, player) {
+    let message = `🏠 АКТИВЫ ${player.username}\n\n`;
+
+    if (player.assets && player.assets.length > 0) {
+      player.assets.forEach((asset, index) => {
+        message += `${index + 1}. ${asset.title}\n`;
+        message += `   💰 Стоимость: ${formatNumber(asset.cost)} ₽\n`;
+        if (asset.quantity && asset.quantity > 1) {
+          message += `   🔢 Количество: ${asset.quantity}\n`;
+        }
+        if (asset.cashFlow) {
+          message += `   💵 Доход: ${formatNumber(asset.cashFlow)} ₽/мес\n`;
+        }
+        message += `\n`;
+      });
+      message += `📊 Всего активов: ${player.assetsCount}`;
+    } else {
+      message += `У вас пока нет активов.`;
+    }
+
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение с кредитами игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   */
+  async sendPlayerCreditsMessage(chatId, player) {
+    let message = `💳 КРЕДИТЫ ${player.username}\n\n`;
+
+    if (player.loansCount && player.loansCount > 0) {
+      message += `📊 Количество кредитов: ${player.loansCount}\n`;
+      message += `💰 Общая сумма: ${formatNumber(player.totalLoans)} ₽\n`;
+      message += `📉 Ежемесячные платежи: ${formatNumber(player.totalLoanPayments)} ₽/мес\n\n`;
+
+      if (player.liabilities && player.liabilities.length > 0) {
+        message += `Подробности:\n`;
+        player.liabilities.forEach((liability, index) => {
+          message += `${index + 1}. ${liability.title}\n`;
+          message += `   💰 Сумма: ${formatNumber(liability.amount)} ₽\n`;
+          message += `   📊 Платеж: ${formatNumber(liability.payment)} ₽/месяц\n`;
+          message += `\n`;
+        });
+      }
+    } else {
+      message += `У вас нет кредитов.`;
+    }
+
+    await this.bot.sendMessage(chatId, message);
   }
 }
 

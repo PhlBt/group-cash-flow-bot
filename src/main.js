@@ -3,7 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const DatabaseService = require('./services/databaseService');
 const MessageService = require('./services/messageService');
 const GameService = require('./services/gameService');
-const handlers = require('./handlers');
+const handlers = require('./handlers/index');
 
 // Загрузка переменных окружения
 const BOT_TOKEN = process.env.BOT_TOKEN;
