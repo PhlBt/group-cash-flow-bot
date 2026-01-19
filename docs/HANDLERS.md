@@ -1,5 +1,11 @@
 # Handlers - Обработчики команд
 
+## Последние изменения
+
+### Версия [текущая]
+- **Изменение текста кнопки в waitingRoomKeyboard**: Кнопка "🎮 Играть!" заменена на "🎮 Присоединиться к игре"
+- **Изменение логики комнаты ожидания**: При присоединении нового игрока к игре теперь всегда удаляется старое сообщение комнаты ожидания и отправляется новое, вместо обновления существующего сообщения
+
 ## Назначение и архитектура модуля
 
 Handlers - модуль функций-обработчиков команд Telegram бота, разделенный на специализированные файлы для лучшей поддерживаемости. Отвечает за:
@@ -124,7 +130,7 @@ Handlers - модуль функций-обработчиков команд Tel
   - Извлекает chatId, userId из query, data из query.data
   - Подтверждает получение callback с bot.answerCallbackQuery()
   - В зависимости от data:
-    - 'play': Удаляет сообщение с кнопками через messageService.deleteMessage(). Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), отправляет карточку игрока через messageService.sendPlayerCard(), удаляет старое сообщение комнаты ожидания (если есть) и отправляет новое через messageService.sendWaitingRoomMessage(), сохраняет ID через gameService.setWaitingMessageId(). Иначе создает новую игру через gameService.createGame(), отправляет карточку игрока создателю через messageService.sendPlayerCard(), отправляет сообщение комнаты ожидания через messageService.sendWaitingRoomMessage() и сохраняет ID через gameService.setWaitingMessageId()
+    - 'play': Удаляет сообщение с кнопками через messageService.deleteMessage(). Проверяет наличие активной игры для chatId через gameService.getActiveGameByChatId(). Если есть - присоединяет пользователя через gameService.joinGame(), отправляет карточку игрока через messageService.sendPlayerCard(), удаляет старое сообщение комнаты ожидания (если есть) через messageService.deleteMessage() и отправляет новое через messageService.sendWaitingRoomMessage(), сохраняет ID через gameService.setWaitingMessageId(). Иначе создает новую игру через gameService.createGame(), отправляет карточку игрока создателю через messageService.sendPlayerCard(), отправляет сообщение комнаты ожидания через messageService.sendWaitingRoomMessage() и сохраняет ID через gameService.setWaitingMessageId()
     - 'start_game': Находит активную игру в чате через gameService.getActiveGameByChatId(), проверяет, что пользователь является создателем, удаляет сообщение с кнопками через messageService.deleteMessage(), вызывает gameService.startGame(), в случае успеха начинает игру с первого игрока через messageService.sendPlayerTurnMessage()
     - 'rules': Отправляет правила через messageService.sendRulesMessage()
     - 'help': Отправляет справку через messageService.sendHelpMessage()

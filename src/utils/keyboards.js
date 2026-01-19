@@ -34,7 +34,7 @@ const endGameVoteKeyboard = {
 const waitingRoomKeyboard = {
   inline_keyboard: [
     [
-      { text: '🎮 Играть!', callback_data: 'play' }
+      { text: '🎮 Присоединиться к игре', callback_data: 'play' }
     ],
     [
       { text: '📋 Правила игры', callback_data: 'rules' },

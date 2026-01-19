@@ -142,14 +142,13 @@ async function handleCallbackQuery(query, services) {
             // Отправить карточку игрока
             await messageService.sendPlayerCard(chatId, joinResult.player);
 
-            // Обновить сообщение комнаты ожидания или отправить новое
+            // Удалить старое сообщение комнаты ожидания и отправить новое
             const updatedGame = await gameService.getGame(existingGame.gameId);
             if (existingGame.waitingMessageId) {
-              await messageService.updateWaitingRoomMessage(chatId, existingGame.waitingMessageId, updatedGame);
-            } else {
-              const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
-              await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
+              await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
             }
+            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+            await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
           } else {
             await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
