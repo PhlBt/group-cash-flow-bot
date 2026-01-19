@@ -89,9 +89,9 @@ async function handleEndGame(msg, services) {
   const userId = msg.from.id;
 
   try {
-    // Найти незавершенную игру пользователя
+    // Найти незавершенную игру пользователя в текущем чате
     const userGames = await gameService.getUserGames(userId);
-    const game = userGames.find(game => game.status !== 'finished');
+    const game = userGames.find(game => game.status !== 'finished' && game.chatId === chatId);
 
     if (!game) {
       await messageService.sendEndGameErrorMessage(chatId, 'not_active');
