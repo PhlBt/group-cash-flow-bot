@@ -505,4 +505,4 @@ const bigDeals = [
 
 const getRandomBigDeal = () => bigDeals[Math.floor(Math.random() * bigDeals.length)]
 
-module.exports = { getRandomBigDeal }
+module.exports = { bigDeals, getRandomBigDeal }

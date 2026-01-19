@@ -867,6 +867,50 @@ class DatabaseService {
   }
 
   /**
+   * Устанавливает использованные ID больших сделок
+   * @param {string} gameId - ID игры
+   * @param {Array} usedIds - Массив использованных ID
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setUsedBigDealIds(gameId, usedIds) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { usedBigDealIds: usedIds } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает использованные ID малых сделок
+   * @param {string} gameId - ID игры
+   * @param {Array} usedIds - Массив использованных ID
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setUsedSmallDealIds(gameId, usedIds) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { usedSmallDealIds: usedIds } }
+    );
+
+    return { success: true };
+  }
+
+  /**
    * Закрывает подключение к базе данных
    * @returns {Promise<void>}
    */

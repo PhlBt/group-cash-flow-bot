@@ -37,9 +37,53 @@ async function handleDealType(query, dealType, services) {
     }
 
     // Сгенерировать сделку
-    const { getRandomSmallDeal } = require('../game/cards/smallDeals');
-    const { getRandomBigDeal } = require('../game/cards/bigDeals');
-    const deal = dealType === 'small' ? getRandomSmallDeal() : getRandomBigDeal();
+    const { smallDeals } = require('../game/cards/smallDeals');
+    const { bigDeals } = require('../game/cards/bigDeals');
+
+    let deal;
+    try {
+      if (dealType === 'small') {
+        const usedIds = game.usedSmallDealIds || [];
+        const available = smallDeals.filter(deal => !usedIds.includes(deal.id));
+        if (available.length === 0) {
+          throw new Error('Last small deal issued');
+        }
+        const index = Math.floor(Math.random() * available.length);
+        deal = available[index];
+        usedIds.push(deal.id);
+        await gameService.databaseService.setUsedSmallDealIds(game.gameId, usedIds);
+      } else {
+        const usedIds = game.usedBigDealIds || [];
+        const available = bigDeals.filter(deal => !usedIds.includes(deal.id));
+        if (available.length === 0) {
+          throw new Error('Last big deal issued');
+        }
+        const index = Math.floor(Math.random() * available.length);
+        deal = available[index];
+        usedIds.push(deal.id);
+        await gameService.databaseService.setUsedBigDealIds(game.gameId, usedIds);
+      }
+    } catch (error) {
+      if (error.message === 'Last small deal issued') {
+        const usedIds = [];
+        await gameService.databaseService.setUsedSmallDealIds(game.gameId, usedIds);
+        const available = smallDeals;
+        const index = Math.floor(Math.random() * available.length);
+        deal = available[index];
+        usedIds.push(deal.id);
+        await gameService.databaseService.setUsedSmallDealIds(game.gameId, usedIds);
+      } else if (error.message === 'Last big deal issued') {
+        const usedIds = [];
+        await gameService.databaseService.setUsedBigDealIds(game.gameId, usedIds);
+        const available = bigDeals;
+        const index = Math.floor(Math.random() * available.length);
+        deal = available[index];
+        usedIds.push(deal.id);
+        await gameService.databaseService.setUsedBigDealIds(game.gameId, usedIds);
+      } else {
+        throw error;
+      }
+    }
 
     // Сохранить сделку в состоянии игры
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);

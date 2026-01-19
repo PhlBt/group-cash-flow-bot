@@ -598,4 +598,4 @@ const smallDeals = [
 
 const getRandomSmallDeal = () => smallDeals[Math.floor(Math.random() * smallDeals.length)]
 
-module.exports = { getRandomSmallDeal }
+module.exports = { smallDeals, getRandomSmallDeal }

@@ -96,7 +96,9 @@ DatabaseService - это класс, отвечающий за все взаим
   finishedAt: Date, // Время завершения (опционально)
   endGameVotes: ["string"], // Массив ID пользователей, проголосовавших за окончание
   endGameMessageId: number, // ID сообщения голосования за окончание (опционально)
-  waitingMessageId: number // ID сообщения комнаты ожидания (опционально)
+  waitingMessageId: number, // ID сообщения комнаты ожидания (опционально)
+  usedBigDealIds: Array, // ID выданных крупных сделок
+  usedSmallDealIds: Array // ID выданных мелких сделок
 }
 ```
 
@@ -228,6 +230,24 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
 - **Функционал**:
   - Сохраняет ID сообщения комнаты ожидания для возможности его удаления
+
+### setUsedBigDealIds(gameId, usedIds)
+- **Назначение**: Устанавливает массив использованных ID крупных сделок
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `usedIds` (Array<string>): Массив использованных ID
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет массив ID выданных крупных сделок для предотвращения дубликатов
+
+### setUsedSmallDealIds(gameId, usedIds)
+- **Назначение**: Устанавливает массив использованных ID мелких сделок
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `usedIds` (Array<string>): Массив использованных ID
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет массив ID выданных мелких сделок для предотвращения дубликатов
 
 ### updatePlayerPosition(gameId, userId, newPosition, inFastTrack)
 - **Назначение**: Обновляет позицию игрока
