@@ -236,7 +236,7 @@ const smallDeals = [
   {
     "id": "small_deal_20",
     "type": "small",
-    "title": "Акции - MYT4U Electronics Co. (Увеличение 2 в раза)",
+    "title": "Акции - MYT4U Electronics Co.",
     "description": "Бизнес «поднимается», компания так хорошо работает, что капитал удваивается, и принято решение о разделении акций. Дивидендов нет. Никто не продает и не покупает.",
     "group_Id": "myt4u_electronics_co",
     "multiple": 2
@@ -320,7 +320,7 @@ const smallDeals = [
   {
     "id": "small_deal_28",
     "type": "small",
-    "title": "Акции - MYT4U Electronics Co. (Уменьшение 2 в раза)",
+    "title": "Акции - MYT4U Electronics Co.",
     "description": "Компания реорганизуется! Массивные потери из-за перерасхода бюджета и снижения спроса на бытовую электронику. Акционеры компании теряют 1/2 их прав собственности. Дивидендов нет. Никто не продает и не покупает.",
     "group_Id": "myt4u_electronics_co",
     "multiple": -2
@@ -442,7 +442,7 @@ const smallDeals = [
   {
     "id": "small_deal_40",
     "type": "small",
-    "title": "Акции - OK4U Drug Co. (Уменьшение в 2 раза)",
+    "title": "Акции - OK4U Drug Co.",
     "description": "Большой скандал и потери из-за некачественного лекарства выпущенного на рынок. Все акционеры теряют 1/2 собственности. Дивидендов нет. Никто не продает и не покупает.",
     "group_Id": "ok4u_drug_co",
     "multiple": -2
@@ -509,7 +509,7 @@ const smallDeals = [
   {
     "id": "small_deal_46",
     "type": "small",
-    "title": "Акции - OK4U Drug Co. (Увеличение в 2 раза)",
+    "title": "Акции - OK4U Drug Co.",
     "description": "Капитал удвоился. Дела идут так хорошо, что принято решение о разделении акций. Дивидендов нет. Никто не продает и не покупает.",
     "group_Id": "ok4u_drug_co",
     "multiple": 2

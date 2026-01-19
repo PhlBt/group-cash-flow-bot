@@ -45,7 +45,7 @@ async function handleDealType(query, dealType, services) {
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);
 
     // Инициализировать циркуляцию для anyCanBuySell
-    if (deal.anyCanBuySell && deal.group_Id) {
+    if (deal.anyCanBuySell) {
       await initializeDealCirculation(game.gameId, deal, services);
     }
 

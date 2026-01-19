@@ -153,6 +153,18 @@ CashFlow - настольная игра о финансовом планиро�
       }
     } catch (error) {
       if (error.code === 'ETELEGRAM' && error.response && error.response.statusCode === 429) {
+        // Блокируем чат при первой же 429 ошибке
+        if (attempt === 1) {
+          // Используем retry_after или baseDelay * backoffMultiplier
+          let blockDuration;
+          if (error.response.parameters && error.response.parameters.retry_after) {
+            blockDuration = error.response.parameters.retry_after * 1000; // retry_after в секундах
+          } else {
+            blockDuration = this.baseDelay * this.backoffMultiplier; // 10 * 2 = 20 секунд
+          }
+          this.rateLimiter.blockChat(chatId, blockDuration);
+        }
+
         if (attempt < this.maxRetries) {
           // Используем retry_after из ответа Telegram, если доступно
           let delay;

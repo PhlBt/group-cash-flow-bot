@@ -30,16 +30,16 @@ async function initializeDealCirculation(gameId, deal, services) {
   const { gameService } = services;
 
   const game = await gameService.getGame(gameId);
-  if (!game || !deal.group_Id) {
+  if (!game) {
     return;
   }
 
-  // Найти игроков с активами этой группы
-  const playersWithAssets = findPlayersWithGroupAssets(game, deal.group_Id);
+  // Создать массив всех игроков
+  const allPlayers = game.players.map(p => p.userId);
 
-  if (playersWithAssets.length > 0) {
+  if (allPlayers.length > 0) {
     // Установить список игроков для циркуляции
-    await gameService.databaseService.setDealCirculationPlayers(gameId, playersWithAssets);
+    await gameService.databaseService.setDealCirculationPlayers(gameId, allPlayers);
   }
 }
 

@@ -67,26 +67,46 @@ async function startBot() {
 
   // Обработчик команды /start
   bot.onText(/\/start/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /start ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
     await handlers.handleStart(msg, services);
   });
 
   // Обработчик команды /help
   bot.onText(/\/help/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /help ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
     await handlers.handleHelp(msg, services);
   });
 
   // Обработчик команды /profile
   bot.onText(/\/profile/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /profile ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
     await handlers.handleProfile(msg, services);
   });
 
   // Обработчик команды /endgame
   bot.onText(/\/endgame/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /endgame ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
     await handlers.handleEndGame(msg, services);
   });
 
   // Обработчик callback_query от inline кнопок
   bot.on('callback_query', async (query) => {
+    if (messageService.rateLimiter.isRateLimited(query.message.chat.id)) {
+      console.log(`Callback query ignored for chat ${query.message.chat.id} due to rate limit`);
+      return;
+    }
     await handlers.handleCallbackQuery(query, services);
   });
 

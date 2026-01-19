@@ -20,6 +20,9 @@ class RateLimiter {
     // chatId -> { limiter: Bottleneck, lastUsed: timestamp }
     this.chatLimiters = new Map();
 
+    // Карта заблокированных чатов: chatId -> timestamp окончания блокировки
+    this.blockedChats = new Map();
+
     // Очистка неиспользуемых лимитеров чатов каждые 5 минут
     this.cleanupInterval = setInterval(() => {
       this.cleanupUnusedLimiters();
@@ -65,17 +68,26 @@ class RateLimiter {
   }
 
   /**
-   * Очистить неиспользуемые лимитеры чатов
+   * Очистить неиспользуемые лимитеры чатов и истекшие блокировки
    * Удаляет лимитеры, которые не использовались более 10 минут
+   * Удаляет истекшие блокировки чатов
    */
   cleanupUnusedLimiters() {
     const now = Date.now();
     const maxAge = 10 * 60 * 1000; // 10 минут
 
+    // Очистка лимитеров
     for (const [chatId, entry] of this.chatLimiters.entries()) {
       if (now - entry.lastUsed > maxAge) {
         entry.limiter.stop();
         this.chatLimiters.delete(chatId);
+      }
+    }
+
+    // Очистка истекших блокировок
+    for (const [chatId, unblockTime] of this.blockedChats.entries()) {
+      if (now >= unblockTime) {
+        this.blockedChats.delete(chatId);
       }
     }
   }
@@ -95,6 +107,69 @@ class RateLimiter {
       entry.limiter.stop();
     }
     this.chatLimiters.clear();
+  }
+
+  /**
+   * Заблокировать чат на указанное время
+   * @param {number|string} chatId - ID чата
+   * @param {number} duration - Длительность блокировки в миллисекундах
+   */
+  blockChat(chatId, duration) {
+    const unblockTime = Date.now() + duration;
+    this.blockedChats.set(chatId, unblockTime);
+    console.log(`Chat ${chatId} blocked for ${duration}ms due to rate limit`);
+  }
+
+  /**
+   * Разблокировать чат
+   * @param {number|string} chatId - ID чата
+   */
+  unblockChat(chatId) {
+    this.blockedChats.delete(chatId);
+    console.log(`Chat ${chatId} unblocked`);
+  }
+
+  /**
+   * Проверить, заблокирован ли чат
+   * @param {number|string} chatId - ID чата
+   * @returns {boolean} true если чат заблокирован
+   */
+  isBlocked(chatId) {
+    const unblockTime = this.blockedChats.get(chatId);
+    if (!unblockTime) return false;
+
+    if (Date.now() >= unblockTime) {
+      // Блокировка истекла, удаляем
+      this.blockedChats.delete(chatId);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Проверить, превышен ли rate limit для чата
+   * @param {number|string} chatId - ID чата
+   * @returns {boolean} true если лимит превышен и команды должны игнорироваться
+   */
+  isRateLimited(chatId) {
+    // Проверить блокировку чата
+    if (this.isBlocked(chatId)) {
+      return true;
+    }
+
+    // Проверить глобальный лимит: если queued >= 10, считаем превышенным
+    if (this.globalLimiter.queued() >= 10) {
+      return true;
+    }
+
+    // Проверить лимит чата: если queued >= 5, считаем превышенным
+    const chatLimiter = this.chatLimiters.get(chatId);
+    if (chatLimiter && chatLimiter.limiter.queued() >= 5) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
