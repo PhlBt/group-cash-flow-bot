@@ -29,6 +29,13 @@ async function handleProfile(input, services) {
         return;
       }
 
+      // Проверить, что сейчас ход игрока
+      const { validateCurrentPlayer } = require('../utils/validators');
+      const currentPlayer = await validateCurrentPlayer(game.gameId, userId, { gameService, messageService }, chatId);
+      if (!currentPlayer) {
+        return;
+      }
+
       // Получить статистику игрока
       const userStats = await userStatsService.getOrCreateUserStats(userId, username);
 
@@ -114,6 +121,13 @@ async function handleAssets(query, services) {
       return;
     }
 
+    // Проверить, что сейчас ход игрока
+    const { validateCurrentPlayer } = require('../utils/validators');
+    const currentPlayer = await validateCurrentPlayer(game.gameId, userId, { gameService, messageService }, chatId);
+    if (!currentPlayer) {
+      return;
+    }
+
     // Делегировать отправку в MessageService
     await messageService.sendPlayerAssetsMessage(chatId, player);
 
@@ -145,6 +159,13 @@ async function handleCredits(query, services) {
     const player = game.players.find(p => p.userId === userId);
     if (!player) {
       await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      return;
+    }
+
+    // Проверить, что сейчас ход игрока
+    const { validateCurrentPlayer } = require('../utils/validators');
+    const currentPlayer = await validateCurrentPlayer(game.gameId, userId, { gameService, messageService }, chatId);
+    if (!currentPlayer) {
       return;
     }
 
