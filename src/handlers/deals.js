@@ -1,4 +1,4 @@
-const { formatNumber } = require('../utils');
+const { formatNumber, initializeDealCirculation, processDealAction } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
 
 /**
@@ -43,6 +43,11 @@ async function handleDealType(query, dealType, services) {
 
     // Сохранить сделку в состоянии игры
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);
+
+    // Инициализировать циркуляцию для anyCanBuySell
+    if (deal.anyCanBuySell && deal.group_Id) {
+      await initializeDealCirculation(game.gameId, deal, services);
+    }
 
     // Получить обновленный game объект (с currentDealQuantity = 1)
     const updatedGame = await gameService.getGame(game.gameId);
@@ -116,10 +121,15 @@ async function handleBuyDeal(query, services) {
     // Отправить сообщение об успешной покупке
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил сделку "${deal.title}"!`);
 
-    // Передать ход следующему игроку
-    const nextTurnResult = await gameService.nextTurn(game.gameId);
-    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    // Обработать циркуляцию для anyCanBuySell
+    if (deal.anyCanBuySell) {
+      await processDealAction(game.gameId, userId, chatId, 'buy', services);
+    } else {
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
     }
 
   } catch (error) {
@@ -173,6 +183,12 @@ async function handleSkipDeal(query, services) {
     } else {
       // Удалить кнопки с сообщения карточки сделки
       await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+      if (deal && deal.anyCanBuySell) {
+        // Обработать циркуляцию для anyCanBuySell
+        await processDealAction(game.gameId, userId, chatId, 'skip', services);
+        return; // Не отправлять обычное сообщение хода
+      }
     }
 
     // Передать ход следующему игроку
@@ -298,7 +314,7 @@ async function handleChangeQuantity(query, delta, services) {
 
     // Обновить сообщение с новой карточкой
     const updatedGame = await gameService.getGame(game.gameId);
-    const content = messageService.generateDealCardContent(deal, currentPlayer, updatedGame, newQuantity);
+    const content = messageService.generateDealCardContent(deal, currentPlayer, updatedGame, newQuantity, null);
 
     await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
@@ -356,10 +372,15 @@ async function handleSellStocks(query, services) {
     // Отправить сообщение об успешной продаже
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} продал акции "${deal.title}"!`);
 
-    // Передать ход следующему игроку
-    const nextTurnResult = await gameService.nextTurn(game.gameId);
-    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    // Обработать циркуляцию для anyCanBuySell
+    if (deal.anyCanBuySell) {
+      await processDealAction(game.gameId, userId, chatId, 'sell', services);
+    } else {
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
     }
 
   } catch (error) {

@@ -777,10 +777,11 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
    * @param {number} quantity - Текущее количество для unlimitedStocks
+   * @param {string} customTitle - Кастомный заголовок (опционально)
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendDealCardMessage(chatId, deal, player, game, quantity = 1) {
-    const content = this.generateDealCardContent(deal, player, game, quantity);
+  async sendDealCardMessage(chatId, deal, player, game, quantity = 1, customTitle = null) {
+    const content = this.generateDealCardContent(deal, player, game, quantity, customTitle);
 
     const sentMessage = await this.sendMessage(chatId, content.text, {
       parse_mode: 'Markdown',
@@ -796,10 +797,11 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
    * @param {number} quantity - Текущее количество для unlimitedStocks
+   * @param {string} customTitle - Кастомный заголовок (опционально)
    * @returns {Object} Объект с text и keyboard
    */
-  generateDealCardContent(deal, player, game, quantity = 1) {
-    let message = `💼 **${deal.title}**\n\n`;
+  generateDealCardContent(deal, player, game, quantity = 1, customTitle = null) {
+    let message = customTitle ? `${customTitle}\n\n💼 **${deal.title}**\n\n` : `💼 **${deal.title}**\n\n`;
     message += `📝 ${deal.description}\n\n`;
 
     if (deal.cost) {

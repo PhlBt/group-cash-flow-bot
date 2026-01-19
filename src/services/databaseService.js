@@ -115,7 +115,9 @@ class DatabaseService {
       endGameMessageId: null,
       waitingMessageId: null,
       currentDeal: null,
-      currentDealQuantity: 1
+      currentDealQuantity: 1,
+      dealCirculationPlayers: [],
+      dealCirculationIndex: 0
     });
 
     return gameId;
@@ -710,6 +712,78 @@ class DatabaseService {
     await gamesCollection.updateOne(
       { gameId },
       { $set: { diceRolledThisTurn: rolled } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает список игроков для циркуляции сделки
+   * @param {string} gameId - ID игры
+   * @param {Array} players - Массив userId игроков
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setDealCirculationPlayers(gameId, players) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { dealCirculationPlayers: players, dealCirculationIndex: 0 } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Увеличивает индекс циркуляции сделки
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string, completed?: boolean}>} Результат операции
+   */
+  async incrementDealCirculationIndex(gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const newIndex = game.dealCirculationIndex + 1;
+    const completed = newIndex >= game.dealCirculationPlayers.length;
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { dealCirculationIndex: newIndex } }
+    );
+
+    return { success: true, completed };
+  }
+
+  /**
+   * Очищает данные циркуляции сделки
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async clearDealCirculation(gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      {
+        $set: {
+          dealCirculationPlayers: [],
+          dealCirculationIndex: 0
+        }
+      }
     );
 
     return { success: true };

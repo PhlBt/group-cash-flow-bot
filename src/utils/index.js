@@ -27,8 +27,13 @@ function formatNumber(num) {
 }
 
 const RateLimiter = require('./rateLimiter');
+const { initializeDealCirculation, processDealAction, circulateToNextPlayer, endDealCirculation } = require('./dealCirculation');
 
 module.exports = {
   formatNumber,
-  RateLimiter
+  RateLimiter,
+  initializeDealCirculation,
+  processDealAction,
+  circulateToNextPlayer,
+  endDealCirculation
 };
