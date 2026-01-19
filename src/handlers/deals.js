@@ -95,7 +95,7 @@ async function handleBuyDeal(query, services) {
     }
 
     // Проверить, является ли сделка предложенной
-    const isOfferedDeal = game.offerState !== null && game.offerState.targetUserId === userId;
+    const isOfferedDeal = game.offerState && game.offerState.targetUserId === userId;
     const originalDeal = isOfferedDeal ? {
       ...deal,
       cost: deal.originalCost || deal.cost,
@@ -208,7 +208,7 @@ async function handleSkipDeal(query, services) {
     }
 
     // Проверить, является ли сделка предложенной
-    const isOfferedDeal = game.offerState !== null && game.offerState.targetUserId === userId;
+    const isOfferedDeal = game.offerState && game.offerState.targetUserId === userId;
 
     // Для предложенных сделок проверить, что пользователь - целевой
     if (isOfferedDeal && game.offerState.targetUserId !== userId) {
@@ -301,7 +301,7 @@ async function handleBuyDealWithCreditCard(query, services) {
     }
 
     // Проверить, является ли сделка предложенной
-    const isOfferedDeal = game.offerState !== null && game.offerState.targetUserId === userId;
+    const isOfferedDeal = game.offerState && game.offerState.targetUserId === userId;
 
     // Для предложенных сделок проверить, что пользователь - целевой
     if (isOfferedDeal && game.offerState.targetUserId !== userId) {
