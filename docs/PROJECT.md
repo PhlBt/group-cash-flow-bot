@@ -35,13 +35,16 @@ cashFlow/
 │   │       ├── markets.js      # Рыночные карты
 │   │       └── miscellaneous.js # Разные карты
 │   ├── services/
-│   │   ├── databaseService.js  # Сервис для работы с MongoDB
-│   │   ├── gameService.js      # Сервис для логики игры (фасад для DatabaseService)
-│   │   └── messageService.js   # Сервис для отправки сообщений
+│   │   ├── databaseService.js    # Сервис для работы с MongoDB
+│   │   ├── gameService.js        # Сервис для логики игры (фасад для DatabaseService)
+│   │   ├── messageService.js     # Сервис для отправки сообщений
+│   │   └── userStatsService.js   # Сервис для статистики пользователей
 │   └── utils/
-│       ├── index.js            # Вспомогательные функции (форматирование чисел)
-│       ├── keyboards.js        # Inline клавиатуры для бота
-│       └── validators.js       # Функции валидации данных
+│       ├── dealCirculation.js    # Утилита для циркуляции карт между игроками
+│       ├── index.js              # Вспомогательные функции (форматирование чисел)
+│       ├── keyboards.js          # Inline клавиатуры для бота
+│       ├── rateLimiter.js        # Ограничение скорости отправки сообщений
+│       └── validators.js         # Функции валидации данных
 ├── docs/
 │   ├── COMMANDS.md      # Описание команд бота
 │   ├── DATABASE.md      # Описание DatabaseService
