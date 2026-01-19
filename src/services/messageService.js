@@ -880,7 +880,17 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    message += `\nЧто вы хотите сделать?`;
+    // Динамический текст в зависимости от состояния предложения
+    const offerState = game.offerState;
+    if (offerState && offerState.offeringUserId === player.userId) {
+      if (offerState.step === 'commission') {
+        message += `\nКакую комиссию вы берете за предложение сделки?`;
+      } else if (offerState.step === 'select_user') {
+        message += `\nКому вы хотите предложить сделку с комиссией ${offerState.commission}%?`;
+      }
+    } else {
+      message += `\nЧто вы хотите сделать?`;
+    }
 
     // Генерируем клавиатуру в зависимости от типа сделки
     const keyboard = generateDealKeyboard(deal, player, game, quantity);

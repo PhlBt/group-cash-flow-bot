@@ -246,8 +246,32 @@ async function handleCallbackQuery(query, services) {
         break;
 
       case 'offer_deal':
-        // Предложить сделку игроку (заглушка)
-        await messageService.sendErrorMessage(chatId, 'Функция "Предложить игроку" пока не реализована.');
+        // Начать предложение сделки
+        await handleOfferDeal(query, services);
+        break;
+
+      case 'select_commission_1':
+        await handleSelectCommission(query, 1, services);
+        break;
+
+      case 'select_commission_3':
+        await handleSelectCommission(query, 3, services);
+        break;
+
+      case 'select_commission_5':
+        await handleSelectCommission(query, 5, services);
+        break;
+
+      case 'select_commission_10':
+        await handleSelectCommission(query, 10, services);
+        break;
+
+      case 'select_commission_15':
+        await handleSelectCommission(query, 15, services);
+        break;
+
+      case 'select_commission_20':
+        await handleSelectCommission(query, 20, services);
         break;
 
       case 'skip_deal':
@@ -320,8 +344,19 @@ async function handleCallbackQuery(query, services) {
         await handleCredits(query, services);
         break;
 
+      case 'cancel_offer':
+        // Отменить предложение сделки
+        await handleCancelOffer(query, services);
+        break;
+
       default:
-        console.warn('Unknown callback data:', data);
+        // Проверяем, является ли callback_data выбором пользователя для предложения сделки
+        if (data.startsWith('select_user_')) {
+          const targetUserId = parseInt(data.split('_')[2], 10);
+          await handleSelectUser(query, targetUserId, services);
+        } else {
+          console.warn('Unknown callback data:', data);
+        }
     }
   } catch (error) {
     console.error('Error in handleCallbackQuery:', error);
@@ -329,7 +364,184 @@ async function handleCallbackQuery(query, services) {
   }
 }
 
+/**
+ * Обрабатывает предложение сделки другому игроку
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleOfferDeal(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Получить текущую сделку
+    const deal = game.currentDeal;
+    if (!deal || !deal.canSellToOthers) {
+      await messageService.sendErrorMessage(chatId, 'Эта сделка не может быть предложена другим игрокам.');
+      return;
+    }
+
+    // Инициализировать предложение сделки
+    const { initializeDealOffer } = require('../utils/dealOffer');
+    await initializeDealOffer(game.gameId, userId, services);
+
+    // Обновить сообщение с новым состоянием
+    const updatedGame = await gameService.getGame(game.gameId);
+    const content = messageService.generateDealCardContent(deal, currentPlayer, updatedGame, updatedGame.currentDealQuantity);
+
+    await messageService.editMessageText(chatId, query.message.message_id, content.text, {
+      parse_mode: 'Markdown',
+      reply_markup: content.keyboard
+    });
+
+  } catch (error) {
+    console.error('Error in handleOfferDeal:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при предложении сделки.');
+  }
+}
+
+/**
+ * Обрабатывает выбор комиссии для предложения сделки
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} commission - Выбранная комиссия (%)
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleSelectCommission(query, commission, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Обработать выбор комиссии
+    const { processOfferStep } = require('../utils/dealOffer');
+    await processOfferStep(game.gameId, userId, chatId, 'select_commission', { commission }, services);
+
+    // Получить обновлённую игру и игрока
+    const updatedGame = await gameService.getGame(game.gameId);
+    const currentPlayer = await gameService.getCurrentPlayer(updatedGame.gameId);
+
+    // Обновить сообщение с новым состоянием
+    const content = messageService.generateDealCardContent(updatedGame.currentDeal, currentPlayer, updatedGame, updatedGame.currentDealQuantity);
+
+    await messageService.editMessageText(chatId, query.message.message_id, content.text, {
+      parse_mode: 'Markdown',
+      reply_markup: content.keyboard
+    });
+
+  } catch (error) {
+    console.error('Error in handleSelectCommission:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе комиссии.');
+  }
+}
+
+/**
+ * Обрабатывает выбор пользователя для предложения сделки
+ * @param {Object} query - Callback query от Telegram
+ * @param {string} targetUserId - ID выбранного пользователя
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleSelectUser(query, targetUserId, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Обработать выбор пользователя
+    const { processOfferStep } = require('../utils/dealOffer');
+    await processOfferStep(game.gameId, userId, chatId, 'select_user', { targetUserId }, services);
+
+    // Получить обновлённую игру и игрока
+    const updatedGame = await gameService.getGame(game.gameId);
+    const currentPlayer = await gameService.getCurrentPlayer(updatedGame.gameId);
+
+    // Обновить сообщение с новым состоянием
+    const content = messageService.generateDealCardContent(updatedGame.currentDeal, currentPlayer, updatedGame, updatedGame.currentDealQuantity);
+
+    await messageService.editMessageText(chatId, query.message.message_id, content.text, {
+      parse_mode: 'Markdown',
+      reply_markup: content.keyboard
+    });
+
+  } catch (error) {
+    console.error('Error in handleSelectUser:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе пользователя.');
+  }
+}
+
+/**
+ * Обрабатывает отмену предложения сделки
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleCancelOffer(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Обработать отмену предложения
+    const { processOfferStep } = require('../utils/dealOffer');
+    await processOfferStep(game.gameId, userId, chatId, 'cancel', {}, services);
+
+    // Получить обновлённую игру и игрока
+    const updatedGame = await gameService.getGame(game.gameId);
+    const currentPlayer = await gameService.getCurrentPlayer(updatedGame.gameId);
+
+    // Обновить сообщение с обычным видом
+    const content = messageService.generateDealCardContent(updatedGame.currentDeal, currentPlayer, updatedGame, updatedGame.currentDealQuantity);
+
+    await messageService.editMessageText(chatId, query.message.message_id, content.text, {
+      parse_mode: 'Markdown',
+      reply_markup: content.keyboard
+    });
+
+  } catch (error) {
+    console.error('Error in handleCancelOffer:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при отмене предложения.');
+  }
+}
+
 module.exports = {
   handleCallbackQuery,
-  handleRollDice
+  handleRollDice,
+  handleOfferDeal,
+  handleSelectCommission,
+  handleSelectUser,
+  handleCancelOffer
 };

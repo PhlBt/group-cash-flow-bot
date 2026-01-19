@@ -115,6 +115,24 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
   // Определяем, является ли текущий игрок оригинальным в циркуляции canSellStocks
   const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
 
+  // Проверяем состояние предложения сделки
+  const offerState = game.offerState;
+
+  // Если есть активное предложение сделки и игрок - предлагающий
+  if (offerState && offerState.offeringUserId === player.userId) {
+    return generateOfferKeyboard(offerState, game.players);
+  }
+
+  // Если сделка предложена другому игроку, показываем ограниченную клавиатуру
+  if (deal.commission !== undefined) {
+    keyboard.inline_keyboard = [
+      [{ text: '💰 Купить', callback_data: 'buy_deal' }],
+      [{ text: '💳 Кредитная карта', callback_data: 'buy_deal_credit_card' }],
+      [{ text: '⏭️ Пропустить', callback_data: 'skip_deal' }]
+    ];
+    return keyboard;
+  }
+
   // Если unlimitedStocks, показываем клавиатуру с количеством
   if (deal.unlimitedStocks) {
     // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки изменения количества
@@ -231,6 +249,58 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
   if (!deal.expenses) {
     keyboard.inline_keyboard.push([
       { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
+    ]);
+  }
+
+  return keyboard;
+}
+
+/**
+ * Генерирует клавиатуру для предложения сделки
+ * @param {Object} offerState - Состояние предложения
+ * @param {Array} players - Массив игроков
+ * @returns {Object} Клавиатура
+ */
+function generateOfferKeyboard(offerState, players) {
+  const keyboard = {
+    inline_keyboard: []
+  };
+
+  if (offerState.step === 'commission') {
+    // Клавиатура выбора комиссии
+    keyboard.inline_keyboard = [
+      [
+        { text: '1%', callback_data: 'select_commission_1' },
+        { text: '3%', callback_data: 'select_commission_3' },
+        { text: '5%', callback_data: 'select_commission_5' }
+      ],
+      [
+        { text: '10%', callback_data: 'select_commission_10' },
+        { text: '15%', callback_data: 'select_commission_15' },
+        { text: '20%', callback_data: 'select_commission_20' }
+      ],
+      [
+        { text: 'Вернуться', callback_data: 'cancel_offer' }
+      ]
+    ];
+  } else if (offerState.step === 'select_user') {
+    // Клавиатура выбора пользователя
+    const offeringUserId = offerState.offeringUserId;
+    const otherPlayers = players.filter(p => p.userId !== offeringUserId);
+
+    // Добавляем кнопки игроков (максимум 6 в ряд, или по 2 в ряд)
+    const buttonsPerRow = 2;
+    for (let i = 0; i < otherPlayers.length; i += buttonsPerRow) {
+      const row = otherPlayers.slice(i, i + buttonsPerRow).map(player => ({
+        text: player.username,
+        callback_data: `select_user_${player.userId}`
+      }));
+      keyboard.inline_keyboard.push(row);
+    }
+
+    // Добавляем кнопку "Вернуться"
+    keyboard.inline_keyboard.push([
+      { text: 'Вернуться', callback_data: 'cancel_offer' }
     ]);
   }
 

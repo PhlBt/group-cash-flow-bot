@@ -5,6 +5,8 @@
 ### Версия [текущая]
 - **Изменение текста кнопки в waitingRoomKeyboard**: Кнопка "🎮 Играть!" заменена на "🎮 Присоединиться к игре"
 - **Изменение логики комнаты ожидания**: При присоединении нового игрока к игре теперь всегда удаляется старое сообщение комнаты ожидания и отправляется новое, вместо обновления существующего сообщения
+- **Добавление механизма предложения сделок другим игрокам**: Реализован механизм предложения сделок с комиссией через кнопку "👥 Предложить другому" для сделок с canSellToOthers: true
+- **Новые обработчики в callbacks.js**: Добавлены функции handleOfferDeal, handleSelectCommission, handleSelectUser, handleCancelOffer для управления предложениями сделок
 
 ## Назначение и архитектура модуля
 
@@ -141,9 +143,55 @@ Handlers - модуль функций-обработчиков команд Tel
     - 'small_deal': Вызывает handleDealType() для выбора мелкой сделки
     - 'big_deal': Вызывает handleDealType() для выбора крупной сделки
     - 'buy_deal': Вызывает handleBuyDeal() для покупки сделки
-    - 'offer_deal': Отправляет заглушку (функция не реализована)
+    - 'offer_deal': Вызывает handleOfferDeal() для начала предложения сделки другому игроку
+    - 'select_commission_*': Вызывает handleSelectCommission() для выбора комиссии
+    - 'select_user_*': Вызывает handleSelectUser() для выбора игрока для предложения
+    - 'cancel_offer': Вызывает handleCancelOffer() для отмены предложения
     - 'skip_deal': Вызывает handleSkipDeal() для пропуска сделки
   - Обрабатывает ошибки и отправляет сообщение об ошибке пользователю
+
+#### handleOfferDeal(query, services)
+- **Назначение**: Обработка начала предложения сделки другому игроку
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет существование активной игры и что пользователь - текущий игрок
+  - Проверяет, что сделка поддерживает предложения (canSellToOthers)
+  - Инициализирует состояние предложения через dealOffer.initializeDealOffer()
+  - Обновляет сообщение с выбором комиссии
+
+#### handleSelectCommission(query, commission, services)
+- **Назначение**: Обработка выбора комиссии для предложения сделки
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `commission` (number): Выбранная комиссия (%)
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Обрабатывает выбор комиссии через dealOffer.processOfferStep()
+  - Обновляет состояние предложения на 'select_user'
+  - Показывает клавиатуру выбора игрока
+
+#### handleSelectUser(query, targetUserId, services)
+- **Назначение**: Обработка выбора игрока для предложения сделки
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `targetUserId` (string): ID выбранного игрока
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Обрабатывает выбор игрока через dealOffer.processOfferStep()
+  - Создает предложение сделки с комиссией
+  - Отправляет карточку сделки выбранному игроку
+  - Передает ход следующему игроку
+
+#### handleCancelOffer(query, services)
+- **Назначение**: Обработка отмены предложения сделки
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Очищает состояние предложения через dealOffer.processOfferStep()
+  - Возвращает к обычному виду карточки сделки
 
 ### deals.js - Логика обработки сделок
 

@@ -739,6 +739,17 @@ class GameService {
   async setDiceRolledThisTurn(gameId, rolled) {
     return await this.databaseService.setDiceRolledThisTurn(gameId, rolled);
   }
+
+  /**
+   * Передает комиссию предлагающему игроку
+   * @param {string} gameId - ID игры
+   * @param {string} offeringUserId - ID предлагающего игрока
+   * @param {number} commissionAmount - Сумма комиссии
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async transferCommission(gameId, offeringUserId, commissionAmount) {
+    return await this.databaseService.updatePlayerCash(gameId, offeringUserId, commissionAmount);
+  }
 }
 
 module.exports = GameService;

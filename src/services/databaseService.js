@@ -814,6 +814,59 @@ class DatabaseService {
   }
 
   /**
+   * Устанавливает состояние предложения сделки
+   * @param {string} gameId - ID игры
+   * @param {Object|null} offerState - Состояние предложения или null для очистки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setOfferState(gameId, offerState) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { offerState } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Обновляет баланс игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} amount - Сумма изменения (положительная или отрицательная)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async updatePlayerCash(gameId, userId, amount) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const currentCash = game.players[playerIndex].cash;
+    const newCash = currentCash + amount;
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    return { success: true };
+  }
+
+  /**
    * Закрывает подключение к базе данных
    * @returns {Promise<void>}
    */

@@ -81,13 +81,6 @@ async function handleBuyDeal(query, services) {
       return;
     }
 
-    // Проверить, что пользователь - текущий игрок
-    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
-    if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
-      return;
-    }
-
     // Получить сохраненную сделку из состояния игры
     const deal = game.currentDeal;
     if (!deal) {
@@ -95,14 +88,41 @@ async function handleBuyDeal(query, services) {
       return;
     }
 
-    const isBigDeal = deal.type === 'big';
+    // Предлагающий не может выполнять действия с предложенной сделкой
+    if (game.offerState && game.offerState.step === 'confirmed' && game.offerState.offeringUserId === userId) {
+      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!');
+      return;
+    }
+
+    // Проверить, является ли сделка предложенной
+    const isOfferedDeal = game.offerState !== null && game.offerState.targetUserId === userId;
+    const originalDeal = isOfferedDeal ? {
+      ...deal,
+      cost: deal.originalCost || deal.cost,
+      downPayment: deal.originalDownPayment || deal.downPayment
+    } : deal;
+
+    // Для предложенных сделок проверить, что пользователь - целевой
+    if (isOfferedDeal && game.offerState.targetUserId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок (для обычных сделок)
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!isOfferedDeal && (!currentPlayer || currentPlayer.userId !== userId)) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    const isBigDeal = originalDeal.type === 'big';
 
     // Попробовать купить
     let buyResult;
     if (isBigDeal) {
-      buyResult = await gameService.buyBigDeal(game.gameId, userId, deal);
+      buyResult = await gameService.buyBigDeal(game.gameId, userId, originalDeal);
     } else {
-      buyResult = await gameService.buySmallDeal(game.gameId, userId, deal, game.currentDealQuantity);
+      buyResult = await gameService.buySmallDeal(game.gameId, userId, originalDeal, game.currentDealQuantity);
     }
 
     if (!buyResult.success) {
@@ -117,11 +137,25 @@ async function handleBuyDeal(query, services) {
       return;
     }
 
+    // Если сделка была предложена, передать комиссию предлагающему и очистить состояние
+    if (isOfferedDeal) {
+      const { calculateCommission, transferCommission } = require('../utils/dealOffer');
+      const commissionAmount = calculateCommission(originalDeal, game.offerState.commission);
+
+      if (commissionAmount > 0) {
+        await transferCommission(game.gameId, game.offerState.offeringUserId, commissionAmount, services);
+      }
+
+      await gameService.databaseService.setOfferState(game.gameId, null);
+    }
+
     // Удалить кнопки с сообщения карточки сделки
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной покупке
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}"!`);
+    const buyerPlayer = isOfferedDeal ? game.players.find(p => p.userId === userId) : currentPlayer;
+    const commissionText = isOfferedDeal ? ` с комиссией ${game.offerState.commission}%` : '';
+    await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}"${commissionText}!`);
 
     // Обработать циркуляцию для anyCanBuySell или canSellStocks
     if (deal.anyCanBuySell) {
@@ -160,15 +194,34 @@ async function handleSkipDeal(query, services) {
       return;
     }
 
-    // Проверить, что пользователь - текущий игрок
-    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
-    if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+    // Получить текущую сделку
+    const deal = game.currentDeal;
+    if (!deal) {
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
       return;
     }
 
-    // Получить текущую сделку
-    const deal = game.currentDeal;
+    // Предлагающий не может выполнять действия с предложенной сделкой
+    if (game.offerState && game.offerState.step === 'confirmed' && game.offerState.offeringUserId === userId) {
+      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!');
+      return;
+    }
+
+    // Проверить, является ли сделка предложенной
+    const isOfferedDeal = game.offerState !== null && game.offerState.targetUserId === userId;
+
+    // Для предложенных сделок проверить, что пользователь - целевой
+    if (isOfferedDeal && game.offerState.targetUserId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок (для обычных сделок)
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!isOfferedDeal && (!currentPlayer || currentPlayer.userId !== userId)) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
 
     // Если сделка имеет multiple, применить ко всем игрокам
     if (deal && deal.multiple) {
@@ -197,6 +250,11 @@ async function handleSkipDeal(query, services) {
         await processCanSellStocksAction(game.gameId, userId, chatId, 'skip', services);
         return; // Не отправлять обычное сообщение хода
       }
+    }
+
+    // Если предложенная сделка, очистить состояние
+    if (isOfferedDeal) {
+      await gameService.databaseService.setOfferState(game.gameId, null);
     }
 
     // Передать ход следующему игроку
@@ -229,17 +287,32 @@ async function handleBuyDealWithCreditCard(query, services) {
       return;
     }
 
-    // Проверить, что пользователь - текущий игрок
-    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
-    if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
-      return;
-    }
-
     // Получить сохраненную сделку из состояния игры
     const deal = game.currentDeal;
     if (!deal) {
       await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      return;
+    }
+
+    // Предлагающий не может выполнять действия с предложенной сделкой
+    if (game.offerState && game.offerState.step === 'confirmed' && game.offerState.offeringUserId === userId) {
+      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!');
+      return;
+    }
+
+    // Проверить, является ли сделка предложенной
+    const isOfferedDeal = game.offerState !== null && game.offerState.targetUserId === userId;
+
+    // Для предложенных сделок проверить, что пользователь - целевой
+    if (isOfferedDeal && game.offerState.targetUserId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок (для обычных сделок)
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!isOfferedDeal && (!currentPlayer || currentPlayer.userId !== userId)) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
       return;
     }
 
@@ -256,8 +329,24 @@ async function handleBuyDealWithCreditCard(query, services) {
     // Удалить кнопки с сообщения предложения кредитки
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
+    // Если сделка была предложена, передать комиссию предлагающему
+    if (isOfferedDeal) {
+      const originalCost = deal.originalCost || deal.cost;
+      const baseCost = deal.expenses && !deal.cost ? deal.expenses : originalCost;
+      const commissionAmount = Math.round(baseCost * (game.offerState.commission / 100));
+
+      if (commissionAmount > 0) {
+        const { transferCommission } = require('../utils/dealOffer');
+        await transferCommission(game.gameId, game.offerState.offeringUserId, commissionAmount, services);
+      }
+
+      await gameService.databaseService.setOfferState(game.gameId, null);
+    }
+
     // Отправить сообщение об успешной покупке
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}" кредиткой!`);
+    const buyerPlayer = isOfferedDeal ? game.players.find(p => p.userId === userId) : currentPlayer;
+    const commissionText = isOfferedDeal ? ` с комиссией ${game.offerState.commission}%` : '';
+    await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}" кредиткой${commissionText}!`);
 
     // Обработать циркуляцию для anyCanBuySell
     if (deal.anyCanBuySell) {
