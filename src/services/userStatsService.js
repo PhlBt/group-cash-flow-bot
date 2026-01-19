@@ -111,7 +111,7 @@ class UserStatsService {
     }
 
     const winRate = stats.totalGames > 0 ? Math.round((stats.wins / stats.totalGames) * 100) : 0;
-    return `📊 Всего игр: ${stats.totalGames} (${winRate}% побед) \nПобед: ${stats.wins} \nПоражений: ${stats.losses}`;
+    return `\n📊 Всего игр: ${stats.totalGames} (${winRate}% побед) \n🏆 Побед: ${stats.wins} \n🥺 Поражений: ${stats.losses}`;
   }
 }
 

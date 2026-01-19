@@ -861,6 +861,10 @@ CashFlow - настольная игра о финансовом планиро�
       message += `🏢 Квартир: ${deal.apartments}\n`;
     }
 
+    if (deal.expenses) {
+      message += `💸 Расходы: ${formatNumber(deal.expenses)} ₽\n`;
+    }
+
     message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
 
     // Если можно продавать акции и у игрока есть активы с тем же group_Id

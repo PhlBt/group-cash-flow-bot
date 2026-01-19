@@ -367,7 +367,8 @@ class GameService {
       type: 'small_deal',
       description: deal.description,
       quantity: quantity,
-      group_Id: deal.group_Id
+      group_Id: deal.group_Id,
+      isRealEstate: deal.isRealEstate
     };
 
     await this.databaseService.addAsset(gameId, userId, asset);
@@ -417,7 +418,9 @@ class GameService {
       cost: deal.cost,
       cashFlow: deal.passiveIncome,
       type: 'big_deal',
-      description: deal.description
+      description: deal.description,
+      isRealEstate: deal.isRealEstate,
+      apartments: deal.apartments
     };
 
     await this.databaseService.addAsset(gameId, userId, asset);
@@ -458,16 +461,20 @@ class GameService {
     // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
     const monthlyPayment = Math.floor(deal.cost * 0.02);
 
-    // Добавляем актив
-    const asset = {
-      title: deal.title,
-      cost: deal.cost,
-      cashFlow: deal.passiveIncome || deal.cashFlow,
-      type: deal.type === 'big' ? 'big_deal_credit_card' : 'small_deal_credit_card',
-      description: deal.description
-    };
+    // Для expenses-сделок не добавляем актив, только кредит
+    if (!deal.expenses) {
+      // Добавляем актив
+      const asset = {
+        title: deal.title,
+        cost: deal.cost,
+        cashFlow: deal.passiveIncome || deal.cashFlow,
+        type: deal.type === 'big' ? 'big_deal_credit_card' : 'small_deal_credit_card',
+        description: deal.description,
+        isRealEstate: deal.isRealEstate
+      };
 
-    await this.databaseService.addAsset(gameId, userId, asset);
+      await this.databaseService.addAsset(gameId, userId, asset);
+    }
 
     // Добавляем кредитку как liability
     const liability = {

@@ -243,8 +243,11 @@ async function handleBuyDealWithCreditCard(query, services) {
       return;
     }
 
+    // Для expenses-сделок использовать expenses как стоимость
+    const tempDeal = deal.expenses && !deal.cost ? { ...deal, cost: deal.expenses } : deal;
+
     // Купить кредиткой
-    const buyResult = await gameService.buyDealWithCreditCard(game.gameId, userId, deal);
+    const buyResult = await gameService.buyDealWithCreditCard(game.gameId, userId, tempDeal);
     if (!buyResult.success) {
       await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки кредиткой.');
       return;
