@@ -119,6 +119,43 @@ async function handleEndGame(msg, services) {
 }
 
 /**
+ * Обрабатывает команду /profile
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService, userStatsService }
+ */
+async function handleProfile(msg, services) {
+  const { gameService, messageService, userStatsService } = services;
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Получить статистику пользователя
+    const userStats = await userStatsService.getOrCreateUserStats(userId, msg.from.first_name || msg.from.username || 'игрок');
+
+    // Проверить наличие активной игры в чате
+    const activeGame = await gameService.getActiveGameByChatId(chatId);
+
+    if (activeGame) {
+      // Найти игрока в игре
+      const player = activeGame.players.find(p => p.userId === userId);
+      if (player) {
+        // Показать полную карточку игрока
+        await messageService.sendPlayerCard(chatId, player, userStats);
+      } else {
+        // Пользователь не в игре, показать только статистику
+        await messageService.sendPlayerCard(chatId, null, userStats);
+      }
+    } else {
+      // Нет активной игры, показать только статистику
+      await messageService.sendPlayerCard(chatId, null, userStats);
+    }
+  } catch (error) {
+    console.error('Error in handleProfile:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке профиля.');
+  }
+}
+
+/**
  * Обрабатывает голосование за окончание игры
  * @param {Object} query - Callback query от Telegram
  * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
@@ -187,5 +224,6 @@ module.exports = {
   handleNewGame,
   handlePlay,
   handleEndGame,
+  handleProfile,
   handleEndGameVote
 };

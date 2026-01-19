@@ -100,6 +100,21 @@ DatabaseService - это класс, отвечающий за все взаим
 }
 ```
 
+## Структура данных
+
+### Документ статистики пользователя (коллекция 'userStats')
+```javascript
+{
+  userId: "string",     // ID пользователя Telegram
+  username: "string",   // Имя пользователя
+  totalGames: number,   // Общее количество сыгранных игр
+  wins: number,         // Количество побед
+  losses: number,       // Количество поражений
+  createdAt: Date,      // Дата создания записи
+  updatedAt: Date       // Дата последнего обновления
+}
+```
+
 ## Методы работы с играми
 
 ### createGame(chatId, userId, username)

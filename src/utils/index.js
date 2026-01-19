@@ -9,6 +9,9 @@ function formatNumber(num) {
     return '0';
   }
 
+  // Округляем до целого для избежания плавающей точки
+  num = Math.round(num);
+
   if (num >= 1000000) {
     // Для миллионов: показываем с десятичными
     const millions = (num / 1000000).toFixed(1);

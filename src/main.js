@@ -3,6 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const DatabaseService = require('./services/databaseService');
 const MessageService = require('./services/messageService');
 const GameService = require('./services/gameService');
+const UserStatsService = require('./services/userStatsService');
 const handlers = require('./handlers/index');
 
 // Загрузка переменных окружения
@@ -18,11 +19,13 @@ const messageService = new MessageService(bot);
 
 // Инициализация сервиса игры (будет установлен после подключения к БД)
 let gameService;
+let userStatsService;
 
 // Объект с сервисами для передачи в обработчики
 const services = {
   get messageService() { return messageService; },
   get gameService() { return gameService; },
+  get userStatsService() { return userStatsService; },
   get bot() { return bot; }
 };
 
@@ -32,7 +35,8 @@ async function connectToMongoDB() {
   try {
     databaseService = new DatabaseService(MONGODB_URL, MONGODB_DATABASE);
     await databaseService.connect();
-    gameService = new GameService(databaseService);
+    userStatsService = new UserStatsService(databaseService);
+    gameService = new GameService(databaseService, userStatsService);
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);
@@ -44,8 +48,7 @@ async function setBotCommands() {
   const commands = [
     { command: 'start', description: 'Запуск бота и приветствие пользователя' },
     { command: 'help', description: 'Показать список всех доступных команд' },
-    { command: 'newgame', description: 'Создать новую игровую сессию' },
-    { command: 'play', description: 'Начать игру' },
+    { command: 'profile', description: 'Показать профиль игрока или статистику' },
     { command: 'endgame', description: 'Начать голосование за окончание игры' }
   ];
 
@@ -72,14 +75,9 @@ async function startBot() {
     await handlers.handleHelp(msg, services);
   });
 
-  // Обработчик команды /newgame
-  bot.onText(/\/newgame/, async (msg) => {
-    await handlers.handleNewGame(msg, services);
-  });
-
-  // Обработчик команды /play
-  bot.onText(/\/play (.+)/, async (msg, match) => {
-    await handlers.handlePlay(msg, match, services);
+  // Обработчик команды /profile
+  bot.onText(/\/profile/, async (msg) => {
+    await handlers.handleProfile(msg, services);
   });
 
   // Обработчик команды /endgame

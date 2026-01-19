@@ -1,6 +1,7 @@
 class GameService {
-  constructor(databaseService) {
+  constructor(databaseService, userStatsService) {
     this.databaseService = databaseService;
+    this.userStatsService = userStatsService;
   }
 
   /**
@@ -89,6 +90,19 @@ class GameService {
    * @returns {Promise<{success: boolean, error?: string}>} Результат операции
    */
   async finishGame(gameId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.status === 'finished') {
+      return { success: false, error: 'already_finished' };
+    }
+
+    // Обновляем статистику перед завершением игры
+    await this.userStatsService.updateStatsAfterGame(game);
+
+    // Завершаем игру
     return await this.databaseService.finishGame(gameId);
   }
 
@@ -558,6 +572,7 @@ class GameService {
 
     let totalIncome = 0;
     let totalQuantity = 0;
+    let soldCashFlow = 0;
     const updatedAssets = [];
     const closedLoans = [];
 
@@ -569,6 +584,11 @@ class GameService {
         const income = deal.cost * quantity;
         totalIncome += income;
         totalQuantity += quantity;
+
+        // Вычитаем пассивный доход актива, если он есть
+        if (asset.cashFlow > 0) {
+          soldCashFlow += asset.cashFlow;
+        }
 
         // Закрываем связанные кредиты
         if (player.liabilities) {
@@ -606,7 +626,8 @@ class GameService {
     const newTotalLoans = updatedLiabilities.reduce((sum, liab) => sum + (liab.loanAmount || 0), 0);
     const newTotalLoanPayments = updatedLiabilities.reduce((sum, liab) => sum + (liab.monthlyPayment || 0), 0);
     const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
-    const newCashFlow = player.salary + player.passiveIncome - totalIncome + (deal.passiveIncome || 0) * totalQuantity - newTotalExpenses;
+    const newPassiveIncome = player.passiveIncome - soldCashFlow;
+    const newCashFlow = player.salary + newPassiveIncome - newTotalExpenses;
 
     const playerIndex = game.players.indexOf(player);
     await this.databaseService.getDb().collection('games').updateOne(
@@ -616,8 +637,8 @@ class GameService {
           [`players.${playerIndex}.cash`]: newCash,
           [`players.${playerIndex}.assets`]: updatedAssets,
           [`players.${playerIndex}.assetsCount`]: updatedAssets.length,
-          [`players.${playerIndex}.passiveIncome`]: player.passiveIncome - totalIncome + (deal.passiveIncome || 0) * totalQuantity,
-          [`players.${playerIndex}.totalIncome`]: player.salary + player.passiveIncome - totalIncome + (deal.passiveIncome || 0) * totalQuantity,
+          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+          [`players.${playerIndex}.totalIncome`]: player.salary + newPassiveIncome,
           [`players.${playerIndex}.liabilities`]: updatedLiabilities,
           [`players.${playerIndex}.loansCount`]: newLoansCount,
           [`players.${playerIndex}.totalLoans`]: newTotalLoans,
