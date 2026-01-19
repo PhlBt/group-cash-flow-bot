@@ -818,7 +818,11 @@ CashFlow - настольная игра о финансовом планиро�
 
     if (deal.cost) {
       message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
-      if (deal.unlimitedStocks) {
+      // Проверяем, находится ли игра в циркуляции canSellStocks и является ли игрок оригинальным
+      const isInCanSellStocksCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.canSellStocks;
+      const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
+
+      if (deal.unlimitedStocks && (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation)) {
         message += `🔢 Количество: ${quantity}\n`;
         message += `💰 Общая стоимость: ${formatNumber(deal.cost * quantity)} ₽\n`;
       }

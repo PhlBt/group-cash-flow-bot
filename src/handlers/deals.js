@@ -1,4 +1,4 @@
-const { formatNumber, initializeDealCirculation, processDealAction } = require('../utils');
+const { formatNumber, initializeDealCirculation, processDealAction, initializeCanSellStocksCirculation, processCanSellStocksAction } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
 
 /**
@@ -44,9 +44,11 @@ async function handleDealType(query, dealType, services) {
     // Сохранить сделку в состоянии игры
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);
 
-    // Инициализировать циркуляцию для anyCanBuySell
+    // Инициализировать циркуляцию для anyCanBuySell или canSellStocks
     if (deal.anyCanBuySell) {
       await initializeDealCirculation(game.gameId, deal, services);
+    } else if (deal.canSellStocks) {
+      await initializeCanSellStocksCirculation(game.gameId, deal, services);
     }
 
     // Получить обновленный game объект (с currentDealQuantity = 1)
@@ -121,9 +123,11 @@ async function handleBuyDeal(query, services) {
     // Отправить сообщение об успешной покупке
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}"!`);
 
-    // Обработать циркуляцию для anyCanBuySell
+    // Обработать циркуляцию для anyCanBuySell или canSellStocks
     if (deal.anyCanBuySell) {
       await processDealAction(game.gameId, userId, chatId, 'buy', services);
+    } else if (deal.canSellStocks) {
+      await processCanSellStocksAction(game.gameId, userId, chatId, 'buy', services);
     } else {
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
@@ -187,6 +191,10 @@ async function handleSkipDeal(query, services) {
       if (deal && deal.anyCanBuySell) {
         // Обработать циркуляцию для anyCanBuySell
         await processDealAction(game.gameId, userId, chatId, 'skip', services);
+        return; // Не отправлять обычное сообщение хода
+      } else if (deal && deal.canSellStocks) {
+        // Обработать циркуляцию для canSellStocks
+        await processCanSellStocksAction(game.gameId, userId, chatId, 'skip', services);
         return; // Не отправлять обычное сообщение хода
       }
     }
@@ -377,9 +385,11 @@ async function handleSellStocks(query, services) {
     // Отправить сообщение об успешной продаже
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} продал акции "${deal.title}"!`);
 
-    // Обработать циркуляцию для anyCanBuySell
+    // Обработать циркуляцию для anyCanBuySell или canSellStocks
     if (deal.anyCanBuySell) {
       await processDealAction(game.gameId, userId, chatId, 'sell', services);
+    } else if (deal.canSellStocks) {
+      await processCanSellStocksAction(game.gameId, userId, chatId, 'sell', services);
     } else {
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);

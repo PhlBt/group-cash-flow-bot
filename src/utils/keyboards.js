@@ -110,28 +110,44 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
   // Проверяем, есть ли у игрока недвижимость
   const hasRealEstate = player.assets && player.assets.some(asset => asset.isRealEstate);
 
+  // Проверяем, находится ли игра в циркуляции canSellStocks
+  const isInCanSellStocksCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.canSellStocks;
+  // Определяем, является ли текущий игрок оригинальным в циркуляции canSellStocks
+  const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
+
   // Если unlimitedStocks, показываем клавиатуру с количеством
   if (deal.unlimitedStocks) {
-    keyboard.inline_keyboard = [
-      [
-        { text: '➖ 1', callback_data: 'decrease_quantity_1' },
-        { text: '➕ 1', callback_data: 'increase_quantity_1' }
-      ],
-      [
-        { text: '➖ 10', callback_data: 'decrease_quantity_10' },
-        { text: '➕ 10', callback_data: 'increase_quantity_10' }
-      ],
-      [
-        { text: '➖ 100', callback_data: 'decrease_quantity_100' },
-        { text: '➕ 100', callback_data: 'increase_quantity_100' }
-      ],
-      [
+    // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки изменения количества
+    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation) {
+      keyboard.inline_keyboard = [
+        [
+          { text: '➖ 1', callback_data: 'decrease_quantity_1' },
+          { text: '➕ 1', callback_data: 'increase_quantity_1' }
+        ],
+        [
+          { text: '➖ 10', callback_data: 'decrease_quantity_10' },
+          { text: '➕ 10', callback_data: 'increase_quantity_10' }
+        ],
+        [
+          { text: '➖ 100', callback_data: 'decrease_quantity_100' },
+          { text: '➕ 100', callback_data: 'increase_quantity_100' }
+        ]
+      ];
+    }
+
+    // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки покупки
+    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation) {
+      keyboard.inline_keyboard.push([
         { text: '💰 Купить', callback_data: 'buy_deal' }
-      ],
-      [
-        { text: '💳 Кредитная карта', callback_data: 'buy_deal_credit_card' }
-      ]
-    ];
+      ]);
+
+      // Если нет unlimitedStocks, кнопка "Кредитная карта"
+      if (!deal.unlimitedStocks) {
+        keyboard.inline_keyboard.push([
+          { text: '💳 Кредитная карта', callback_data: 'buy_deal_credit_card' }
+        ]);
+      }
+    }
 
     // Если canSellStocks и у игрока есть активы с тем же group_id, добавляем "Продать"
     if (deal.canSellStocks && hasSameGroupAssets) {
