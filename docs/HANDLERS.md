@@ -83,8 +83,8 @@ Handlers - модуль функций-обработчиков команд Tel
 - **Функционал**:
   - Извлекает chatId, userId из сообщения
   - Находит активную игру пользователя
-  - Если игрок один - сразу завершает игру через gameService.finishGame() и messageService.sendGameFinishedMessage()
-  - Если игроков много - инициирует голосование: отправляет сообщение через messageService.sendEndGameVoteMessage(), сохраняет messageId через gameService.initiateEndGameVote()
+  - Если игроков меньше 3 - сразу завершает игру через gameService.finishGame() и messageService.sendGameFinishedMessage()
+  - Если игроков 3 и больше - инициирует голосование: отправляет сообщение через messageService.sendEndGameVoteMessage(), сохраняет messageId через gameService.initiateEndGameVote()
   - Обрабатывает ошибки через messageService.sendEndGameErrorMessage()
 
 ### callbacks.js - Обработчики callback-запросов

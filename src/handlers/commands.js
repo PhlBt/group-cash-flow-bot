@@ -98,10 +98,10 @@ async function handleEndGame(msg, services) {
       return;
     }
 
-    // Если игрок один, сразу завершить игру
-    if (game.players.length === 1) {
+    // Если игроков меньше 3, сразу завершить игру
+    if (game.players.length < 3) {
       await gameService.finishGame(game.gameId);
-      await messageService.sendGameFinishedMessage(chatId, game.gameId);
+      await messageService.sendGameFinishedMessage(chatId);
       return;
     }
 
@@ -190,7 +190,10 @@ async function handleEndGameVote(query, services) {
       const majority = Math.ceil(updatedGame.players.length / 2);
       if (updatedGame.endGameVotes.length >= majority) {
         await gameService.finishGame(activeGame.gameId);
-        await messageService.sendGameFinishedMessage(chatId, activeGame.gameId);
+        await messageService.sendGameFinishedMessage(chatId);
+        if (updatedGame.endGameMessageId) {
+          await messageService.deleteMessage(chatId, updatedGame.endGameMessageId);
+        }
       }
       return;
     }
@@ -210,7 +213,10 @@ async function handleEndGameVote(query, services) {
     // Если majority достигнуто, завершить игру
     if (voteResult.shouldFinish) {
       await gameService.finishGame(activeGame.gameId);
-      await messageService.sendGameFinishedMessage(chatId, activeGame.gameId);
+      await messageService.sendGameFinishedMessage(chatId);
+      if (updatedGame.endGameMessageId) {
+        await messageService.deleteMessage(chatId, updatedGame.endGameMessageId);
+      }
     }
   } catch (error) {
     console.error('Error in handleEndGameVote:', error);

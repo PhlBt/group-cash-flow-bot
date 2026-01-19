@@ -452,10 +452,9 @@ CashFlow - настольная игра о финансовом планиро�
   /**
    * Отправляет сообщение о завершении игры
    * @param {number} chatId - ID чата
-   * @param {string} gameId - ID игры
    */
-  async sendGameFinishedMessage(chatId, gameId) {
-    const message = `🎉 Игра ${gameId} завершена по голосованию игроков!`;
+  async sendGameFinishedMessage(chatId) {
+    const message = `🎉 Игра завершена по голосованию игроков!`;
     await this.sendMessage(chatId, message);
   }
 
