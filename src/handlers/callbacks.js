@@ -16,15 +16,6 @@ async function handleRollDice(query, diceCount, services) {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
 
-  // Удалить кнопки с сообщения о броске кубика
-  await messageService.removeMessageKeyboard(chatId, query.message.message_id);
-
-  // Убрать текст "Выберите действие:" из сообщения
-  const newText = query.message.text.replace('\nВыберите действие:', '');
-  if (newText !== query.message.text) {
-    await messageService.editMessageText(chatId, query.message.message_id, newText);
-  }
-
   try {
     // Найти активную игру в чате
     const game = await gameService.getActiveGameByChatId(chatId);
@@ -34,10 +25,19 @@ async function handleRollDice(query, diceCount, services) {
     }
 
     // Проверить, что пользователь - текущий игрок
-    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
-    if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+    const { validateCurrentPlayer } = require('../utils/validators');
+    const currentPlayer = await validateCurrentPlayer(game.gameId, userId, services, chatId);
+    if (!currentPlayer) {
       return;
+    }
+
+    // Удалить кнопки с сообщения о броске кубика
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Убрать текст "Выберите действие:" из сообщения
+    const newText = query.message.text.replace('\nВыберите действие:', '');
+    if (newText !== query.message.text) {
+      await messageService.editMessageText(chatId, query.message.message_id, newText);
     }
 
     // Проверить, что кубик еще не брошен в этом ходу

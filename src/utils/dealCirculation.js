@@ -34,12 +34,19 @@ async function initializeDealCirculation(gameId, deal, services) {
     return;
   }
 
-  // Создать массив всех игроков
-  const allPlayers = game.players.map(p => p.userId);
+  // Создать массив игроков, начиная с текущего игрока
+  const currentIndex = game.currentPlayerIndex;
+  const circulationPlayers = [];
+  for (let i = 0; i < game.players.length; i++) {
+    const playerIndex = (currentIndex + i) % game.players.length;
+    circulationPlayers.push(game.players[playerIndex].userId);
+  }
 
-  if (allPlayers.length > 0) {
+  if (circulationPlayers.length > 0) {
     // Установить список игроков для циркуляции
-    await gameService.databaseService.setDealCirculationPlayers(gameId, allPlayers);
+    await gameService.databaseService.setDealCirculationPlayers(gameId, circulationPlayers);
+    // Сохранить оригинальный индекс текущего игрока
+    await gameService.databaseService.setDealCirculationOriginalIndex(gameId, currentIndex);
   }
 }
 
@@ -71,16 +78,12 @@ async function processDealAction(gameId, userId, chatId, action, services) {
     throw new Error('Сейчас не ваш ход!');
   }
 
-  if (action === 'buy' || action === 'sell') {
-    // Для покупки/продажи - завершить циркуляцию и продолжить игру
-    await endDealCirculation(gameId, services);
-    const nextTurnResult = await gameService.nextTurn(gameId);
-    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
-    }
-  } else if (action === 'skip') {
-    // Для пропуска - перейти к следующему игроку в списке циркуляции
-    await circulateToNextPlayer(gameId, chatId, services);
+  if (action === 'sell') {
+    // Для продажи - завершить циркуляцию
+    await endDealCirculation(game.gameId, chatId, services);
+  } else if (action === 'buy' || action === 'skip') {
+    // Для покупки или пропуска - перейти к следующему игроку
+    await circulateToNextPlayer(game.gameId, chatId, services);
   } else {
     throw new Error('Неизвестное действие: ' + action);
   }
@@ -113,11 +116,7 @@ async function circulateToNextPlayer(gameId, chatId, services) {
 
   if (incrementResult.completed) {
     // Все игроки из списка совершили действия - завершить циркуляцию
-    await endDealCirculation(gameId, services);
-    const nextTurnResult = await gameService.nextTurn(gameId);
-    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
-    }
+    await endDealCirculation(gameId, chatId, services);
   } else {
     // Показать карту следующему игроку из списка
     const nextPlayerId = game.dealCirculationPlayers[game.dealCirculationIndex];
@@ -149,16 +148,33 @@ async function circulateToNextPlayer(gameId, chatId, services) {
 /**
  * Завершает циркуляцию сделки (очищает currentDeal и данные циркуляции)
  * @param {string} gameId - ID игры
- * @param {Object} services - Объект с сервисами { gameService }
+ * @param {string} chatId - ID чата
+ * @param {Object} services - Объект с сервисами { gameService, messageService }
  */
-async function endDealCirculation(gameId, services) {
-  const { gameService } = services;
+async function endDealCirculation(gameId, chatId, services) {
+  const { gameService, messageService } = services;
+
+  const game = await gameService.getGame(gameId);
+  if (!game) {
+    throw new Error('Игра не найдена');
+  }
+
+  // Установить ход следующему игроку после оригинального
+  const nextPlayerIndex = (game.dealCirculationOriginalIndex + 1) % game.players.length;
+  await gameService.databaseService.getDb().collection('games').updateOne(
+    { gameId },
+    { $set: { currentPlayerIndex: nextPlayerIndex, diceRolledThisTurn: false } }
+  );
 
   // Очистить currentDeal
   await gameService.databaseService.setCurrentDeal(gameId, null);
 
   // Очистить данные циркуляции
   await gameService.databaseService.clearDealCirculation(gameId);
+
+  // Отправить сообщение о ходе следующего игрока
+  const nextPlayer = game.players[nextPlayerIndex];
+  await messageService.sendPlayerTurnMessage(chatId, nextPlayer);
 }
 
 module.exports = {

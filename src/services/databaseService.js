@@ -117,7 +117,8 @@ class DatabaseService {
       currentDeal: null,
       currentDealQuantity: 1,
       dealCirculationPlayers: [],
-      dealCirculationIndex: 0
+      dealCirculationIndex: 0,
+      dealCirculationOriginalIndex: 0
     });
 
     return gameId;
@@ -781,9 +782,32 @@ class DatabaseService {
       {
         $set: {
           dealCirculationPlayers: [],
-          dealCirculationIndex: 0
+          dealCirculationIndex: 0,
+          dealCirculationOriginalIndex: 0
         }
       }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает оригинальный индекс циркуляции сделки
+   * @param {string} gameId - ID игры
+   * @param {number} originalIndex - Оригинальный индекс
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setDealCirculationOriginalIndex(gameId, originalIndex) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { dealCirculationOriginalIndex: originalIndex } }
     );
 
     return { success: true };

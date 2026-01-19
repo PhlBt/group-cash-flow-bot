@@ -119,7 +119,7 @@ async function handleBuyDeal(query, services) {
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной покупке
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил сделку "${deal.title}"!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}"!`);
 
     // Обработать циркуляцию для anyCanBuySell
     if (deal.anyCanBuySell) {
@@ -246,12 +246,17 @@ async function handleBuyDealWithCreditCard(query, services) {
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной покупке
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил сделку "${deal.title}" кредиткой!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}" кредиткой!`);
 
-    // Передать ход следующему игроку
-    const nextTurnResult = await gameService.nextTurn(game.gameId);
-    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    // Обработать циркуляцию для anyCanBuySell
+    if (deal.anyCanBuySell) {
+      await processDealAction(game.gameId, userId, chatId, 'buy', services);
+    } else {
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
     }
 
   } catch (error) {
