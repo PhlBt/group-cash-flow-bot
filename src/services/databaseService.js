@@ -114,7 +114,8 @@ class DatabaseService {
       endGameVotes: [],
       endGameMessageId: null,
       waitingMessageId: null,
-      currentDeal: null
+      currentDeal: null,
+      currentDealQuantity: 1
     });
 
     return gameId;
@@ -397,7 +398,29 @@ class DatabaseService {
 
     await gamesCollection.updateOne(
       { gameId },
-      { $set: { currentDeal: deal } }
+      { $set: { currentDeal: deal, currentDealQuantity: 1 } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает количество для текущей сделки
+   * @param {string} gameId - ID игры
+   * @param {number} quantity - Количество
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCurrentDealQuantity(gameId, quantity) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { currentDealQuantity: quantity } }
     );
 
     return { success: true };
@@ -568,7 +591,8 @@ class DatabaseService {
     const player = game.players[playerIndex];
     const newAssets = [...player.assets, asset];
     const newAssetsCount = newAssets.length;
-    const newPassiveIncome = player.passiveIncome + asset.cashFlow;
+    const assetCashFlow = asset.cashFlow || 0; // Проверка на undefined/null
+    const newPassiveIncome = player.passiveIncome + assetCashFlow;
 
     await gamesCollection.updateOne(
       { gameId },

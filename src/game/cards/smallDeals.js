@@ -159,6 +159,7 @@ const smallDeals = [
     "description": "Ведущий банк предлагает своим клиентам специальный депозитный сертификат. Гарантированный процент и погашаемый независимо от срока вкладов. \n\nЛюбой может купить или продать столько, сколько хочет.",
     "cost": 150000,
     "passiveIncome": 600,
+    "unlimitedStocks": true,
     "anyCanBuySell": true,
     "canSellStocks": true
   },
@@ -170,6 +171,7 @@ const smallDeals = [
     "group_Id": "2big_power",
     "cost": 36000,
     "passiveIncome": 300,
+    "unlimitedStocks": true,
     "anyCanBuySell": true,
     "canSellStocks": true
   },
@@ -203,6 +205,7 @@ const smallDeals = [
     "cost": 120000,
     "range": "120 тыс ₽ - 120 тыс ₽",
     "passiveIncome": 600,
+    "unlimitedStocks": true,
     "anyCanBuySell": true,
     "canSellStocks": true
   },
@@ -266,6 +269,7 @@ const smallDeals = [
     "group_Id": "2big_power",
     "cost": 36000,
     "passiveIncome": 300,
+    "unlimitedStocks": true,
     "anyCanBuySell": true,
     "canSellStocks": true
   },
@@ -308,6 +312,7 @@ const smallDeals = [
     "group_Id": "on2u_entertainment_co",
     "cost": 150,
     "range": "300 ₽ - 900 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {
@@ -380,6 +385,7 @@ const smallDeals = [
     "group_Id": "gr04us",
     "cost": 900,
     "range": "300 ₽ - 900 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {
@@ -457,10 +463,11 @@ const smallDeals = [
     "id": "small_deal_42",
     "type": "small",
     "title": "Акции взаимного фонда - GR04US",
-    "description": "Рынок электростанций поднял цену акций взаимного фонда на рекордный уровень. Только вы можете покупать акции в любом количестве по этой цене. \n\nКаждый может продать по этой цене.",
+    "description": "Рынок электростанций поднял цену акций взаимного фонда на рекордный уровень. \n\nТолько вы можете покупать акции в любом количестве по этой цене. \n\nКаждый может продать по этой цене.",
     "group_Id": "gr04us",
     "cost": 1200,
     "range": "300 ₽ - 900 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {
@@ -490,10 +497,11 @@ const smallDeals = [
     "id": "small_deal_45",
     "type": "small",
     "title": "Акции - OK4U Drug Co.",
-    "description": "Компания давно специализируется на производстве лекарств, особенно для людей старше 70. Только вы можете покупать акции в любом количестве по этой цене. \n\nКаждый может продать по этой цене.",
+    "description": "Компания давно специализируется на производстве лекарств, особенно для людей старше 70. \n\nТолько вы можете покупать акции в любом количестве по этой цене. \n\nКаждый может продать по этой цене.",
     "group_Id": "ok4u_drug_co",
     "cost": 900,
     "range": "150 ₽ - 1 200 ₽",
+    "unlimitedStocks": true,
     "canSellStocks": true
   },
   {

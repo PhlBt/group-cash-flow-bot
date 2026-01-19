@@ -4,6 +4,11 @@
  * @returns {string} Отформатированное число с ₽
  */
 function formatNumber(num) {
+  // Проверка на корректное число
+  if (typeof num !== 'number' || isNaN(num)) {
+    return '0';
+  }
+
   if (num >= 1000000) {
     // Для миллионов: показываем с десятичными
     const millions = (num / 1000000).toFixed(1);

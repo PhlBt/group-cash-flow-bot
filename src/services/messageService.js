@@ -536,20 +536,49 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object} deal - Объект сделки
    * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   * @param {number} quantity - Текущее количество для unlimitedStocks
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendDealCardMessage(chatId, deal, player) {
+  async sendDealCardMessage(chatId, deal, player, game, quantity = 1) {
+    const content = this.generateDealCardContent(deal, player, game, quantity);
+
+    const sentMessage = await this.bot.sendMessage(chatId, content.text, {
+      parse_mode: 'Markdown',
+      reply_markup: content.keyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Генерирует текст и клавиатуру для карточки сделки (без отправки)
+   * @param {Object} deal - Объект сделки
+   * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   * @param {number} quantity - Текущее количество для unlimitedStocks
+   * @returns {Object} Объект с text и keyboard
+   */
+  generateDealCardContent(deal, player, game, quantity = 1) {
     let message = `💼 **${deal.title}**\n\n`;
     message += `📝 ${deal.description}\n\n`;
 
     if (deal.cost) {
       message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
+      if (deal.unlimitedStocks) {
+        message += `🔢 Количество: ${quantity}\n`;
+        message += `💰 Общая стоимость: ${formatNumber(deal.cost * quantity)} ₽\n`;
+      }
     }
 
     // Показать денежный поток (cashFlow или passiveIncome)
     const income = deal.passiveIncome || deal.cashFlow;
     if (income !== undefined) {
-      message += `💵 Денежный поток: ${formatNumber(income)} ₽/месяц\n`;
+      message += `💵 Денежный поток: ${formatNumber(income)} ₽/месяц`;
+      if (deal.unlimitedStocks) {
+        message += ` (за единицу)`;
+      }
+      message += `\n`;
     }
 
     if (deal.roi) {
@@ -576,29 +605,30 @@ CashFlow - настольная игра о финансовом планиро�
       message += `🏢 Квартир: ${deal.apartments}\n`;
     }
 
-    message += `\n💸 Ваши деньги: ${formatNumber(player.cash)} ₽\n`;
+    message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
 
-    // Стоимость кредитной карты (2% от стоимости)
-    // if (deal.cost) {
-    //   const creditCardCost = Math.floor(deal.cost * 0.02);
-    //   message += `💳 Оплата кредиткой: ${formatNumber(creditCardCost)} ₽/месяц\n`;
-    // }
+    // Если можно продавать акции и у игрока есть активы с тем же group_Id
+    if (deal.canSellStocks && deal.group_Id && player.assets) {
+      const sameGroupAssets = player.assets.filter(asset => asset.group_Id === deal.group_Id);
+      if (sameGroupAssets.length > 0) {
+        const totalQuantity = sameGroupAssets.reduce((sum, asset) => sum + (asset.quantity || 1), 0);
+        const sellPrice = deal.cost * totalQuantity;
+        const totalBuyCost = sameGroupAssets.reduce((sum, asset) => sum + (asset.cost * (asset.quantity || 1)), 0);
+        const avgBuyPrice = totalBuyCost / totalQuantity;
+        const profit = (deal.cost - avgBuyPrice) * totalQuantity;
 
-    // if (deal.type === 'big' && !deal.expenses) {
-    //   message += `📊 Ежемесячный платеж: ${formatNumber(Math.floor(deal.cost * 0.01))} ₽\n`;
-    // }
+        const profitText = profit >= 0 ? `+${formatNumber(profit)} ₽` : `-${formatNumber(profit)} ₽`;
+
+        message += `\n💸 Продажа: ${totalQuantity} акций за ${formatNumber(sellPrice)} ₽ (${profitText})\n`;
+      }
+    }
 
     message += `\nЧто вы хотите сделать?`;
 
     // Генерируем клавиатуру в зависимости от типа сделки
-    const keyboard = this.generateDealKeyboard(deal);
+    const keyboard = generateDealKeyboard(deal, player, game, quantity);
 
-    const sentMessage = await this.bot.sendMessage(chatId, message, {
-      parse_mode: 'Markdown',
-      reply_markup: keyboard
-    });
-
-    return sentMessage.message_id;
+    return { text: message, keyboard };
   }
 
   /**

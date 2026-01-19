@@ -85,25 +85,128 @@ const dealTypeKeyboard = {
 
 /**
  * Генерирует клавиатуру для карточки сделки
- * @param {Object} deal - Объект сделки (опционально)
+ * @param {Object} deal - Объект сделки
+ * @param {Object} player - Объект игрока
+ * @param {Object} game - Объект игры
+ * @param {number} quantity - Текущее количество для unlimitedStocks (опционально)
  * @returns {Object} Клавиатура
  */
-function generateDealKeyboard(deal) {
+function generateDealKeyboard(deal, player, game, quantity = 1) {
   const keyboard = {
-    inline_keyboard: [
+    inline_keyboard: []
+  };
+
+  // Проверяем, есть ли у игрока активы с тем же group_id
+  const hasSameGroupAssets = deal.group_Id && player.assets && player.assets.some(asset => asset.group_Id === deal.group_Id);
+
+  // Проверяем, есть ли у игрока недвижимость
+  const hasRealEstate = player.assets && player.assets.some(asset => asset.isRealEstate);
+
+  // Если unlimitedStocks, показываем клавиатуру с количеством
+  if (deal.unlimitedStocks) {
+    keyboard.inline_keyboard = [
+      [
+        { text: '➖ 1', callback_data: 'decrease_quantity_1' },
+        { text: '➕ 1', callback_data: 'increase_quantity_1' }
+      ],
+      [
+        { text: '➖ 10', callback_data: 'decrease_quantity_10' },
+        { text: '➕ 10', callback_data: 'increase_quantity_10' }
+      ],
+      [
+        { text: '➖ 100', callback_data: 'decrease_quantity_100' },
+        { text: '➕ 100', callback_data: 'increase_quantity_100' }
+      ],
       [
         { text: '💰 Купить', callback_data: 'buy_deal' }
       ],
       [
+        { text: '💳 Кредитная карта', callback_data: 'buy_deal_credit_card' }
+      ]
+    ];
+
+    // Если canSellStocks и у игрока есть активы с тем же group_id, добавляем "Продать"
+    if (deal.canSellStocks && hasSameGroupAssets) {
+      keyboard.inline_keyboard.push([
+        { text: '💸 Продать', callback_data: 'sell_stocks' }
+      ]);
+    }
+
+    // Если нет expenses, добавляем "Пропустить" в конце
+    if (!deal.expenses) {
+      keyboard.inline_keyboard.push([
+        { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
+      ]);
+    }
+
+    return keyboard;
+  }
+
+  // Если multiple, только кнопка "Пропустить"
+  if (deal.multiple) {
+    keyboard.inline_keyboard = [
+      [
         { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
       ]
-    ]
-  };
+    ];
+    return keyboard;
+  }
 
-  // Кнопка предложения игроку (если применимо)
-  if (deal && deal.canSellToOthers) {
+  // Если есть cost, кнопка "Купить"
+  if (deal.cost) {
     keyboard.inline_keyboard.push([
-      { text: '👥 Предложить игроку', callback_data: 'offer_deal' }
+      { text: '💰 Купить', callback_data: 'buy_deal' }
+    ]);
+
+    // Если нет unlimitedStocks, кнопка "Кредитная карта"
+    if (!deal.unlimitedStocks) {
+      keyboard.inline_keyboard.push([
+        { text: '💳 Кредитная карта', callback_data: 'buy_deal_credit_card' }
+      ]);
+    }
+  }
+
+  // Если canSellToOthers, кнопка "Предложить другому"
+  if (deal.canSellToOthers) {
+    keyboard.inline_keyboard.push([
+      { text: '👥 Предложить другому', callback_data: 'offer_deal' }
+    ]);
+  }
+
+  // Если canSellStocks и у игрока есть активы с тем же group_id, кнопка "Продать"
+  if (deal.canSellStocks && hasSameGroupAssets) {
+    keyboard.inline_keyboard.push([
+      { text: '💸 Продать', callback_data: 'sell_stocks' }
+    ]);
+  }
+
+  // Если есть expenses и у игрока есть недвижимость
+  if (deal.expenses && hasRealEstate) {
+    keyboard.inline_keyboard = [
+      [
+        { text: '💰 Оплатить', callback_data: 'pay_expenses' }
+      ],
+      [
+        { text: '💳 Кредитная карта', callback_data: 'buy_deal_credit_card' }
+      ]
+    ];
+    return keyboard;
+  }
+
+  // Если есть expenses, но нет недвижимости - показываем "Пропустить"
+  if (deal.expenses && !hasRealEstate) {
+    keyboard.inline_keyboard = [
+      [
+        { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
+      ]
+    ];
+    return keyboard;
+  }
+
+  // Если нет expenses, добавляем "Пропустить" в конце
+  if (!deal.expenses) {
+    keyboard.inline_keyboard.push([
+      { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
     ]);
   }
 

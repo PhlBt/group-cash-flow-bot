@@ -312,9 +312,10 @@ class GameService {
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
    * @param {Object} deal - Объект сделки
+   * @param {number} quantity - Количество для unlimitedStocks (по умолчанию 1)
    * @returns {Promise<{success: boolean, error?: string}>} Результат операции
    */
-  async buySmallDeal(gameId, userId, deal) {
+  async buySmallDeal(gameId, userId, deal, quantity = 1) {
     const game = await this.databaseService.getGame(gameId);
     if (!game) {
       return { success: false, error: 'not_found' };
@@ -325,13 +326,15 @@ class GameService {
       return { success: false, error: 'player_not_found' };
     }
 
+    const totalCost = deal.cost * quantity;
+
     // Проверяем хватает ли денег
-    if (player.cash < deal.cost) {
+    if (player.cash < totalCost) {
       return { success: false, error: 'insufficient_funds' };
     }
 
     // Списываем стоимость
-    const newCash = player.cash - deal.cost;
+    const newCash = player.cash - totalCost;
 
     // Обновляем баланс
     await this.databaseService.getDb().collection('games').updateOne(
@@ -340,13 +343,17 @@ class GameService {
     );
 
     // Добавляем актив
-    const income = deal.passiveIncome || deal.cashFlow || 0;
+    const incomePerUnit = deal.passiveIncome || deal.cashFlow || 0;
+    const totalIncome = incomePerUnit * quantity;
+
     const asset = {
       title: deal.title,
       cost: deal.cost,
-      cashFlow: income,
+      cashFlow: totalIncome,
       type: 'small_deal',
-      description: deal.description
+      description: deal.description,
+      quantity: quantity,
+      group_Id: deal.group_Id
     };
 
     await this.databaseService.addAsset(gameId, userId, asset);
@@ -457,6 +464,209 @@ class GameService {
     };
 
     await this.databaseService.addLiability(gameId, userId, liability);
+
+    return { success: true };
+  }
+
+  /**
+   * Обрабатывает multiple сделку (изменение количества акций у всех игроков)
+   * @param {string} gameId - ID игры
+   * @param {Object} deal - Объект сделки с multiple
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async processMultiple(gameId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (!deal.multiple || !deal.group_Id) {
+      return { success: false, error: 'invalid_deal' };
+    }
+
+    const multiplier = deal.multiple; // 2 или -2
+
+    // Проходим по всем игрокам
+    for (const player of game.players) {
+      if (player.assets && player.assets.length > 0) {
+        // Находим активы с тем же group_id
+        const updatedAssets = player.assets.map(asset => {
+          if (asset.group_Id === deal.group_Id && asset.quantity) {
+            // Изменяем количество
+            let newQuantity;
+            if (multiplier === 2) {
+              newQuantity = asset.quantity * 2;
+            } else if (multiplier === -2) {
+              newQuantity = Math.ceil(asset.quantity / 2);
+            }
+
+            // Изменяем cashFlow пропорционально количеству
+            const newCashFlow = Math.floor((asset.cashFlow / asset.quantity) * newQuantity);
+
+            return {
+              ...asset,
+              quantity: newQuantity,
+              cashFlow: newCashFlow
+            };
+          }
+          return asset;
+        });
+
+        // Обновляем активы игрока
+        const playerIndex = game.players.indexOf(player);
+        const newPassiveIncome = updatedAssets.reduce((sum, asset) => sum + asset.cashFlow, 0);
+        const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+
+        await this.databaseService.getDb().collection('games').updateOne(
+          { gameId },
+          {
+            $set: {
+              [`players.${playerIndex}.assets`]: updatedAssets,
+              [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+              [`players.${playerIndex}.totalIncome`]: player.salary + newPassiveIncome,
+              [`players.${playerIndex}.cashFlow`]: newCashFlow
+            }
+          }
+        );
+      }
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Продает акции по цене сделки
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async sellStocks(gameId, userId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    if (!deal.canSellStocks || !deal.group_Id) {
+      return { success: false, error: 'invalid_deal' };
+    }
+
+    let totalIncome = 0;
+    let totalQuantity = 0;
+    const updatedAssets = [];
+    const closedLoans = [];
+
+    // Проходим по активам игрока
+    for (const asset of player.assets) {
+      if (asset.group_Id === deal.group_Id) {
+        // Продаем этот актив
+        const quantity = asset.quantity || 1;
+        const income = deal.cost * quantity;
+        totalIncome += income;
+        totalQuantity += quantity;
+
+        // Закрываем связанные кредиты
+        if (player.liabilities) {
+          for (const liability of player.liabilities) {
+            if (liability.title.includes(asset.title) && liability.loanAmount > 0) {
+              closedLoans.push(liability);
+            }
+          }
+        }
+      } else {
+        // Оставляем актив
+        updatedAssets.push(asset);
+      }
+    }
+
+    if (totalQuantity === 0) {
+      return { success: false, error: 'no_assets_to_sell' };
+    }
+
+    // Вычитаем стоимость закрытых кредитов из дохода
+    let netIncome = totalIncome;
+    for (const loan of closedLoans) {
+      netIncome -= loan.loanAmount;
+    }
+
+    // Обновляем баланс игрока
+    const newCash = player.cash + netIncome;
+
+    // Удаляем закрытые кредиты
+    const updatedLiabilities = player.liabilities.filter(liability =>
+      !closedLoans.some(closed => closed.title === liability.title)
+    );
+
+    const newLoansCount = updatedLiabilities.length;
+    const newTotalLoans = updatedLiabilities.reduce((sum, liab) => sum + (liab.loanAmount || 0), 0);
+    const newTotalLoanPayments = updatedLiabilities.reduce((sum, liab) => sum + (liab.monthlyPayment || 0), 0);
+    const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
+    const newCashFlow = player.salary + player.passiveIncome - totalIncome + (deal.passiveIncome || 0) * totalQuantity - newTotalExpenses;
+
+    const playerIndex = game.players.indexOf(player);
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.cash`]: newCash,
+          [`players.${playerIndex}.assets`]: updatedAssets,
+          [`players.${playerIndex}.assetsCount`]: updatedAssets.length,
+          [`players.${playerIndex}.passiveIncome`]: player.passiveIncome - totalIncome + (deal.passiveIncome || 0) * totalQuantity,
+          [`players.${playerIndex}.totalIncome`]: player.salary + player.passiveIncome - totalIncome + (deal.passiveIncome || 0) * totalQuantity,
+          [`players.${playerIndex}.liabilities`]: updatedLiabilities,
+          [`players.${playerIndex}.loansCount`]: newLoansCount,
+          [`players.${playerIndex}.totalLoans`]: newTotalLoans,
+          [`players.${playerIndex}.totalLoanPayments`]: newTotalLoanPayments,
+          [`players.${playerIndex}.totalExpenses`]: newTotalExpenses,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Оплачивает расходы по сделке
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки с expenses
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async payExpenses(gameId, userId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    if (!deal.expenses) {
+      return { success: false, error: 'invalid_deal' };
+    }
+
+    // Проверяем хватает ли денег
+    if (player.cash < deal.expenses) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем расходы
+    const newCash = player.cash - deal.expenses;
+
+    // Обновляем баланс
+    const playerIndex = game.players.indexOf(player);
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
 
     return { success: true };
   }
