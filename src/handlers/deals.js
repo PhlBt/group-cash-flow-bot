@@ -27,8 +27,14 @@ async function handleDealType(query, dealType, services) {
       return;
     }
 
-    // Удалить сообщение с выбором типа сделки
-    await messageService.deleteMessage(chatId, query.message.message_id);
+    // Удалить кнопки с сообщения выбора типа сделки
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Убрать текст "Выберите тип сделки:" из сообщения
+    const newText = query.message.text.replace('\nВыберите тип сделки:', '');
+    if (newText !== query.message.text) {
+      await messageService.editMessageText(chatId, query.message.message_id, newText);
+    }
 
     // Сгенерировать сделку
     const { getRandomSmallDeal } = require('../game/cards/smallDeals');
@@ -94,8 +100,8 @@ async function handleBuyDeal(query, services) {
 
     if (!buyResult.success) {
       if (buyResult.error === 'insufficient_funds') {
-        // Удалить сообщение с карточкой сделки
-        await messageService.deleteMessage(chatId, query.message.message_id);
+        // Удалить кнопки с сообщения карточки сделки
+        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
         // Отправить предложение оплаты кредиткой
         await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer);
       } else {
@@ -104,8 +110,8 @@ async function handleBuyDeal(query, services) {
       return;
     }
 
-    // Удалить сообщение с карточкой сделки
-    await messageService.deleteMessage(chatId, query.message.message_id);
+    // Удалить кнопки с сообщения карточки сделки
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной покупке
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил сделку "${deal.title}"!`);
@@ -158,15 +164,15 @@ async function handleSkipDeal(query, services) {
         return;
       }
 
-      // Удалить сообщение с карточкой сделки
-      await messageService.deleteMessage(chatId, query.message.message_id);
+      // Удалить кнопки с сообщения карточки сделки
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
       // Отправить сообщение о применении multiple
       const action = deal.multiple === 2 ? 'удвоено' : 'уменьшено вдвое';
       await messageService.sendErrorMessage(chatId, `📊 Количество акций "${deal.title}" ${action} у всех игроков!`);
     } else {
-      // Удалить сообщение с карточкой сделки
-      await messageService.deleteMessage(chatId, query.message.message_id);
+      // Удалить кнопки с сообщения карточки сделки
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
     }
 
     // Передать ход следующему игроку
@@ -220,8 +226,8 @@ async function handleBuyDealWithCreditCard(query, services) {
       return;
     }
 
-    // Удалить сообщение с предложением кредитки
-    await messageService.deleteMessage(chatId, query.message.message_id);
+    // Удалить кнопки с сообщения предложения кредитки
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной покупке
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил сделку "${deal.title}" кредиткой!`);
@@ -294,9 +300,7 @@ async function handleChangeQuantity(query, delta, services) {
     const updatedGame = await gameService.getGame(game.gameId);
     const content = messageService.generateDealCardContent(deal, currentPlayer, updatedGame, newQuantity);
 
-    await messageService.bot.editMessageText(content.text, {
-      chat_id: chatId,
-      message_id: query.message.message_id,
+    await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
     });
@@ -346,8 +350,8 @@ async function handleSellStocks(query, services) {
       return;
     }
 
-    // Удалить сообщение с карточкой сделки
-    await messageService.deleteMessage(chatId, query.message.message_id);
+    // Удалить кнопки с сообщения карточки сделки
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной продаже
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} продал акции "${deal.title}"!`);
@@ -407,8 +411,8 @@ async function handlePayExpenses(query, services) {
     const payResult = await gameService.payExpenses(game.gameId, userId, deal);
     if (!payResult.success) {
       if (payResult.error === 'insufficient_funds') {
-        // Удалить сообщение с карточкой сделки
-        await messageService.deleteMessage(chatId, query.message.message_id);
+        // Удалить кнопки с сообщения карточки сделки
+        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
         // Отправить предложение оплаты кредиткой
         await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer);
       } else {
@@ -417,8 +421,8 @@ async function handlePayExpenses(query, services) {
       return;
     }
 
-    // Удалить сообщение с карточкой сделки
-    await messageService.deleteMessage(chatId, query.message.message_id);
+    // Удалить кнопки с сообщения карточки сделки
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной оплате
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы "${deal.title}"!`);

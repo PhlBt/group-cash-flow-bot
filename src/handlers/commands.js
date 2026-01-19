@@ -132,12 +132,33 @@ async function handleEndGameVote(query, services) {
     // Найти активную игру в чате
     const activeGame = await gameService.getActiveGameByChatId(chatId);
 
-    if (!activeGame || !activeGame.endGameMessageId) {
+    if (!activeGame) {
       await messageService.sendEndGameErrorMessage(chatId, 'not_active');
       return;
     }
 
-    // Голосовать
+    // Если нет ongoing голосования, инициировать новое
+    if (!activeGame.endGameVotes || activeGame.endGameVotes.length === 0) {
+      // Инициировать новое голосование
+      const messageId = await messageService.sendEndGameVoteMessage(chatId, activeGame, [userId]);
+      const result = await gameService.initiateEndGameVote(userId, activeGame.gameId, messageId);
+
+      if (!result.success) {
+        await messageService.sendEndGameErrorMessage(chatId, result.error);
+        return;
+      }
+
+      // Проверить, достигнуто ли большинство после инициации
+      const updatedGame = await gameService.getGame(activeGame.gameId);
+      const majority = Math.ceil(updatedGame.players.length / 2);
+      if (updatedGame.endGameVotes.length >= majority) {
+        await gameService.finishGame(activeGame.gameId);
+        await messageService.sendGameFinishedMessage(chatId, activeGame.gameId);
+      }
+      return;
+    }
+
+    // Голосовать в существующем голосовании
     const voteResult = await gameService.voteToEndGame(userId, activeGame.gameId);
 
     if (!voteResult.success) {
@@ -145,7 +166,7 @@ async function handleEndGameVote(query, services) {
       return;
     }
 
-    // Обновить сообщение
+    // Обновить сообщение голосования
     const updatedGame = await gameService.getGame(activeGame.gameId);
     await messageService.updateEndGameVoteMessage(chatId, activeGame.endGameMessageId, updatedGame, updatedGame.endGameVotes);
 

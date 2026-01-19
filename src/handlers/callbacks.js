@@ -16,8 +16,14 @@ async function handleRollDice(query, diceCount, services) {
   const chatId = query.message.chat.id;
   const userId = query.from.id;
 
-  // Удалить сообщение с кнопкой "Бросить кубик"
-  await messageService.deleteMessage(chatId, query.message.message_id);
+  // Удалить кнопки с сообщения о броске кубика
+  await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+  // Убрать текст "Выберите действие:" из сообщения
+  const newText = query.message.text.replace('\nВыберите действие:', '');
+  if (newText !== query.message.text) {
+    await messageService.editMessageText(chatId, query.message.message_id, newText);
+  }
 
   try {
     // Найти активную игру в чате
@@ -131,24 +137,25 @@ async function handleCallbackQuery(query, services) {
           // Присоединиться к существующей игре
           const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
           if (joinResult.success) {
-            // Удалить сообщение с кнопками
-            await messageService.deleteMessage(chatId, query.message.message_id);
+            // Удалить кнопки с сообщения
+            await messageService.removeMessageKeyboard(chatId, query.message.message_id);
             // Отправить карточку игрока
             await messageService.sendPlayerCard(chatId, joinResult.player);
 
-            // Удалить старое сообщение комнаты ожидания и отправить новое
-            if (existingGame.waitingMessageId) {
-              await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
-            }
+            // Обновить сообщение комнаты ожидания или отправить новое
             const updatedGame = await gameService.getGame(existingGame.gameId);
-            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
-            await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
+            if (existingGame.waitingMessageId) {
+              await messageService.updateWaitingRoomMessage(chatId, existingGame.waitingMessageId, updatedGame);
+            } else {
+              const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+              await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
+            }
           } else {
             await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
         } else {
-          // Удалить сообщение с кнопками
-          await messageService.deleteMessage(chatId, query.message.message_id);
+          // Удалить кнопки с сообщения
+          await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
           // Создать новую игру для чата
           const gameId = await gameService.createGame(chatId, userId, username);
@@ -172,8 +179,13 @@ async function handleCallbackQuery(query, services) {
         if (gameToStart && gameToStart.creatorId === userId) {
           const startResult = await gameService.startGame(userId, gameToStart.gameId);
           if (startResult.success) {
-            // Удалить сообщение с кнопками
-            await messageService.deleteMessage(chatId, query.message.message_id);
+            // Удалить кнопки с сообщения
+            await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+            // Удалить сообщение комнаты ожидания
+            if (gameToStart.waitingMessageId) {
+              await messageService.deleteMessage(chatId, gameToStart.waitingMessageId);
+            }
 
             // Начать игру - отправить ход первому игроку
             const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);

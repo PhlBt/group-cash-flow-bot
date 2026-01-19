@@ -670,6 +670,16 @@ class GameService {
 
     return { success: true };
   }
+
+  /**
+   * Устанавливает флаг броска кубика для текущего хода
+   * @param {string} gameId - ID игры
+   * @param {boolean} rolled - Был ли брошен кубик
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setDiceRolledThisTurn(gameId, rolled) {
+    return await this.databaseService.setDiceRolledThisTurn(gameId, rolled);
+  }
 }
 
 module.exports = GameService;

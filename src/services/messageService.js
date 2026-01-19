@@ -352,9 +352,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     const message = `🛑 ${votedUsers.length === 1 ? 'Игрок' : 'Игроки'} хочет завершить игру!\n\nГолосов: ${votedCount}/${majority} (нужно большинство)${votersList}`;
 
-    await this.bot.editMessageText(message, {
-      chat_id: chatId,
-      message_id: messageId,
+    await this.editMessageText(chatId, messageId, message, {
       reply_markup: endGameVoteKeyboard
     });
   }
@@ -420,6 +418,23 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Обновляет сообщение комнаты ожидания
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для обновления
+   * @param {Object} game - Объект игры
+   */
+  async updateWaitingRoomMessage(chatId, messageId, game) {
+    const playersList = game.players.map(player => `- ${player.username}`).join('\n');
+    const waitingText = game.players.length === 1 ? 'Этот игрок ждёт вас' : 'Эти игроки ждут вас';
+
+    const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
+
+    await this.editMessageText(chatId, messageId, message, {
+      reply_markup: waitingRoomKeyboard
+    });
+  }
+
+  /**
    * Удаляет сообщение
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения
@@ -431,6 +446,38 @@ CashFlow - настольная игра о финансовом планиро�
       console.error('Error deleting message:', error);
       // Игнорируем ошибки, если сообщение уже удалено или не существует
     }
+  }
+
+  /**
+   * Удаляет клавиатуру с сообщения, оставляя текст
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения
+   */
+  async removeMessageKeyboard(chatId, messageId) {
+    try {
+      await this.bot.editMessageReplyMarkup({}, {
+        chat_id: chatId,
+        message_id: messageId
+      });
+    } catch (error) {
+      console.error('Error removing keyboard:', error);
+      // Игнорируем ошибки, если сообщение уже изменено или не существует
+    }
+  }
+
+  /**
+   * Редактирует текст сообщения
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения
+   * @param {string} newText - Новый текст сообщения
+   * @param {Object} options - Дополнительные опции для editMessageText (reply_markup, parse_mode и т.д.)
+   */
+  async editMessageText(chatId, messageId, newText, options = {}) {
+    await this.bot.editMessageText(newText, {
+      chat_id: chatId,
+      message_id: messageId,
+      ...options
+    });
   }
 
   /**
