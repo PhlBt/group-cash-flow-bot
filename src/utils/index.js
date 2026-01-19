@@ -23,6 +23,9 @@ function formatNumber(num) {
   }
 }
 
+const RateLimiter = require('./rateLimiter');
+
 module.exports = {
-  formatNumber
+  formatNumber,
+  RateLimiter
 };

@@ -100,12 +100,14 @@ startBot().catch(console.error);
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('Shutting down bot...');
+  messageService.rateLimiter.stop();
   await bot.stopPolling();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('Shutting down bot...');
+  messageService.rateLimiter.stop();
   await bot.stopPolling();
   process.exit(0);
 });
