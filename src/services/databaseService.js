@@ -235,7 +235,7 @@ class DatabaseService {
 
     await gamesCollection.updateOne(
       { gameId },
-      { $set: { status: 'active', startedAt: new Date(), currentPlayerIndex: 0 } }
+      { $set: { status: 'active', startedAt: new Date(), currentPlayerIndex: 0, diceRolledThisTurn: false } }
     );
 
     return { success: true };
@@ -562,7 +562,7 @@ class DatabaseService {
 
     await gamesCollection.updateOne(
       { gameId },
-      { $set: { currentPlayerIndex: nextPlayerIndex } }
+      { $set: { currentPlayerIndex: nextPlayerIndex, diceRolledThisTurn: false } }
     );
 
     return { success: true, nextPlayerIndex };
@@ -689,6 +689,28 @@ class DatabaseService {
     }
 
     await gamesCollection.updateOne({ gameId }, { $set: setUpdates });
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает флаг броска кубика для текущего хода
+   * @param {string} gameId - ID игры
+   * @param {boolean} rolled - Был ли брошен кубик
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setDiceRolledThisTurn(gameId, rolled) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { diceRolledThisTurn: rolled } }
+    );
 
     return { success: true };
   }

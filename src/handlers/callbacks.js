@@ -34,8 +34,17 @@ async function handleRollDice(query, diceCount, services) {
       return;
     }
 
+    // Проверить, что кубик еще не брошен в этом ходу
+    if (game.diceRolledThisTurn) {
+      await messageService.sendErrorMessage(chatId, 'Вы уже бросили кубик в этом ходу!');
+      return;
+    }
+
     // Бросить кубик(и)
     const steps = gameService.rollDice(diceCount);
+
+    // Установить флаг, что кубик брошен
+    await gameService.setDiceRolledThisTurn(game.gameId, true);
 
     // Переместить игрока
     const moveResult = await gameService.movePlayer(game.gameId, userId, steps);
