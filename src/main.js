@@ -39,36 +39,6 @@ async function connectToMongoDB() {
   }
 }
 
-// Обработчик команды /start
-bot.onText(/\/start/, async (msg) => {
-  await handlers.handleStart(msg, services);
-});
-
-// Обработчик команды /help
-bot.onText(/\/help/, async (msg) => {
-  await handlers.handleHelp(msg, services);
-});
-
-// Обработчик команды /newgame
-bot.onText(/\/newgame/, async (msg) => {
-  await handlers.handleNewGame(msg, services);
-});
-
-// Обработчик команды /play
-bot.onText(/\/play (.+)/, async (msg, match) => {
-  await handlers.handlePlay(msg, match, services);
-});
-
-// Обработчик команды /endgame
-bot.onText(/\/endgame/, async (msg) => {
-  await handlers.handleEndGame(msg, services);
-});
-
-// Обработчик callback_query от inline кнопок
-bot.on('callback_query', async (query) => {
-  await handlers.handleCallbackQuery(query, services);
-});
-
 // Установка команд для бота
 async function setBotCommands() {
   const commands = [
@@ -89,8 +59,39 @@ async function setBotCommands() {
 
 // Запуск подключения к MongoDB и бота
 async function startBot() {
-  await setBotCommands();
   await connectToMongoDB();
+  await setBotCommands();
+
+  // Обработчик команды /start
+  bot.onText(/\/start/, async (msg) => {
+    await handlers.handleStart(msg, services);
+  });
+
+  // Обработчик команды /help
+  bot.onText(/\/help/, async (msg) => {
+    await handlers.handleHelp(msg, services);
+  });
+
+  // Обработчик команды /newgame
+  bot.onText(/\/newgame/, async (msg) => {
+    await handlers.handleNewGame(msg, services);
+  });
+
+  // Обработчик команды /play
+  bot.onText(/\/play (.+)/, async (msg, match) => {
+    await handlers.handlePlay(msg, match, services);
+  });
+
+  // Обработчик команды /endgame
+  bot.onText(/\/endgame/, async (msg) => {
+    await handlers.handleEndGame(msg, services);
+  });
+
+  // Обработчик callback_query от inline кнопок
+  bot.on('callback_query', async (query) => {
+    await handlers.handleCallbackQuery(query, services);
+  });
+
   console.log('Bot is running...');
 }
 
