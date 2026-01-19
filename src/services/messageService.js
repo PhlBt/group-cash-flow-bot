@@ -4,6 +4,44 @@ const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard,
 class MessageService {
   constructor(bot) {
     this.bot = bot;
+    this.maxRetries = 3;
+    this.baseDelay = 10000; // 1 second
+    this.backoffMultiplier = 2;
+  }
+
+  /**
+   * Выполняет операцию с повторными попытками при ошибке 429
+   * @param {Function} operation - Асинхронная функция для выполнения
+   * @param {number} attempt - Текущая попытка (внутренний параметр)
+   * @returns {Promise} Результат операции
+   */
+  async retryOn429(operation, attempt = 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error.code === 'ETELEGRAM' && error.response && error.response.statusCode === 429) {
+        if (attempt < this.maxRetries) {
+          // Используем retry_after из ответа Telegram, если доступно
+          let delay;
+          if (error.response.parameters && error.response.parameters.retry_after) {
+            delay = error.response.parameters.retry_after * 1000; // секунды в миллисекунды
+            console.log(`Rate limit hit, retrying in ${delay}ms (as specified by Telegram, attempt ${attempt}/${this.maxRetries})`);
+          } else {
+            // Фallback на экспоненциальную задержку
+            delay = this.baseDelay * Math.pow(this.backoffMultiplier, attempt - 1);
+            console.log(`Rate limit hit, retrying in ${delay}ms (fallback exponential backoff, attempt ${attempt}/${this.maxRetries})`);
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.retryOn429(operation, attempt + 1);
+        } else {
+          console.error('Max retries exceeded for Telegram API rate limit');
+          throw error;
+        }
+      } else {
+        // Для других ошибок не повторяем
+        throw error;
+      }
+    }
   }
 
   /**
@@ -18,7 +56,7 @@ class MessageService {
 🎯 Цель: Выйти из "крысиных бегов", накопив пассивный доход больше расходов
 
 Используйте кнопки ниже для управления игрой.`;
-    await this.bot.sendMessage(chatId, message, { reply_markup: welcomeKeyboard });
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message, { reply_markup: welcomeKeyboard }));
   }
 
   /**
@@ -39,7 +77,7 @@ class MessageService {
 CashFlow - настольная игра о финансовом планировании.
     `;
 
-    await this.bot.sendMessage(chatId, helpText.trim(), { parse_mode: 'Markdown' });
+    await this.retryOn429(() => this.bot.sendMessage(chatId, helpText.trim(), { parse_mode: 'Markdown' }));
   }
 
   /**
@@ -68,7 +106,7 @@ CashFlow - настольная игра о финансовом планиро�
 📋 Используйте кнопки или команды для навигации.
     `;
 
-    await this.bot.sendMessage(chatId, rulesText.trim(), { parse_mode: 'Markdown' });
+    await this.retryOn429(() => this.bot.sendMessage(chatId, rulesText.trim(), { parse_mode: 'Markdown' }));
   }
 
   /**
@@ -78,7 +116,7 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendGameCreatedMessage(chatId, gameId) {
     const message = `Новая игра создана! ID игры: ${gameId}. Используйте /play ${gameId} для начала игры.`;
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -87,7 +125,7 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendGameCreationErrorMessage(chatId) {
     const message = 'Ошибка при создании игры. Попробуйте еще раз.';
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -115,7 +153,7 @@ CashFlow - настольная игра о финансовом планиро�
         message = 'Ошибка при присоединении к игре. Попробуйте еще раз.';
     }
 
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -143,7 +181,7 @@ CashFlow - настольная игра о финансовом планиро�
       message += `   Кредиты: ${player.loansCount || 0}\n\n`;
     });
 
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -153,7 +191,7 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendPlaySuccessMessage(chatId, gameId) {
     const message = `Игра ${gameId} начата!`;
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -178,7 +216,7 @@ CashFlow - настольная игра о финансовом планиро�
         message = 'Ошибка при начале игры. Попробуйте еще раз.';
     }
 
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -237,7 +275,7 @@ CashFlow - настольная игра о финансовом планиро�
       info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
     }
 
-    await this.bot.sendMessage(chatId, info, { reply_markup: profileKeyboard });
+    await this.retryOn429(() => this.bot.sendMessage(chatId, info, { reply_markup: profileKeyboard }));
   }
 
   /**
@@ -296,7 +334,7 @@ CashFlow - настольная игра о финансовом планиро�
       info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
     }
 
-    await this.bot.sendMessage(chatId, info);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, info));
   }
 
   /**
@@ -322,9 +360,9 @@ CashFlow - настольная игра о финансовом планиро�
 
     const message = `🛑 ${votedUsers.length === 1 ? 'Игрок' : 'Игроки'} хочет завершить игру!\n\nГолосов: ${votedCount}/${majority} (нужно большинство)${votersList}`;
 
-    const sentMessage = await this.bot.sendMessage(chatId, message, {
+    const sentMessage = await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       reply_markup: endGameVoteKeyboard
-    });
+    }));
 
     return sentMessage.message_id;
   }
@@ -364,7 +402,7 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendGameFinishedMessage(chatId, gameId) {
     const message = `🎉 Игра ${gameId} завершена по голосованию игроков!`;
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -395,7 +433,7 @@ CashFlow - настольная игра о финансовом планиро�
         message = 'Ошибка при голосовании. Попробуйте еще раз.';
     }
 
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -410,9 +448,9 @@ CashFlow - настольная игра о финансовом планиро�
 
     const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
 
-    const sentMessage = await this.bot.sendMessage(chatId, message, {
+    const sentMessage = await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       reply_markup: waitingRoomKeyboard
-    });
+    }));
 
     return sentMessage.message_id;
   }
@@ -486,7 +524,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {string} errorText - Текст ошибки
    */
   async sendErrorMessage(chatId, errorText) {
-    await this.bot.sendMessage(chatId, errorText);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, errorText));
   }
 
   /**
@@ -508,9 +546,9 @@ CashFlow - настольная игра о финансовом планиро�
 
     const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
 
-    const sentMessage = await this.bot.sendMessage(chatId, message, {
+    const sentMessage = await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       reply_markup: keyboard
-    });
+    }));
 
     return sentMessage.message_id;
   }
@@ -601,9 +639,9 @@ CashFlow - настольная игра о финансовом планиро�
 
     const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
 
-    await this.bot.sendMessage(chatId, message, {
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       reply_markup: keyboard
-    });
+    }));
   }
 
   /**
@@ -670,9 +708,9 @@ CashFlow - настольная игра о финансовом планиро�
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
     message += `Выберите тип сделки:`;
 
-    await this.bot.sendMessage(chatId, message, {
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       reply_markup: dealTypeKeyboard
-    });
+    }));
   }
 
   /**
@@ -683,9 +721,9 @@ CashFlow - настольная игра о финансовом планиро�
   async sendDealTypeMessage(chatId) {
     const message = `💼 Вы попали на поле "Сделки"!\n\nВыберите тип сделки:`;
 
-    const sentMessage = await this.bot.sendMessage(chatId, message, {
+    const sentMessage = await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       reply_markup: dealTypeKeyboard
-    });
+    }));
 
     return sentMessage.message_id;
   }
@@ -702,10 +740,10 @@ CashFlow - настольная игра о финансовом планиро�
   async sendDealCardMessage(chatId, deal, player, game, quantity = 1) {
     const content = this.generateDealCardContent(deal, player, game, quantity);
 
-    const sentMessage = await this.bot.sendMessage(chatId, content.text, {
+    const sentMessage = await this.retryOn429(() => this.bot.sendMessage(chatId, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }));
 
     return sentMessage.message_id;
   }
@@ -817,10 +855,10 @@ CashFlow - настольная игра о финансовом планиро�
     message += `📊 Ежемесячный платеж: ${formatNumber(monthlyPayment)} ₽\n\n`;
     message += `Что вы хотите сделать?`;
 
-    const sentMessage = await this.bot.sendMessage(chatId, message, {
+    const sentMessage = await this.retryOn429(() => this.bot.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: creditCardKeyboard
-    });
+    }));
 
     return sentMessage.message_id;
   }
@@ -850,7 +888,7 @@ CashFlow - настольная игра о финансовом планиро�
       message += `У вас пока нет активов.`;
     }
 
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 
   /**
@@ -879,7 +917,7 @@ CashFlow - настольная игра о финансовом планиро�
       message += `У вас нет кредитов.`;
     }
 
-    await this.bot.sendMessage(chatId, message);
+    await this.retryOn429(() => this.bot.sendMessage(chatId, message));
   }
 }
 
