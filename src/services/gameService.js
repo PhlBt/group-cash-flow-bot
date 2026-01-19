@@ -394,48 +394,78 @@ class GameService {
       return { success: false, error: 'player_not_found' };
     }
 
-    // Проверяем хватает ли денег на первоначальный взнос
-    if (player.cash < deal.downPayment) {
-      return { success: false, error: 'insufficient_funds' };
+    // Проверяем, является ли сделка с кредитом (наличие mortgage)
+    if (deal.mortgage !== undefined) {
+      // Сделка с кредитом: проверяем хватает ли денег на первоначальный взнос
+      if (player.cash < deal.downPayment) {
+        return { success: false, error: 'insufficient_funds' };
+      }
+
+      // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
+      const monthlyPayment = Math.floor(deal.cost * 0.0001); // 0.01%
+      const loanAmount = deal.mortgage;
+
+      // Списываем первоначальный взнос
+      const newCash = player.cash - deal.downPayment;
+
+      // Обновляем баланс
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+      );
+
+      // Добавляем актив
+      const asset = {
+        title: deal.title,
+        cost: deal.cost,
+        cashFlow: deal.passiveIncome,
+        type: 'big_deal',
+        description: deal.description,
+        isRealEstate: deal.isRealEstate,
+        apartments: deal.apartments
+      };
+
+      await this.databaseService.addAsset(gameId, userId, asset);
+
+      // Добавляем кредит
+      const liability = {
+        title: deal.title,
+        cost: deal.cost,
+        downPayment: deal.downPayment,
+        loanAmount: loanAmount,
+        monthlyPayment: monthlyPayment,
+        type: 'big_deal_loan'
+      };
+
+      await this.databaseService.addLiability(gameId, userId, liability);
+    } else {
+      // Сделка без кредита: полная оплата за стоимость
+      if (player.cash < deal.cost) {
+        return { success: false, error: 'insufficient_funds' };
+      }
+
+      // Списываем полную стоимость
+      const newCash = player.cash - deal.cost;
+
+      // Обновляем баланс
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+      );
+
+      // Добавляем актив
+      const asset = {
+        title: deal.title,
+        cost: deal.cost,
+        cashFlow: deal.passiveIncome,
+        type: 'big_deal',
+        description: deal.description,
+        isRealEstate: deal.isRealEstate,
+        apartments: deal.apartments
+      };
+
+      await this.databaseService.addAsset(gameId, userId, asset);
     }
-
-    // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
-    const monthlyPayment = Math.floor(deal.cost * 0.0001); // 0.01%
-    const loanAmount = deal.mortgage;
-
-    // Списываем первоначальный взнос
-    const newCash = player.cash - deal.downPayment;
-
-    // Обновляем баланс
-    await this.databaseService.getDb().collection('games').updateOne(
-      { gameId },
-      { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
-    );
-
-    // Добавляем актив
-    const asset = {
-      title: deal.title,
-      cost: deal.cost,
-      cashFlow: deal.passiveIncome,
-      type: 'big_deal',
-      description: deal.description,
-      isRealEstate: deal.isRealEstate,
-      apartments: deal.apartments
-    };
-
-    await this.databaseService.addAsset(gameId, userId, asset);
-
-    // Добавляем кредит
-    const liability = {
-      title: deal.title,
-      cost: deal.cost,
-      downPayment: deal.downPayment,
-      loanAmount: loanAmount,
-      monthlyPayment: monthlyPayment,
-      type: 'big_deal_loan'
-    };
-
-    await this.databaseService.addLiability(gameId, userId, liability);
 
     return { success: true };
   }
@@ -480,6 +510,7 @@ class GameService {
     const liability = {
       title: `Кредитная карта - ${deal.title}`,
       cost: deal.cost,
+      loanAmount: deal.cost,
       monthlyPayment: monthlyPayment,
       type: 'credit_card_loan'
     };
