@@ -96,8 +96,9 @@ const miscellaneous = [
   },
   {
     "description": "Вы приобрели новый катер.",
-    "cost": 1000,
-    "mortgage": 17000
+    "cost": 18000,
+    "mortgage": 17000,
+    "downPayment": 1000
   },
   {
     "description": "Вы посетили мебельный салон. \nЗамените свое старое кресло.",
