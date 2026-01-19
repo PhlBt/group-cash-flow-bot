@@ -36,12 +36,14 @@ cashFlow/
 │       ├── index.js            # Вспомогательные функции (форматирование чисел)
 │       └── keyboards.js        # Inline клавиатуры для бота
 ├── docs/
+│   ├── COMMANDS.md      # Описание команд бота
 │   ├── DATABASE.md      # Описание DatabaseService
+│   ├── DEALS.md         # Описание модуля сделок
 │   ├── GAME.md          # Описание логики GameService
 │   ├── HANDLERS.md      # Описание логики обработчиков команд
-│   ├── MESSAGESERVICE.md # Описание MessageService
+│   ├── MESSAGE.md       # Описание MessageService
 │   ├── PROJECT.md       # Описание проекта и структура
-│   └── COMMANDS.md      # Описание команд бота
+│   └── REF.md           # Гайд по рефакторингу кода
 ├── docker/
 │   └── Dockerfile       # Конфигурация Docker контейнера
 ├── .env                 # Переменные окружения

@@ -1,5 +1,5 @@
 const { formatNumber } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, generateDealKeyboard, creditCardKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, generateDealKeyboard, creditCardKeyboard, profileKeyboard } = require('../utils/keyboards');
 
 class MessageService {
   constructor(bot) {
@@ -91,16 +91,6 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет сообщение об успешном присоединении к игре
-   * @param {number} chatId - ID чата
-   * @param {string} gameId - ID игры
-   */
-  async sendJoinSuccessMessage(chatId, gameId) {
-    const message = `Вы присоединились к игре ${gameId}!`;
-    await this.bot.sendMessage(chatId, message);
-  }
-
-  /**
    * Отправляет сообщение об ошибке присоединения к игре
    * @param {number} chatId - ID чата
    * @param {string} errorType - Тип ошибки ('not_found', 'already_joined', 'game_started')
@@ -124,6 +114,34 @@ CashFlow - настольная игра о финансовом планиро�
       default:
         message = 'Ошибка при присоединении к игре. Попробуйте еще раз.';
     }
+
+    await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет статистику игры
+   * @param {number} chatId - ID чата
+   * @param {Object} game - Объект игры
+   */
+  async sendGameStatsMessage(chatId, game) {
+    const trackName = game.status === 'active' ? 'активна' : 'завершена';
+    const currentPlayer = game.players.find(p => p.userId === game.currentPlayerId);
+    const currentPlayerName = currentPlayer ? `${currentPlayer.profession} ${currentPlayer.username}` : 'Не определен';
+
+    let message = `📊 СТАТУС ИГРЫ\n\n`;
+    message += `Игра: ${trackName}\n`;
+    message += `Текущий ход: ${currentPlayerName}\n\n`;
+    message += `Игроки:\n\n`;
+
+    game.players.forEach((player, index) => {
+      message += `${index + 1}. ${player.profession} ${player.username}\n`;
+      message += `   💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+      message += `   📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+      message += `   Расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+      message += `   📊 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
+      message += `   🏠 Активы: ${player.assetsCount}\n`;
+      message += `   Кредиты: ${player.loansCount || 0}\n\n`;
+    });
 
     await this.bot.sendMessage(chatId, message);
   }
@@ -161,6 +179,65 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     await this.bot.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет профиль игрока с кнопками активов и кредитов
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   */
+  async sendPlayerProfileMessage(chatId, player) {
+    let info = `👤 ${player.username}\n`;
+    if (!player.inFastTrack) {
+      info += `💼 Профессия: ${player.profession}\n\n`;
+
+      info += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+      info += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/месяц\n\n`;
+
+      info += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/месяц\n`;
+      info += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/месяц\n\n`;
+
+      info += `💵 Зарплата: ${formatNumber(player.salary)} ₽/месяц\n`;
+      info += `💸 Базовые расходы: ${formatNumber(player.expenses)} ₽/месяц\n`;
+
+      if (player.childrenCount && player.childrenCount > 0) {
+        info += `👶 Детей: ${player.childrenCount} (расходы: ${formatNumber(player.childrenExpenses)} ₽/месяц)\n`;
+      }
+      if (player.loansCount && player.loansCount > 0) {
+        info += `💸 Платежи по кредитам: ${formatNumber(player.totalLoanPayments)} ₽/месяц\n`;
+      }
+
+      info += `📊 Общий доход: ${formatNumber(player.totalIncome)} ₽/месяц\n`;
+      info += `🏠 Активов: ${player.assetsCount}\n`;
+
+      // Информация о кредитах
+      if (player.loansCount && player.loansCount > 0) {
+        info += `💳 Кредитов: ${player.loansCount}\n`;
+        info += `📊 Общая сумма кредитов: ${formatNumber(player.totalLoans)} ₽\n`;
+      }
+    }
+
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    info += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
+
+    if (player.cashFlow > 0) {
+      info += `\n✅ Положительный денежный поток!`;
+    } else {
+      info += `\n⚠️ Отрицательный денежный поток`;
+    }
+
+    if (player.passiveIncome >= player.totalExpenses) {
+      info += `\n\n🎉 ВЫ ВЫШЛИ ИЗ КРЫСИНЫХ БЕГОВ!`;
+    }
+
+    if (player.inFastTrack) {
+      info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
+      info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
+      info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
+      info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
+    }
+
+    await this.bot.sendMessage(chatId, info, { reply_markup: profileKeyboard });
   }
 
   /**

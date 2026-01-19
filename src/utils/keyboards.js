@@ -53,6 +53,10 @@ const gameKeyboard = {
   inline_keyboard: [
     [
       { text: '🎲 Бросить кубик', callback_data: 'roll_dice' }
+    ],
+    [
+      { text: '👤 Профиль', callback_data: 'profile' },
+      { text: '📊 Статистика', callback_data: 'stats' }
     ]
   ]
 };
@@ -65,6 +69,10 @@ const charityKeyboard = {
     [
       { text: '🎲 Бросить кубик', callback_data: 'roll_dice_1' },
       { text: '🎲 Бросить 2 кубика', callback_data: 'roll_dice_2' }
+    ],
+    [
+      { text: '👤 Профиль', callback_data: 'profile' },
+      { text: '📊 Статистика', callback_data: 'stats' }
     ]
   ]
 };
@@ -227,6 +235,18 @@ const creditCardKeyboard = {
   ]
 };
 
+/**
+ * Клавиатура для профиля игрока
+ */
+const profileKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🏠 Активы', callback_data: 'assets' },
+      { text: '💳 Кредиты', callback_data: 'credits' }
+    ]
+  ]
+};
+
 module.exports = {
   welcomeKeyboard,
   endGameVoteKeyboard,
@@ -235,5 +255,6 @@ module.exports = {
   charityKeyboard,
   dealTypeKeyboard,
   generateDealKeyboard,
-  creditCardKeyboard
+  creditCardKeyboard,
+  profileKeyboard
 };

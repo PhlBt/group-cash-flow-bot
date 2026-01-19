@@ -4,6 +4,7 @@
  * и координацию между gameService и messageService
  */
 
+const { formatNumber } = require('./utils');
 const { FIELD_TYPES } = require('./game/board');
 
 /**
@@ -437,6 +438,26 @@ async function handleCallbackQuery(query, services) {
       case 'pay_expenses':
         // Оплата расходов
         await handlePayExpenses(query, services);
+        break;
+
+      case 'profile':
+        // Показать профиль игрока
+        await handleProfile(query, services);
+        break;
+
+      case 'stats':
+        // Показать статистику игры
+        await handleStats(query, services);
+        break;
+
+      case 'assets':
+        // Показать активы игрока
+        await handleAssets(query, services);
+        break;
+
+      case 'credits':
+        // Показать кредиты игрока
+        await handleCredits(query, services);
         break;
 
       default:
@@ -879,6 +900,173 @@ async function handlePayExpenses(query, services) {
   } catch (error) {
     console.error('Error in handlePayExpenses:', error);
     await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов.');
+  }
+}
+
+/**
+ * Обрабатывает запрос профиля игрока
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleProfile(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Найти игрока
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      return;
+    }
+
+    // Отправить профиль игрока
+    await messageService.sendPlayerProfileMessage(chatId, player);
+
+  } catch (error) {
+    console.error('Error in handleProfile:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке профиля.');
+  }
+}
+
+/**
+ * Обрабатывает запрос статистики игры
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleStats(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Отправить статистику игры
+    await messageService.sendGameStatsMessage(chatId, game);
+
+  } catch (error) {
+    console.error('Error in handleStats:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке статистики.');
+  }
+}
+
+/**
+ * Обрабатывает запрос активов игрока
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleAssets(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Найти игрока
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      return;
+    }
+
+    // Собрать информацию об активах
+    let message = `🏠 АКТИВЫ ${player.username}\n\n`;
+
+    if (player.assets && player.assets.length > 0) {
+      player.assets.forEach((asset, index) => {
+        message += `${index + 1}. ${asset.title}\n`;
+        message += `   💰 Стоимость: ${formatNumber(asset.cost)} ₽\n`;
+        if (asset.quantity && asset.quantity > 1) {
+          message += `   🔢 Количество: ${asset.quantity}\n`;
+        }
+        if (asset.cashFlow) {
+          message += `   💵 Доход: ${formatNumber(asset.cashFlow)} ₽/мес\n`;
+        }
+        message += `\n`;
+      });
+      message += `📊 Всего активов: ${player.assetsCount}`;
+    } else {
+      message += `У вас пока нет активов.`;
+    }
+
+    await messageService.bot.sendMessage(chatId, message);
+
+  } catch (error) {
+    console.error('Error in handleAssets:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке активов.');
+  }
+}
+
+/**
+ * Обрабатывает запрос кредитов игрока
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleCredits(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Найти игрока
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      return;
+    }
+
+    // Собрать информацию о кредитах
+    let message = `💳 КРЕДИТЫ ${player.username}\n\n`;
+
+    if (player.loansCount && player.loansCount > 0) {
+      message += `📊 Количество кредитов: ${player.loansCount}\n`;
+      message += `💰 Общая сумма: ${formatNumber(player.totalLoans)} ₽\n`;
+      message += `📉 Ежемесячные платежи: ${formatNumber(player.totalLoanPayments)} ₽/мес\n\n`;
+
+      if (player.liabilities && player.liabilities.length > 0) {
+        message += `Подробности:\n`;
+        player.liabilities.forEach((liability, index) => {
+          message += `${index + 1}. ${liability.title}\n`;
+          message += `   💰 Сумма: ${formatNumber(liability.amount)} ₽\n`;
+          message += `   📊 Платеж: ${formatNumber(liability.payment)} ₽/мес\n`;
+          message += `\n`;
+        });
+      }
+    } else {
+      message += `У вас нет кредитов.`;
+    }
+
+    await messageService.bot.sendMessage(chatId, message);
+
+  } catch (error) {
+    console.error('Error in handleCredits:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке кредитов.');
   }
 }
 
