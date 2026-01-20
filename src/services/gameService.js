@@ -374,6 +374,67 @@ class GameService {
   }
 
   /**
+   * Обрабатывает событие поля "Ребенок" - добавляет ребенка и увеличивает расходы
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, childrenCount?: number, childrenExpenses?: number, totalExpenses?: number}>} Результат операции
+   */
+  async processChildBirth(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    // Проверяем максимальное количество детей
+    const currentChildrenCount = player.childrenCount || 0;
+    if (currentChildrenCount >= 3) {
+      return { success: false, error: 'max_children_reached' };
+    }
+
+    // Получаем стоимость ребенка из профессии
+    const kidCost = player.kidCost;
+
+    // Увеличиваем количество детей
+    const newChildrenCount = currentChildrenCount + 1;
+
+    // Увеличиваем расходы на детей
+    const newChildrenExpenses = newChildrenCount * kidCost;
+
+    // Пересчитываем общие расходы
+    const newTotalExpenses = player.expenses + newChildrenExpenses + player.totalLoanPayments;
+
+    // Пересчитываем денежный поток
+    const newCashFlow = player.salary + player.passiveIncome - newTotalExpenses;
+
+    // Обновляем данные игрока
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.childrenCount`]: newChildrenCount,
+          [`players.${playerIndex}.childrenExpenses`]: newChildrenExpenses,
+          [`players.${playerIndex}.totalExpenses`]: newTotalExpenses,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow
+        }
+      }
+    );
+
+    return {
+      success: true,
+      childrenCount: newChildrenCount,
+      childrenExpenses: newChildrenExpenses,
+      totalExpenses: newTotalExpenses
+    };
+  }
+
+  /**
    * Пересчитывает общие расходы игрока при изменениях
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока

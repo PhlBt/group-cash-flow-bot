@@ -23,25 +23,25 @@ const RAT_RACE_FIELDS = [
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
   // { type: FIELD_TYPES.CHARITY, name: 'Благотворительность' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  { type: FIELD_TYPES.PAYDAY, name: 'День выплат' },
+  // { type: FIELD_TYPES.PAYDAY, name: 'День выплат' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  // { type: FIELD_TYPES.MARKET, name: 'Рынок' },
+  { type: FIELD_TYPES.MARKET, name: 'Рынок' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
   // { type: FIELD_TYPES.MISCELLANEOUS, name: 'Всякая всячина' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
   // { type: FIELD_TYPES.DISMISSAL, name: 'Увольнение' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  { type: FIELD_TYPES.PAYDAY, name: 'День выплат' },
+  // { type: FIELD_TYPES.PAYDAY, name: 'День выплат' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  // { type: FIELD_TYPES.MARKET, name: 'Рынок' },
+  { type: FIELD_TYPES.MARKET, name: 'Рынок' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
   // { type: FIELD_TYPES.MISCELLANEOUS, name: 'Всякая всячина' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  { type: FIELD_TYPES.CHILD, name: 'Ребенок' },
+  // { type: FIELD_TYPES.CHILD, name: 'Ребенок' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  { type: FIELD_TYPES.PAYDAY, name: 'День выплат' },
+  // { type: FIELD_TYPES.PAYDAY, name: 'День выплат' },
   // { type: FIELD_TYPES.DEAL, name: 'Сделка' },
-  // { type: FIELD_TYPES.MARKET, name: 'Рынок' }
+  { type: FIELD_TYPES.MARKET, name: 'Рынок' }
 ];
 
 // Второй круг - "Быстрый трек" (40 полей)

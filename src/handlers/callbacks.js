@@ -128,6 +128,35 @@ async function handleRollDice(query, diceCount, services) {
       }
 
       // Для поля DISMISSAL не передаем ход следующему игроку - ждем оплаты
+    } else if (moveResult.fieldType === FIELD_TYPES.CHILD) {
+      // Игрок попал на поле "Ребенок" - обработать рождение ребенка
+      await gameService.processChildBirth(game.gameId, userId);
+
+      // Получить обновленные данные игрока
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+
+      // Показать комбинированное сообщение
+      await messageService.sendCombinedRollMoveChildMessage(
+        chatId,
+        updatedPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || []
+      );
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Для поля CHILD передаем ход следующему игроку - автоматическое событие
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       await messageService.sendCombinedRollMovePaydayMessage(
@@ -150,8 +179,6 @@ async function handleRollDice(query, diceCount, services) {
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-        // Отправить сообщение следующему игроку
-        const nextPlayerChatId = nextTurnResult.nextPlayer.userId; // Предполагаем, что chatId совпадает с userId для личных сообщений
         // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
       }

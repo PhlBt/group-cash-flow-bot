@@ -928,6 +928,50 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Ребенок"
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   */
+  async sendCombinedRollMoveChildMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+    }
+
+    message += `👶 Рождение ребенка!\n\n`;
+    message += `📝 У вас родился ребенок!\n`;
+    message += `💸 Ваши расходы увеличились на ${formatNumber(player.kidCost)} ₽\n\n`;
+    message += `👨‍👩‍👧‍👦 Детей: ${player.childrenCount}\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown'
+    });
+  }
+
+  /**
    * Отправляет сообщение выбора типа сделки
    * @param {number} chatId - ID чата
    * @returns {Promise<number>} ID отправленного сообщения
