@@ -214,13 +214,36 @@ class GameService {
    * @returns {Promise<{success: boolean, error?: string, nextPlayer?: Object}>} Результат операции
    */
   async nextTurn(gameId) {
-    const nextTurnResult = await this.databaseService.nextTurn(gameId);
-    if (!nextTurnResult.success) {
-      return nextTurnResult;
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
     }
 
-    const game = await this.databaseService.getGame(gameId);
-    const nextPlayer = game.players[nextTurnResult.nextPlayerIndex];
+    let currentIndex = game.currentPlayerIndex;
+    let nextIndex = (currentIndex + 1) % game.players.length;
+    let nextPlayer = game.players[nextIndex];
+
+    // Проверяем, нужно ли пропустить ход текущего игрока
+    const currentPlayer = game.players[currentIndex];
+    if (currentPlayer && currentPlayer.skippedTurns > 0) {
+      // Уменьшаем счетчик пропущенных ходов
+      const newSkippedTurns = currentPlayer.skippedTurns - 1;
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        { $set: { [`players.${currentIndex}.skippedTurns`]: newSkippedTurns } }
+      );
+
+      // Если еще остались ходы для пропуска, передаем ход следующему
+      if (newSkippedTurns > 0) {
+        return await this.nextTurn(gameId); // Рекурсивно передаем ход дальше
+      }
+    }
+
+    // Обновляем индекс текущего игрока
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { currentPlayerIndex: nextIndex, diceRolledThisTurn: false } }
+    );
 
     return {
       success: true,
@@ -254,7 +277,7 @@ class GameService {
    * Обрабатывает событие поля "День выплат" - начисляет месячный денежный поток
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
-   * @returns {Promise<{success: boolean, error?: string, cashFlow?: number, newCash?: number}>} Результат операции
+   * @returns {Promise<{success: boolean, error?: string, cashFlow?: number, newCash?: number, bankruptcyTriggered?: boolean}>} Результат операции
    */
   async processPayday(gameId, userId) {
     const game = await this.databaseService.getGame(gameId);
@@ -271,11 +294,20 @@ class GameService {
     const cashFlow = player.salary + player.passiveIncome - player.totalExpenses;
     const newCash = player.cash + cashFlow;
 
+    // Проверяем условия банкротства
+    const hasAssets = player.assets && player.assets.length > 0;
+    const hasLiabilities = player.liabilities && player.liabilities.length > 0;
+    const bankruptcyTriggered = newCash < 0 && cashFlow < 0 && (hasAssets || hasLiabilities);
+
     // Обновляем данные игрока
     const updateData = {
       [`players.${playerIndex}.cash`]: newCash,
       [`players.${playerIndex}.cashFlow`]: cashFlow
     };
+
+    if (bankruptcyTriggered) {
+      updateData[`players.${playerIndex}.bankruptcyState`] = true;
+    }
 
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
@@ -285,7 +317,8 @@ class GameService {
     return {
       success: true,
       cashFlow,
-      newCash
+      newCash,
+      bankruptcyTriggered
     };
   }
 
@@ -743,12 +776,217 @@ class GameService {
   /**
    * Передает комиссию предлагающему игроку
    * @param {string} gameId - ID игры
-   * @param {string} offeringUserId - ID предлагающего игрока
+   * @param {string} userId - ID предлагающего игрока
    * @param {number} commissionAmount - Сумма комиссии
    * @returns {Promise<{success: boolean, error?: string}>} Результат операции
    */
   async transferCommission(gameId, offeringUserId, commissionAmount) {
     return await this.databaseService.updatePlayerCash(gameId, offeringUserId, commissionAmount);
+  }
+
+  /**
+   * Продает актив за половину стоимости в банкротстве
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} assetIndex - Индекс актива в массиве
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async sellAssetWithBankruptcy(gameId, userId, assetIndex) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    if (!player.bankruptcyState) {
+      return { success: false, error: 'not_in_bankruptcy' };
+    }
+
+    if (!player.assets || assetIndex >= player.assets.length) {
+      return { success: false, error: 'asset_not_found' };
+    }
+
+    const asset = player.assets[assetIndex];
+    const quantity = asset.quantity || 1;
+    const sellPrice = Math.floor((asset.cost * quantity) / 2); // Продажа за половину стоимости
+    const cashFlowReduction = asset.cashFlow || 0;
+
+    // Удаляем актив из массива
+    const updatedAssets = player.assets.filter((_, index) => index !== assetIndex);
+
+    // Рассчитываем новые финансовые показатели
+    const newPassiveIncome = player.passiveIncome - cashFlowReduction;
+    const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+    const newCash = player.cash + sellPrice;
+
+    // Обновляем данные игрока
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.assets`]: updatedAssets,
+          [`players.${playerIndex}.assetsCount`]: updatedAssets.length,
+          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+          [`players.${playerIndex}.totalIncome`]: player.salary + newPassiveIncome,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow,
+          [`players.${playerIndex}.cash`]: newCash
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Оплачивает долг в банкротстве
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} liabilityIndex - Индекс долга в массиве
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async payLiability(gameId, userId, liabilityIndex) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    if (!player.bankruptcyState) {
+      return { success: false, error: 'not_in_bankruptcy' };
+    }
+
+    if (!player.liabilities || liabilityIndex >= player.liabilities.length) {
+      return { success: false, error: 'liability_not_found' };
+    }
+
+    const liability = player.liabilities[liabilityIndex];
+    // В банкротстве списываем полную сумму кредита, иначе - ежемесячный платеж
+    const paymentAmount = player.bankruptcyState ? liability.loanAmount : liability.monthlyPayment;
+
+    // Проверяем хватает ли денег
+    if (player.cash < paymentAmount) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Удаляем долг из массива
+    const updatedLiabilities = player.liabilities.filter((_, index) => index !== liabilityIndex);
+
+    // Рассчитываем новые финансовые показатели
+    const newTotalLoanPayments = updatedLiabilities.reduce((sum, liab) => sum + (liab.monthlyPayment || 0), 0);
+    const newTotalLoans = updatedLiabilities.reduce((sum, liab) => sum + (liab.loanAmount || 0), 0);
+    const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
+    const newCashFlow = player.salary + player.passiveIncome - newTotalExpenses;
+    const newCash = player.cash - paymentAmount;
+
+    // Обновляем данные игрока
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.liabilities`]: updatedLiabilities,
+          [`players.${playerIndex}.loansCount`]: updatedLiabilities.length,
+          [`players.${playerIndex}.totalLoans`]: newTotalLoans,
+          [`players.${playerIndex}.totalLoanPayments`]: newTotalLoanPayments,
+          [`players.${playerIndex}.totalExpenses`]: newTotalExpenses,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow,
+          [`players.${playerIndex}.cash`]: newCash
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Проверяет, разрешена ли банкротство (cashFlow >= 0)
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, resolved?: boolean}>} Результат операции
+   */
+  async checkBankruptcyResolution(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    if (!player.bankruptcyState) {
+      return { success: false, error: 'not_in_bankruptcy' };
+    }
+
+    const resolved = player.cashFlow >= 0;
+    return { success: true, resolved };
+  }
+
+  /**
+   * Завершает банкротство
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {boolean} isLoss - true если проигрыш, false если выход из банкротства
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async endBankruptcy(gameId, userId, isLoss) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    if (!player.bankruptcyState) {
+      return { success: false, error: 'not_in_bankruptcy' };
+    }
+
+    const updateData = {
+      [`players.${playerIndex}.bankruptcyState`]: false
+    };
+
+    if (isLoss) {
+      // Проигрыш - удаляем игрока из игры
+      const updatedPlayers = game.players.filter(p => p.userId !== userId);
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        {
+          $set: {
+            players: updatedPlayers,
+            currentPlayerIndex: game.currentPlayerIndex % updatedPlayers.length
+          }
+        }
+      );
+
+      // Обновляем статистику проигрыша
+      await this.userStatsService.updateUserStats(userId, { losses: (await this.userStatsService.getUserStats(userId)).losses + 1 });
+
+      return { success: true };
+    } else {
+      // Выход из банкротства - устанавливаем skippedTurns = 3
+      updateData[`players.${playerIndex}.skippedTurns`] = 3;
+
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        { $set: updateData }
+      );
+
+      return { success: true };
+    }
   }
 }
 

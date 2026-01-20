@@ -1,5 +1,5 @@
 const { formatNumber, RateLimiter } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, charityKeyboard, dealTypeKeyboard, generateDealKeyboard, creditCardKeyboard, profileKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, bankruptcyKeyboard, charityKeyboard, dealTypeKeyboard, generateDealKeyboard, creditCardKeyboard, profileKeyboard } = require('../utils/keyboards');
 
 class MessageService {
   constructor(bot) {
@@ -593,9 +593,18 @@ CashFlow - настольная игра о финансовом планиро�
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
     message += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
-    message += `Выберите действие:`;
 
-    const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
+    let keyboard;
+    if (player.bankruptcyState) {
+      message += `🚨 Вы в состоянии банкротства!\nПродайте активы и оплатите долги, чтобы восстановить положительный денежный поток.`;
+      keyboard = bankruptcyKeyboard;
+    } else if (player.charityEffect && player.charityTurnsLeft > 0) {
+      message += `Выберите действие:`;
+      keyboard = charityKeyboard;
+    } else {
+      message += `Выберите действие:`;
+      keyboard = gameKeyboard;
+    }
 
     const sentMessage = await this.sendMessage(chatId, message, {
       reply_markup: keyboard
@@ -934,60 +943,213 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет сообщение с активами игрока
-   * @param {number} chatId - ID чата
+   * Генерирует текст и клавиатуру для сообщения с активами игрока (без отправки)
    * @param {Object} player - Объект игрока
+   * @param {number} page - Страница для пагинации (начиная с 0)
+   * @returns {Object} Объект с text и keyboard
    */
-  async sendPlayerAssetsMessage(chatId, player) {
+  generatePlayerAssetsContent(player, page = 0) {
+    const ITEMS_PER_PAGE = 5;
     let message = `🏠 АКТИВЫ ${player.username}\n\n`;
 
     if (player.assets && player.assets.length > 0) {
-      player.assets.forEach((asset, index) => {
-        message += `${index + 1}. ${asset.title}\n`;
-        message += `   💰 Стоимость: ${formatNumber(asset.cost)} ₽\n`;
-        if (asset.quantity && asset.quantity > 1) {
-          message += `   🔢 Количество: ${asset.quantity}\n`;
-        }
-        if (asset.cashFlow) {
-          message += `   💵 Доход: ${formatNumber(asset.cashFlow)} ₽/мес\n`;
+      const totalPages = Math.ceil(player.assets.length / ITEMS_PER_PAGE);
+      const startIndex = page * ITEMS_PER_PAGE;
+      const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, player.assets.length);
+      const pageAssets = player.assets.slice(startIndex, endIndex);
+
+      pageAssets.forEach((asset, index) => {
+        const globalIndex = startIndex + index;
+        if (player.bankruptcyState) {
+          // В банкротстве показываем кнопки продажи
+          const quantity = asset.quantity || 1;
+          const totalCost = asset.cost * quantity;
+          const sellPrice = Math.floor(totalCost / 2);
+          message += `${globalIndex + 1}. ${asset.title}`;
+          if (quantity > 1) {
+            message += ` (${quantity} шт.)`;
+          }
+          message += `\n`;
+          message += `   💰 Стоимость: ${formatNumber(asset.cost)} ₽`;
+          if (quantity > 1) {
+            message += ` (за шт., итого: ${formatNumber(totalCost)} ₽)`;
+          }
+          message += `\n`;
+          message += `   💸 Продажа: ${formatNumber(sellPrice)} ₽\n`;
+        } else {
+          message += `${globalIndex + 1}. ${asset.title}\n`;
+          message += `   💰 Стоимость: ${formatNumber(asset.cost)} ₽\n`;
+          if (asset.quantity && asset.quantity > 1) {
+            message += `   🔢 Количество: ${asset.quantity}\n`;
+          }
+          if (asset.cashFlow) {
+            message += `   💵 Доход: ${formatNumber(asset.cashFlow)} ₽/мес\n`;
+          }
         }
         message += `\n`;
       });
+
       message += `📊 Всего активов: ${player.assetsCount}`;
+
+      // Добавляем баланс и денежный поток в банкротстве
+      if (player.bankruptcyState) {
+        message += `\n\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
+        message += `\n💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес`;
+      }
+
+      // Генерируем клавиатуру
+      const keyboard = {
+        inline_keyboard: []
+      };
+
+      // Кнопки активов (только в банкротстве)
+      if (player.bankruptcyState) {
+        pageAssets.forEach((asset, index) => {
+          const globalIndex = startIndex + index;
+          const quantity = asset.quantity || 1;
+          const sellPrice = Math.floor((asset.cost * quantity) / 2);
+          keyboard.inline_keyboard.push([{
+            text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
+            callback_data: `sell_asset_${globalIndex}`
+          }]);
+        });
+      }
+
+      // Кнопки навигации
+      const navButtons = [];
+      if (page > 0) {
+        navButtons.push({ text: '⬅️ Назад', callback_data: `assets_page_${page - 1}` });
+      }
+      if (page < totalPages - 1) {
+        navButtons.push({ text: 'Вперед ➡️', callback_data: `assets_page_${page + 1}` });
+      }
+      if (navButtons.length > 0) {
+        keyboard.inline_keyboard.push(navButtons);
+      }
+
+      return { text: message, keyboard };
     } else {
       message += `У вас пока нет активов.`;
+      return { text: message, keyboard: {} };
     }
+  }
 
-    await this.sendMessage(chatId, message);
+  /**
+   * Отправляет сообщение с активами игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} page - Страница для пагинации (начиная с 0)
+   * @param {number} messageId - ID сообщения для редактирования (опционально)
+   */
+  async sendPlayerAssetsMessage(chatId, player, page = 0, messageId = null) {
+    const content = this.generatePlayerAssetsContent(player, page);
+
+    if (messageId) {
+      // Редактируем существующее сообщение
+      await this.editMessageText(chatId, messageId, content.text, {
+        reply_markup: content.keyboard
+      });
+    } else {
+      // Отправляем новое сообщение
+      await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard });
+    }
+  }
+
+  /**
+   * Генерирует текст и клавиатуру для сообщения с кредитами игрока (без отправки)
+   * @param {Object} player - Объект игрока
+   * @param {number} page - Страница для пагинации (начиная с 0)
+   * @returns {Object} Объект с text и keyboard
+   */
+  generatePlayerCreditsContent(player, page = 0) {
+    const ITEMS_PER_PAGE = 5;
+    let message = `💳 КРЕДИТЫ ${player.username}\n\n`;
+
+    if (player.loansCount && player.loansCount > 0 && player.liabilities && player.liabilities.length > 0) {
+      const totalPages = Math.ceil(player.liabilities.length / ITEMS_PER_PAGE);
+      const startIndex = page * ITEMS_PER_PAGE;
+      const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, player.liabilities.length);
+      const pageLiabilities = player.liabilities.slice(startIndex, endIndex);
+
+      message += `📊 Количество кредитов: ${player.loansCount}\n`;
+      message += `💰 Общая сумма: ${formatNumber(player.totalLoans)} ₽\n`;
+      message += `📉 Ежемесячные платежи: ${formatNumber(player.totalLoanPayments)} ₽/мес\n\n`;
+
+      message += `Подробности:\n`;
+      pageLiabilities.forEach((liability, index) => {
+        const globalIndex = startIndex + index;
+        if (player.bankruptcyState) {
+          // В банкротстве показываем кнопки оплаты
+          message += `${globalIndex + 1}. ${liability.title}\n`;
+          message += `   💰 Сумма: ${formatNumber(liability.loanAmount)} ₽\n`;
+        } else {
+          message += `${globalIndex + 1}. ${liability.title}\n`;
+          message += `   💰 Сумма: ${formatNumber(liability.loanAmount)} ₽\n`;
+          message += `   📊 Платеж: ${formatNumber(liability.monthlyPayment)} ₽/месяц\n`;
+        }
+        message += `\n`;
+      });
+
+      // Добавляем баланс и денежный поток в банкротстве
+      if (player.bankruptcyState) {
+        message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
+        message += `\n💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес`;
+      }
+
+      // Генерируем клавиатуру
+      const keyboard = {
+        inline_keyboard: []
+      };
+
+      // Кнопки кредитов (только в банкротстве)
+      if (player.bankruptcyState) {
+        pageLiabilities.forEach((liability, index) => {
+          const globalIndex = startIndex + index;
+          keyboard.inline_keyboard.push([{
+            text: `💸 Оплатить "${liability.title}" за ${formatNumber(liability.loanAmount)} ₽`,
+            callback_data: `pay_liability_${globalIndex}`
+          }]);
+        });
+      }
+
+      // Кнопки навигации
+      const navButtons = [];
+      if (page > 0) {
+        navButtons.push({ text: '⬅️ Назад', callback_data: `credits_page_${page - 1}` });
+      }
+      if (page < totalPages - 1) {
+        navButtons.push({ text: 'Вперед ➡️', callback_data: `credits_page_${page + 1}` });
+      }
+      if (navButtons.length > 0) {
+        keyboard.inline_keyboard.push(navButtons);
+      }
+
+      return { text: message, keyboard };
+    } else {
+      message += `У вас нет кредитов.`;
+      return { text: message, keyboard: {} };
+    }
   }
 
   /**
    * Отправляет сообщение с кредитами игрока
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
+   * @param {number} page - Страница для пагинации (начиная с 0)
+   * @param {number} messageId - ID сообщения для редактирования (опционально)
    */
-  async sendPlayerCreditsMessage(chatId, player) {
-    let message = `💳 КРЕДИТЫ ${player.username}\n\n`;
+  async sendPlayerCreditsMessage(chatId, player, page = 0, messageId = null) {
+    const content = this.generatePlayerCreditsContent(player, page);
 
-    if (player.loansCount && player.loansCount > 0) {
-      message += `📊 Количество кредитов: ${player.loansCount}\n`;
-      message += `💰 Общая сумма: ${formatNumber(player.totalLoans)} ₽\n`;
-      message += `📉 Ежемесячные платежи: ${formatNumber(player.totalLoanPayments)} ₽/мес\n\n`;
-
-      if (player.liabilities && player.liabilities.length > 0) {
-        message += `Подробности:\n`;
-        player.liabilities.forEach((liability, index) => {
-          message += `${index + 1}. ${liability.title}\n`;
-          message += `   💰 Сумма: ${formatNumber(liability.loanAmount)} ₽\n`;
-          message += `   📊 Платеж: ${formatNumber(liability.monthlyPayment)} ₽/месяц\n`;
-          message += `\n`;
-        });
-      }
+    if (messageId) {
+      // Редактируем существующее сообщение
+      await this.editMessageText(chatId, messageId, content.text, {
+        reply_markup: content.keyboard
+      });
     } else {
-      message += `У вас нет кредитов.`;
+      // Отправляем новое сообщение
+      await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard });
     }
-
-    await this.sendMessage(chatId, message);
   }
 }
 

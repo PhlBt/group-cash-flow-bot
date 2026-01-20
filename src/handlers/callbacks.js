@@ -354,7 +354,25 @@ async function handleCallbackQuery(query, services) {
         if (data.startsWith('select_user_')) {
           const targetUserId = parseInt(data.split('_')[2], 10);
           await handleSelectUser(query, targetUserId, services);
-        } else {
+        }
+        // Обработчики банкротства
+        else if (data.startsWith('sell_asset_')) {
+          const assetIndex = parseInt(data.split('_')[2], 10);
+          await handleSellAsset(query, assetIndex, services);
+        }
+        else if (data.startsWith('pay_liability_')) {
+          const liabilityIndex = parseInt(data.split('_')[2], 10);
+          await handlePayLiability(query, liabilityIndex, services);
+        }
+        else if (data.startsWith('assets_page_')) {
+          const page = parseInt(data.split('_')[2], 10);
+          await handleAssetsPage(query, page, services);
+        }
+        else if (data.startsWith('credits_page_')) {
+          const page = parseInt(data.split('_')[2], 10);
+          await handleCreditsPage(query, page, services);
+        }
+        else {
           console.warn('Unknown callback data:', data);
         }
     }
@@ -537,11 +555,234 @@ async function handleCancelOffer(query, services) {
   }
 }
 
+/**
+ * Обрабатывает продажу актива в банкротстве
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} assetIndex - Индекс актива
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleSellAsset(query, assetIndex, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Продать актив
+    const sellResult = await gameService.sellAssetWithBankruptcy(game.gameId, userId, assetIndex);
+    if (!sellResult.success) {
+      await messageService.sendErrorMessage(chatId, 'Ошибка продажи актива: ' + sellResult.error);
+      return;
+    }
+
+    // Проверить, разрешена ли банкротство
+    const checkResult = await gameService.checkBankruptcyResolution(game.gameId, userId);
+    if (checkResult.success && checkResult.resolved) {
+      // Банкротство разрешена - завершить
+      await gameService.endBankruptcy(game.gameId, userId, false);
+      await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.');
+
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
+    } else {
+    // Продолжить банкротство - обновить сообщение активов
+    const updatedGame = await gameService.getGame(game.gameId);
+    const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+    await messageService.sendPlayerAssetsMessage(chatId, updatedPlayer, 0, query.message.message_id);
+    }
+
+  } catch (error) {
+    console.error('Error in handleSellAsset:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже актива.');
+  }
+}
+
+/**
+ * Обрабатывает оплату долга в банкротстве
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} liabilityIndex - Индекс долга
+ * @param {Object} services - Объект с сервисами
+ */
+async function handlePayLiability(query, liabilityIndex, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Оплатить долг
+    const payResult = await gameService.payLiability(game.gameId, userId, liabilityIndex);
+    if (!payResult.success) {
+      if (payResult.error === 'insufficient_funds') {
+        // Проверяем, может ли игрок оплатить хотя бы один кредит
+        const hasAssets = currentPlayer.assets && currentPlayer.assets.length > 0;
+        const hasLiabilities = currentPlayer.liabilities && currentPlayer.liabilities.length > 0;
+
+        let canPayAnyLiability = false;
+        if (hasLiabilities && currentPlayer.liabilities) {
+          for (const liability of currentPlayer.liabilities) {
+            if (currentPlayer.cash >= liability.loanAmount) {
+              canPayAnyLiability = true;
+              break;
+            }
+          }
+        }
+
+        if (!canPayAnyLiability && !hasAssets) {
+          // Не может оплатить ни один кредит и нет активов - проигрыш
+          await gameService.endBankruptcy(game.gameId, userId, true);
+          await messageService.sendErrorMessage(chatId, 'Вы проиграли! У вас нет активов для продажи и недостаточно денег для оплаты любых кредитов.');
+
+          // Передать ход следующему игроку
+          const nextTurnResult = await gameService.nextTurn(game.gameId);
+          if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+            await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+          }
+          return;
+        } else {
+          // Может оплатить другие кредиты или есть активы - обычная ошибка
+          await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита');
+        }
+      } else {
+        // Другая ошибка
+        await messageService.sendErrorMessage(chatId, 'Ошибка оплаты долга: ' + payResult.error);
+      }
+      return;
+    }
+
+    // Проверить, разрешена ли банкротство
+    const checkResult = await gameService.checkBankruptcyResolution(game.gameId, userId);
+    if (checkResult.success && checkResult.resolved) {
+      // Банкротство разрешена - завершить
+      await gameService.endBankruptcy(game.gameId, userId, false);
+      await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.');
+
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
+    } else {
+      // Продолжить банкротство - обновить сообщение кредитов
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendPlayerCreditsMessage(chatId, updatedPlayer, 0, query.message.message_id);
+    }
+
+  } catch (error) {
+    console.error('Error in handlePayLiability:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате долга.');
+  }
+}
+
+/**
+ * Обрабатывает навигацию по страницам активов
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} page - Номер страницы
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleAssetsPage(query, page, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Обновить сообщение активов с новой страницей
+    await messageService.sendPlayerAssetsMessage(chatId, currentPlayer, page, query.message.message_id);
+
+  } catch (error) {
+    console.error('Error in handleAssetsPage:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.');
+  }
+}
+
+/**
+ * Обрабатывает навигацию по страницам кредитов
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} page - Номер страницы
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleCreditsPage(query, page, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Обновить сообщение кредитов с новой страницей
+    await messageService.sendPlayerCreditsMessage(chatId, currentPlayer, page, query.message.message_id);
+
+  } catch (error) {
+    console.error('Error in handleCreditsPage:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.');
+  }
+}
+
 module.exports = {
   handleCallbackQuery,
   handleRollDice,
   handleOfferDeal,
   handleSelectCommission,
   handleSelectUser,
-  handleCancelOffer
+  handleCancelOffer,
+  handleSellAsset,
+  handlePayLiability,
+  handleAssetsPage,
+  handleCreditsPage
 };

@@ -62,6 +62,22 @@ const gameKeyboard = {
 };
 
 /**
+ * Клавиатура состояния банкротства
+ */
+const bankruptcyKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🏠 Активы', callback_data: 'assets' },
+      { text: '💳 Кредиты', callback_data: 'credits' }
+    ],
+    [
+      { text: '👤 Профиль', callback_data: 'profile' },
+      { text: '📊 Статистика', callback_data: 'stats' }
+    ]
+  ]
+};
+
+/**
  * Клавиатура при эффекте благотворительности
  */
 const charityKeyboard = {
@@ -338,6 +354,7 @@ module.exports = {
   endGameVoteKeyboard,
   waitingRoomKeyboard,
   gameKeyboard,
+  bankruptcyKeyboard,
   charityKeyboard,
   dealTypeKeyboard,
   generateDealKeyboard,

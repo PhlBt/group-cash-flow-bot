@@ -101,7 +101,9 @@ class DatabaseService {
       fastTrackIncome: 0,
       dreamCost: 0,
       charityEffect: false,
-      charityTurnsLeft: 0
+      charityTurnsLeft: 0,
+      bankruptcyState: false,
+      skippedTurns: 0
     };
 
     await gamesCollection.insertOne({
@@ -193,7 +195,9 @@ class DatabaseService {
       fastTrackIncome: 0,
       dreamCost: 0,
       charityEffect: false,
-      charityTurnsLeft: 0
+      charityTurnsLeft: 0,
+      bankruptcyState: false,
+      skippedTurns: 0
     };
 
     await gamesCollection.updateOne(
