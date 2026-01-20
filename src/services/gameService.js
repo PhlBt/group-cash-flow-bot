@@ -401,7 +401,7 @@ class GameService {
       description: deal.description,
       quantity: quantity,
       group_Id: deal.group_Id,
-      isRealEstate: deal.isRealEstate
+      isRealEstate: deal.isRealEstate || false
     };
 
     await this.databaseService.addAsset(gameId, userId, asset);
@@ -454,7 +454,7 @@ class GameService {
         cashFlow: deal.passiveIncome,
         type: 'big_deal',
         description: deal.description,
-        isRealEstate: deal.isRealEstate,
+        isRealEstate: deal.isRealEstate || false,
         apartments: deal.apartments
       };
 
@@ -493,7 +493,7 @@ class GameService {
         cashFlow: deal.passiveIncome,
         type: 'big_deal',
         description: deal.description,
-        isRealEstate: deal.isRealEstate,
+        isRealEstate: deal.isRealEstate || false,
         apartments: deal.apartments
       };
 
@@ -533,7 +533,7 @@ class GameService {
         cashFlow: deal.passiveIncome || deal.cashFlow,
         type: deal.type === 'big' ? 'big_deal_credit_card' : 'small_deal_credit_card',
         description: deal.description,
-        isRealEstate: deal.isRealEstate
+        isRealEstate: deal.isRealEstate || false
       };
 
       await this.databaseService.addAsset(gameId, userId, asset);
