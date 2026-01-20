@@ -25,6 +25,7 @@ cashFlow/
 │   │   ├── callbacks.js        # Обработчики callback-запросов от inline кнопок
 │   │   ├── deals.js            # Логика обработки сделок
 │   │   ├── miscellaneous.js    # Обработка miscellaneous карт
+│   │   ├── charity.js          # Обработка поля благотворительности
 │   │   └── profile.js          # Профиль игрока и статистика
 │   ├── main.js                 # Главный файл приложения, точка входа
 │   ├── game/

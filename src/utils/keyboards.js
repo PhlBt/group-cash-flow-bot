@@ -94,6 +94,20 @@ const charityKeyboard = {
 };
 
 /**
+ * Клавиатура выбора действия на поле благотворительности
+ */
+const charityChoiceKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '💰 Пожертвовать 10% дохода', callback_data: 'donate_charity' }
+    ],
+    [
+      { text: '⏭️ Пропустить ход', callback_data: 'skip_charity' }
+    ]
+  ]
+};
+
+/**
  * Клавиатура выбора типа сделки
  */
 const dealTypeKeyboard = {
@@ -356,6 +370,7 @@ module.exports = {
   gameKeyboard,
   bankruptcyKeyboard,
   charityKeyboard,
+  charityChoiceKeyboard,
   dealTypeKeyboard,
   generateDealKeyboard,
   creditCardKeyboard,

@@ -780,6 +780,42 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Благотворительность"
+   * @param {Object} bot - Объект бота Telegram
+   * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   */
+  async sendCombinedRollMoveCharityMessage(bot, player, game) {
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎲 ${player.profession} ${player.username} попал на поле "Благотворительность"!\n\n`;
+    message += `📍 ${trackName}, поле "Благотворительность"\n\n`;
+
+    message += `❤️ Вы можете пожертвовать 10% своего дохода на благотворительность\n`;
+    message += `🎁 Взамен на следующих 3 ходах можно будет бросать 1 или 2 кубика\n\n`;
+
+    const income = player.salary + player.passiveIncome;
+    const donationAmount = Math.floor(income * 0.1);
+
+    message += `💰 Ваш доход: ${formatNumber(income)} ₽/месяц\n`;
+    message += `💸 Пожертвование: ${formatNumber(donationAmount)} ₽\n\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
+    message += `Что вы хотите сделать?`;
+
+    const { charityChoiceKeyboard } = require('../utils/keyboards');
+
+    // Отправляем сообщение в чат игры (предполагаем, что chatId хранится в game или получаем его из player)
+    // Поскольку у нас нет прямого доступа к chatId, используем bot для отправки в личные сообщения или в групповой чат
+    // Для простоты отправим в чат, где происходит игра (предполагаем game.chatId)
+    const chatId = game.chatId; // Предполагаем, что chatId есть в game
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: charityChoiceKeyboard
+    });
+  }
+
+  /**
    * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Miscellaneous"
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока

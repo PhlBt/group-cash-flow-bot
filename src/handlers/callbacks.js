@@ -4,6 +4,7 @@ const { FIELD_TYPES } = require('../game/board');
 // Импорт функций из других модулей
 const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard, handleChangeQuantity, handleSellStocks, handlePayExpenses } = require('./deals');
 const { handleMiscellaneous, handlePayMiscellaneous, handlePayMiscellaneousCreditCard, handleSkipMiscellaneous } = require('./miscellaneous');
+const { handleCharity, handleDonateCharity, handleSkipCharity } = require('./charity');
 const { handleProfile, handleStats, handleAssets, handleCredits } = require('./profile');
 
 /**
@@ -100,6 +101,16 @@ async function handleRollDice(query, diceCount, services) {
       );
 
       // Для поля MISCELLANEOUS не передаем ход следующему игроку - ждем оплаты
+    } else if (moveResult.fieldType === FIELD_TYPES.CHARITY) {
+      // Игрок попал на поле "Благотворительность" - показать комбинированное сообщение
+      await handleCharity(game.gameId, userId, services);
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Для поля CHARITY не передаем ход следующему игроку - ждем выбора
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       await messageService.sendCombinedRollMovePaydayMessage(
@@ -360,6 +371,16 @@ async function handleCallbackQuery(query, services) {
       case 'skip_miscellaneous':
         // Пропуск miscellaneous
         await handleSkipMiscellaneous(query, services);
+        break;
+
+      case 'donate_charity':
+        // Пожертвование на благотворительность
+        await handleDonateCharity(query, services);
+        break;
+
+      case 'skip_charity':
+        // Пропуск благотворительности
+        await handleSkipCharity(query, services);
         break;
 
       case 'profile':

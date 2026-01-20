@@ -274,6 +274,57 @@ class GameService {
   }
 
   /**
+   * Обрабатывает пожертвование на благотворительность
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, donationAmount?: number, turnsLeft?: number}>} Результат операции
+   */
+  async donateCharity(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const income = player.salary + player.passiveIncome;
+    const donationAmount = Math.floor(income * 0.1);
+
+    // Проверяем, хватает ли денег
+    if (player.cash < donationAmount) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем деньги
+    const newCash = player.cash - donationAmount;
+
+    // Устанавливаем эффект благотворительности
+    const turnsLeft = 3;
+
+    // Обновляем данные игрока
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.cash`]: newCash,
+          [`players.${playerIndex}.charityEffect`]: true,
+          [`players.${playerIndex}.charityTurnsLeft`]: turnsLeft
+        }
+      }
+    );
+
+    return {
+      success: true,
+      donationAmount,
+      turnsLeft
+    };
+  }
+
+  /**
    * Обрабатывает событие поля "День выплат" - начисляет месячный денежный поток
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
