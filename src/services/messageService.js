@@ -667,6 +667,8 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {string} fieldType - Тип поля
    * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
+   *
+   * Примечание: Для поля PAYDAY клавиатура не отправляется, так как никаких действий не требуется
    */
   async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, inFastTrack, paydayEvents = []) {
     const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
@@ -690,18 +692,22 @@ CashFlow - настольная игра о финансовом планиро�
       message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
     }
 
-    message += `📍 ${fieldName}\n\n`;
     message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
-    message += `Выберите действие:`;
 
-    const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
-
-    await this.sendMessage(chatId, message, {
-      reply_markup: keyboard
-    });
+    // Для поля PAYDAY не отправляем клавиатуру и не добавляем текст "Выберите действие:"
+    const { FIELD_TYPES } = require('../game/board');
+    if (fieldType === FIELD_TYPES.PAYDAY) {
+      await this.sendMessage(chatId, message);
+    } else {
+      message += `Выберите действие:`;
+      const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
+      await this.sendMessage(chatId, message, {
+        reply_markup: keyboard
+      });
+    }
   }
 
   /**
