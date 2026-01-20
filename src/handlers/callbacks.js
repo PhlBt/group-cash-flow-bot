@@ -3,6 +3,7 @@ const { FIELD_TYPES } = require('../game/board');
 
 // Импорт функций из других модулей
 const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard, handleChangeQuantity, handleSellStocks, handlePayExpenses } = require('./deals');
+const { handleMiscellaneous, handlePayMiscellaneous, handlePayMiscellaneousCreditCard, handleSkipMiscellaneous } = require('./miscellaneous');
 const { handleProfile, handleStats, handleAssets, handleCredits } = require('./profile');
 
 /**
@@ -77,6 +78,28 @@ async function handleRollDice(query, diceCount, services) {
       }
 
       // Для поля DEAL не передаем ход следующему игроку - ждем выбора типа сделки
+    } else if (moveResult.fieldType === FIELD_TYPES.MISCELLANEOUS) {
+      // Игрок попал на поле "Miscellaneous" - обработать miscellaneous и показать комбинированное сообщение
+      const miscCard = await handleMiscellaneous(game.gameId, userId, services);
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Показать комбинированное сообщение с miscellaneous
+      await messageService.sendCombinedRollMoveMiscellaneousMessage(
+        chatId,
+        currentPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || [],
+        miscCard,
+        game
+      );
+
+      // Для поля MISCELLANEOUS не передаем ход следующему игроку - ждем оплаты
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       await messageService.sendCombinedRollMovePaydayMessage(
@@ -322,6 +345,21 @@ async function handleCallbackQuery(query, services) {
       case 'pay_expenses':
         // Оплата расходов
         await handlePayExpenses(query, services);
+        break;
+
+      case 'pay_miscellaneous':
+        // Оплата miscellaneous
+        await handlePayMiscellaneous(query, services);
+        break;
+
+      case 'pay_miscellaneous_credit_card':
+        // Оплата miscellaneous кредиткой
+        await handlePayMiscellaneousCreditCard(query, services);
+        break;
+
+      case 'skip_miscellaneous':
+        // Пропуск miscellaneous
+        await handleSkipMiscellaneous(query, services);
         break;
 
       case 'profile':
@@ -660,7 +698,7 @@ async function handlePayLiability(query, liabilityIndex, services) {
         if (!canPayAnyLiability && !hasAssets) {
           // Не может оплатить ни один кредит и нет активов - проигрыш
           await gameService.endBankruptcy(game.gameId, userId, true);
-          await messageService.sendErrorMessage(chatId, 'Вы проиграли! У вас нет активов для продажи и недостаточно денег для оплаты любых кредитов.');
+          await messageService.sendErrorMessage(chatId, '🥺 Вы проиграли! \nУ вас нет активов для продажи и недостаточно денег для оплаты кредитов.');
 
           // Передать ход следующему игроку
           const nextTurnResult = await gameService.nextTurn(game.gameId);

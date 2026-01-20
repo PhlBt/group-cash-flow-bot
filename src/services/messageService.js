@@ -774,6 +774,71 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Miscellaneous"
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @param {Object} game - Объект игры
+   */
+  async sendCombinedRollMoveMiscellaneousMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = [], miscCard, game) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+    }
+
+    message += `🎭 Вы попали на поле "Всякая всячина"\n\n`;
+    message += `📝 ${miscCard.description}\n\n`;
+
+    if (miscCard.cost) {
+      message += `💰 Оплатите ${formatNumber(miscCard.cost)} ₽\n`;
+    }
+
+    if (miscCard.mortgage) {
+      message += `\n🏠 Ипотека: ${formatNumber(miscCard.mortgage)} ₽\n`;
+    }
+
+    if (miscCard.downPayment) {
+      message += `🏦 Первоначальный взнос: ${formatNumber(miscCard.downPayment)} ₽\n`;
+    }
+
+    message += `\n💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+
+    // Проверяем условия
+    let canPay = true;
+    if (miscCard.hasKids && (!player.children || player.children === 0)) {
+      message += `\n❌ У вас нет детей для этой карточки!`;
+      canPay = false;
+    }
+
+    // Генерируем клавиатуру
+    const keyboard = this.generateMiscellaneousKeyboard(miscCard, player, canPay);
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  }
+
+  /**
    * Отправляет сообщение выбора типа сделки
    * @param {number} chatId - ID чата
    * @returns {Promise<number>} ID отправленного сообщения
@@ -808,6 +873,109 @@ CashFlow - настольная игра о финансовом планиро�
 
     return sentMessage.message_id;
   }
+
+  /**
+   * Отправляет карточку miscellaneous
+   * @param {number} chatId - ID чата
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendMiscellaneousCardMessage(chatId, miscCard, player, game) {
+    const content = this.generateMiscellaneousCardContent(miscCard, player, game);
+
+    const sentMessage = await this.sendMessage(chatId, content.text, {
+      parse_mode: 'Markdown',
+      reply_markup: content.keyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Генерирует текст и клавиатуру для карточки miscellaneous (без отправки)
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   * @returns {Object} Объект с text и keyboard
+   */
+  generateMiscellaneousCardContent(miscCard, player, game) {
+    let message = `🎭 **Всякая всячина**\n\n`;
+    message += `📝 ${miscCard.description}\n\n`;
+
+    if (miscCard.cost) {
+      message += `💰 Стоимость: ${formatNumber(miscCard.cost)} ₽\n`;
+    }
+
+    if (miscCard.downPayment) {
+      message += `🏦 Первоначальный взнос: ${formatNumber(miscCard.downPayment)} ₽\n`;
+    }
+
+    if (miscCard.mortgage) {
+      message += `🏠 Ипотека: ${formatNumber(miscCard.mortgage)} ₽\n`;
+    }
+
+    if (miscCard.hasKids) {
+      message += `👶 Требуется: дети\n`;
+    }
+
+    message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+
+    // Проверяем условия
+    let canPay = true;
+    if (miscCard.hasKids && (!player.children || player.children === 0)) {
+      message += `\n❌ У вас нет детей для этой карточки!\n`;
+      canPay = false;
+    }
+
+    if (canPay) {
+      message += `\nЧто вы хотите сделать?`;
+    }
+
+    // Генерируем клавиатуру
+    const keyboard = this.generateMiscellaneousKeyboard(miscCard, player, canPay);
+
+    return { text: message, keyboard };
+  }
+
+/**
+ * Генерирует клавиатуру для miscellaneous карточки
+ * @param {Object} miscCard - Объект miscellaneous карточки
+ * @param {Object} player - Объект игрока
+ * @param {boolean} canPay - Можно ли оплатить
+ * @returns {Object} Клавиатура
+ */
+generateMiscellaneousKeyboard(miscCard, player, canPay = true) {
+  const keyboard = {
+    inline_keyboard: []
+  };
+
+  if (canPay) {
+    // Кнопка оплаты наличными
+    const payText = miscCard.mortgage ? `Оплатить взнос ${formatNumber(miscCard.downPayment)} ₽` : `Оплатить ${formatNumber(miscCard.cost)} ₽`;
+    keyboard.inline_keyboard.push([{
+      text: payText,
+      callback_data: 'pay_miscellaneous'
+    }]);
+
+    // Если карта поддерживает кредит, добавить кнопку оплаты кредиткой
+    if (miscCard.credit) {
+      keyboard.inline_keyboard.push([{
+        text: '💳 Кредитная карта',
+        callback_data: 'pay_miscellaneous_credit_card'
+      }]);
+    }
+  } else {
+    // Кнопка пропуска (только если нельзя оплатить)
+    keyboard.inline_keyboard.push([{
+      text: 'Пропустить',
+      callback_data: 'skip_miscellaneous'
+    }]);
+  }
+
+  return keyboard;
+}
 
   /**
    * Генерирует текст и клавиатуру для карточки сделки (без отправки)

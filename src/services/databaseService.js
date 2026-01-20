@@ -915,6 +915,50 @@ class DatabaseService {
   }
 
   /**
+   * Устанавливает использованные ID miscellaneous
+   * @param {string} gameId - ID игры
+   * @param {Array} usedIds - Массив использованных индексов
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setUsedMiscellaneousIds(gameId, usedIds) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { usedMiscellaneousIds: usedIds } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает текущую miscellaneous карточку
+   * @param {string} gameId - ID игры
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCurrentMiscellaneous(gameId, miscCard) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { currentMiscellaneous: miscCard } }
+    );
+
+    return { success: true };
+  }
+
+  /**
    * Закрывает подключение к базе данных
    * @returns {Promise<void>}
    */

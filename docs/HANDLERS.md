@@ -7,6 +7,8 @@
 - **Изменение логики комнаты ожидания**: При присоединении нового игрока к игре теперь всегда удаляется старое сообщение комнаты ожидания и отправляется новое, вместо обновления существующего сообщения
 - **Добавление механизма предложения сделок другим игрокам**: Реализован механизм предложения сделок с комиссией через кнопку "👥 Предложить другому" для сделок с canSellToOthers: true
 - **Новые обработчики в callbacks.js**: Добавлены функции handleOfferDeal, handleSelectCommission, handleSelectUser, handleCancelOffer для управления предложениями сделок
+- **Обновление логики miscellaneous карт**: Для карт с `credit: true` теперь сразу показываются две кнопки оплаты: наличными и кредитной картой
+- **Обновление generateMiscellaneousKeyboard**: Добавлена логика генерации клавиатуры с кнопкой "💳 Кредитная карта" для карт с поддержкой кредита
 
 ## Назначение и архитектура модуля
 
@@ -148,6 +150,9 @@ Handlers - модуль функций-обработчиков команд Tel
     - 'select_user_*': Вызывает handleSelectUser() для выбора игрока для предложения
     - 'cancel_offer': Вызывает handleCancelOffer() для отмены предложения
     - 'skip_deal': Вызывает handleSkipDeal() для пропуска сделки
+    - 'pay_miscellaneous': Вызывает handlePayMiscellaneous() для оплаты miscellaneous наличными
+    - 'pay_miscellaneous_credit_card': Вызывает handlePayMiscellaneousCreditCard() для оплаты miscellaneous кредитной картой
+    - 'skip_miscellaneous': Вызывает handleSkipMiscellaneous() для пропуска miscellaneous
   - Обрабатывает ошибки и отправляет сообщение об ошибке пользователю
 
 #### handleOfferDeal(query, services)
@@ -324,6 +329,55 @@ Handlers - модуль функций-обработчиков команд Tel
   - Находит активную игру в чате
   - Находит игрока по userId
   - Форматирует и отправляет информацию о кредитах игрока через messageService.sendPlayerCreditsMessage()
+
+### miscellaneous.js - Обработка miscellaneous карт
+
+#### handleMiscellaneous(gameId, userId, services)
+- **Назначение**: Обработка попадания игрока на поле miscellaneous
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Выбирает случайную неиспользованную miscellaneous карту
+  - Сохраняет карту в состоянии игры
+  - Возвращает объект карты для использования в сообщениях
+
+#### handlePayMiscellaneous(query, services)
+- **Назначение**: Обработка оплаты miscellaneous наличными
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет, что пользователь - текущий игрок
+  - Получает сохраненную miscellaneous карту
+  - Проверяет условия (hasKids для семейных карт)
+  - Для карт с credit: true вызывает buyMiscellaneousWithCredit
+  - Для обычных карт вызывает payMiscellaneousExpenses
+  - В случае недостатка средств для credit карт предлагает оплату кредиткой
+  - В случае успеха передает ход следующему игроку
+
+#### handlePayMiscellaneousCreditCard(query, services)
+- **Назначение**: Обработка оплаты miscellaneous кредитной картой
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет, что пользователь - текущий игрок
+  - Получает сохраненную miscellaneous карту
+  - Вызывает payMiscellaneousWithCreditCard для оплаты
+  - В случае успеха передает ход следующему игроку
+
+#### handleSkipMiscellaneous(query, services)
+- **Назначение**: Обработка пропуска miscellaneous карты
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет, что пользователь - текущий игрок
+  - Удаляет сообщение с карточкой
+  - Отправляет сообщение о пропуске
+  - Передает ход следующему игроку
 
 ## Бизнес-правила и проверки
 

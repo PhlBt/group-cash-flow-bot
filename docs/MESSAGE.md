@@ -244,6 +244,19 @@ MessageService - класс, отвечающий за формирование 
   - Если deal.canSellToOthers = true - добавляет кнопку "Предложить игроку"
   - Возвращает объект inline_keyboard для использования в Telegram API
 
+### generateMiscellaneousKeyboard(miscCard, player, canPay)
+- **Назначение**: Генерирует клавиатуру для карточки miscellaneous
+- **Параметры**:
+  - `miscCard` (Object): Объект miscellaneous карточки
+  - `player` (Object): Объект игрока
+  - `canPay` (boolean): Можно ли оплатить (проверка условий)
+- **Возвращает**: Object - Клавиатура для Telegram
+- **Функционал**:
+  - Для карт с `credit: true` добавляет две кнопки: "Оплатить [сумма] ₽" и "💳 Кредитная карта"
+  - Для обычных карт - только кнопку "Оплатить [сумма] ₽"
+  - Если оплата невозможна (canPay = false) - кнопку "Пропустить"
+  - Возвращает объект inline_keyboard для использования в Telegram API
+
 ### getFieldName(fieldType)
 - **Назначение**: Возвращает название типа поля
 - **Параметры**:

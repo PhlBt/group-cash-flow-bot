@@ -435,7 +435,7 @@ class GameService {
       }
 
       // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
-      const monthlyPayment = Math.floor(deal.cost * 0.0001); // 0.01%
+      const monthlyPayment = Math.floor(deal.cost * 0.01); // 0.01%
       const loanAmount = deal.mortgage;
 
       // Списываем первоначальный взнос
@@ -759,6 +759,187 @@ class GameService {
       { gameId },
       { $set: { [`players.${playerIndex}.cash`]: newCash } }
     );
+
+    return { success: true };
+  }
+
+  /**
+   * Оплачивает miscellaneous расходы
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async payMiscellaneousExpenses(gameId, userId, miscCard) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    if (!miscCard.cost) {
+      return { success: false, error: 'invalid_misc_card' };
+    }
+
+    // Проверяем хватает ли денег
+    if (player.cash < miscCard.cost) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем расходы
+    const newCash = player.cash - miscCard.cost;
+
+    // Обновляем баланс
+    const playerIndex = game.players.indexOf(player);
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Покупает miscellaneous с ипотекой
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buyMiscellaneousWithMortgage(gameId, userId, miscCard) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    if (!miscCard.mortgage || !miscCard.downPayment) {
+      return { success: false, error: 'invalid_misc_card' };
+    }
+
+    // Проверяем хватает ли денег на первоначальный взнос
+    if (player.cash < miscCard.downPayment) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Рассчитываем ежемесячный платеж по ипотеке (0.01% от стоимости)
+    const monthlyPayment = Math.floor(miscCard.cost * 0.01);
+
+    // Списываем первоначальный взнос
+    const newCash = player.cash - miscCard.downPayment;
+
+    // Обновляем баланс
+    const playerIndex = game.players.indexOf(player);
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    // Добавляем ипотеку
+    const liability = {
+      title: miscCard.description,
+      cost: miscCard.cost,
+      downPayment: miscCard.downPayment,
+      loanAmount: miscCard.mortgage,
+      monthlyPayment: monthlyPayment,
+      type: 'miscellaneous_mortgage'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, liability);
+
+    return { success: true };
+  }
+
+  /**
+   * Покупает miscellaneous с кредитом
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buyMiscellaneousWithCredit(gameId, userId, miscCard) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    if (!miscCard.credit) {
+      return { success: false, error: 'invalid_misc_card' };
+    }
+
+    // Рассчитываем ежемесячный платеж по кредиту (2% от стоимости)
+    const monthlyPayment = Math.floor(miscCard.cost * 0.01);
+
+    // Добавляем кредит
+    const liability = {
+      title: miscCard.description,
+      cost: miscCard.cost,
+      downPayment: 0,
+      loanAmount: miscCard.cost,
+      monthlyPayment: monthlyPayment,
+      type: 'miscellaneous_credit_loan'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, liability);
+
+    return { success: true };
+  }
+
+  /**
+   * Оплачивает miscellaneous кредиткой
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async payMiscellaneousWithCreditCard(gameId, userId, miscCard) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
+    const monthlyPayment = Math.floor(miscCard.cost * 0.02);
+
+    // Добавляем актив (предмет)
+    const asset = {
+      title: miscCard.description,
+      cost: miscCard.cost,
+      cashFlow: 0,
+      type: 'miscellaneous_credit_card',
+      description: miscCard.description
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    // Добавляем кредитку как liability
+    const liability = {
+      title: `Кредитная карта - ${miscCard.description}`,
+      cost: miscCard.cost,
+      loanAmount: miscCard.cost,
+      monthlyPayment: monthlyPayment,
+      type: 'credit_card_loan'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, liability);
 
     return { success: true };
   }
