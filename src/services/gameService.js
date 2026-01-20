@@ -972,6 +972,11 @@ class GameService {
         }
       );
 
+      // Проверяем, остались ли игроки в игре
+      if (updatedPlayers.length === 0) {
+        await this.finishGame(gameId);
+      }
+
       // Обновляем статистику проигрыша
       await this.userStatsService.updateUserStats(userId, { losses: (await this.userStatsService.getUserStats(userId)).losses + 1 });
 
