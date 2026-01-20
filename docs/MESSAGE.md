@@ -360,6 +360,31 @@ MessageService - класс, отвечающий за формирование 
 - **Возвращает**: Object - { text, keyboard }
 - **Функционал**: Форматирует полную информацию о сделке и генерирует соответствующую клавиатуру
 
+### sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents)
+- **Назначение**: Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Безработица"
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `player` (Object): Объект игрока
+  - `steps` (number): Количество шагов
+  - `newPosition` (number): Новая позиция
+  - `inFastTrack` (boolean): На Fast Track
+  - `paydayEvents` (Array): Массив событий выплат
+- **Функционал**:
+  - Показывает результат броска кубика и перемещение
+  - Суммирует выплаты за поля PAYDAY
+  - Показывает информацию о попадании на поле "Безработица"
+  - Отображает сумму общих расходов и баланс игрока
+  - Предоставляет клавиатуру generateDismissalKeyboard с кнопкой оплаты
+
+### generateDismissalKeyboard(amount)
+- **Назначение**: Генерирует клавиатуру для поля "Безработица"
+- **Параметры**:
+  - `amount` (number): Сумма к оплате
+- **Возвращает**: Object - Клавиатура для Telegram
+- **Функционал**:
+  - Создает кнопку "💰 Оплатить [сумма] ₽" с callback_data 'pay_dismissal'
+  - Возвращает объект inline_keyboard для использования в Telegram API
+
 ## RateLimiter - Ограничение скорости отправки сообщений
 
 MessageService включает встроенный RateLimiter для соблюдения ограничений Telegram Bot API:

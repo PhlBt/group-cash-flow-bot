@@ -791,7 +791,7 @@ CashFlow - настольная игра о финансовом планиро�
     let message = `🎲 ${player.profession} ${player.username} попал на поле "Благотворительность"!\n\n`;
     message += `📍 ${trackName}, поле "Благотворительность"\n\n`;
 
-    message += `❤️ Вы можете пожертвовать 10% своего дохода на благотворительность\n`;
+    message += `❤️ Вы можете пожертвовать 10% своего дохода на благотворительность\n\n`;
     message += `🎁 Взамен на следующих 3 ходах можно будет бросать 1 или 2 кубика\n\n`;
 
     const income = player.salary + player.passiveIncome;
@@ -873,6 +873,53 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Генерируем клавиатуру
     const keyboard = this.generateMiscellaneousKeyboard(miscCard, player, canPay);
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  }
+
+  /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Безработица"
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   */
+  async sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+    }
+
+    message += `🏭 Безработица!\n\n`;
+    message += `📝 Вы временно потеряли свою работу!\n`;
+    message += `💰 Оплатите размер ваших «Общих Расходов» и пропустите 2 хода.\n\n`;
+    message += `💸 Общие расходы: ${formatNumber(player.totalExpenses)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n\n`;
+    message += `Что вы хотите сделать?`;
+
+    // Генерируем клавиатуру
+    const { generateDismissalKeyboard } = require('../utils/keyboards');
+    const keyboard = generateDismissalKeyboard(player.totalExpenses);
 
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',

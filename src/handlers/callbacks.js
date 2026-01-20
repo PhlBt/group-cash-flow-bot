@@ -111,6 +111,23 @@ async function handleRollDice(query, diceCount, services) {
       }
 
       // Для поля CHARITY не передаем ход следующему игроку - ждем выбора
+    } else if (moveResult.fieldType === FIELD_TYPES.DISMISSAL) {
+      // Игрок попал на поле "Безработица" - показать комбинированное сообщение
+      await messageService.sendCombinedRollMoveDismissalMessage(
+        chatId,
+        currentPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || []
+      );
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Для поля DISMISSAL не передаем ход следующему игроку - ждем оплаты
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       await messageService.sendCombinedRollMovePaydayMessage(
@@ -381,6 +398,16 @@ async function handleCallbackQuery(query, services) {
       case 'skip_charity':
         // Пропуск благотворительности
         await handleSkipCharity(query, services);
+        break;
+
+      case 'pay_dismissal':
+        // Оплата расходов на поле безработицы
+        await handlePayDismissal(query, services);
+        break;
+
+      case 'pay_dismissal_credit_card':
+        // Оплата расходов на поле безработицы кредиткой
+        await handlePayDismissalCreditCard(query, services);
         break;
 
       case 'profile':
@@ -833,6 +860,146 @@ async function handleCreditsPage(query, page, services) {
   }
 }
 
+/**
+ * Обрабатывает оплату расходов на поле безработицы
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handlePayDismissal(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    const amount = currentPlayer.totalExpenses;
+
+    // Проверить хватает ли денег
+    if (currentPlayer.cash < amount) {
+      // Удалить кнопки с сообщения
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+      // Показать предложение кредитки
+      const dismissalObj = {
+        title: 'Оплата расходов на безработице',
+        cost: amount
+      };
+      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer);
+      return;
+    }
+
+    // Оплатить
+    const newCash = currentPlayer.cash - amount;
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+
+    await gameService.databaseService.getDb().collection('games').updateOne(
+      { gameId: game.gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.cash`]: newCash,
+          [`players.${playerIndex}.skippedTurns`]: 2
+        }
+      }
+    );
+
+    // Удалить кнопки с сообщения
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Отправить сообщение об успешной оплате
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице и пропускает 2 хода!`);
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handlePayDismissal:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов на безработице.');
+  }
+}
+
+/**
+ * Обрабатывает оплату расходов на поле безработицы кредиткой
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handlePayDismissalCreditCard(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    const amount = currentPlayer.totalExpenses;
+    const monthlyPayment = Math.floor(amount * 0.02);
+
+    // Создать liability для кредитки
+    const liability = {
+      title: `Кредитная карта - Оплата расходов на безработице`,
+      cost: amount,
+      loanAmount: amount,
+      monthlyPayment: monthlyPayment,
+      type: 'credit_card_loan'
+    };
+
+    await gameService.addLiability(game.gameId, userId, liability);
+
+    // Установить skippedTurns
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    await gameService.databaseService.getDb().collection('games').updateOne(
+      { gameId: game.gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.skippedTurns`]: 2
+        }
+      }
+    );
+
+    // Удалить кнопки с сообщения
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Отправить сообщение об успешной оплате
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице кредиткой и пропускает 2 хода!`);
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handlePayDismissalCreditCard:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов на безработице кредиткой.');
+  }
+}
+
 module.exports = {
   handleCallbackQuery,
   handleRollDice,
@@ -843,5 +1010,7 @@ module.exports = {
   handleSellAsset,
   handlePayLiability,
   handleAssetsPage,
-  handleCreditsPage
+  handleCreditsPage,
+  handlePayDismissal,
+  handlePayDismissalCreditCard
 };

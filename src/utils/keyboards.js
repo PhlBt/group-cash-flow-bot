@@ -1,6 +1,7 @@
 /**
  * Модуль с клавиатурами для Telegram бота
  */
+const { formatNumber } = require('../utils');
 
 /**
  * Клавиатура для приветственного сообщения /start
@@ -352,6 +353,23 @@ const creditCardKeyboard = {
 };
 
 /**
+ * Генерирует клавиатуру для поля "Безработица"
+ * @param {number} amount - Сумма к оплате
+ * @returns {Object} Клавиатура
+ */
+function generateDismissalKeyboard(amount) {
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: `💰 Оплатить ${formatNumber(amount)} ₽`, callback_data: 'pay_dismissal' }
+      ]
+    ]
+  };
+
+  return keyboard;
+}
+
+/**
  * Клавиатура для профиля игрока
  */
 const profileKeyboard = {
@@ -374,5 +392,6 @@ module.exports = {
   dealTypeKeyboard,
   generateDealKeyboard,
   creditCardKeyboard,
+  generateDismissalKeyboard,
   profileKeyboard
 };
