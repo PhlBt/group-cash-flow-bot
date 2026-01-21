@@ -972,6 +972,89 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Рынок"
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   * @param {Object} marketCard - Market карточка
+   */
+  async sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = [], marketCard) {
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+    }
+
+    message += `📈 Рынок!\n\n`;
+    message += `💼 ${marketCard.title}\n\n`;
+    message += `📝 ${marketCard.description}\n\n`;
+
+    // Показать эффекты карточки
+    if (marketCard.passiveIncome) {
+      message += `💵 Пассивный доход: +${formatNumber(marketCard.passiveIncome)} ₽/мес\n`;
+    }
+
+    if (marketCard.creditMultiple) {
+      message += `💳 Изменение ставок кредитов: ${marketCard.creditMultiple * 100 - 100}% \n`;
+    }
+
+    if (marketCard.inflation) {
+      message += `📊 Инфляция: ${marketCard.inflation}%\n`;
+    }
+
+    // Для эффектов продажи показать информацию об активах
+    const relatedDeals = marketCard.relatedDeals || [];
+    const eligibleAssets = player.assets ? player.assets.filter(asset =>
+      relatedDeals.includes(asset.id || asset.title)
+    ) : [];
+
+    if (!marketCard.passiveIncome && !marketCard.creditMultiple && !marketCard.inflation) {
+      // Эффекты продажи
+      if (eligibleAssets.length > 0) {
+        message += `🏠 Ваши активы:\n`;
+        eligibleAssets.forEach((asset, index) => {
+          const sellPrice = calculateMarketSellPrice(marketCard, asset);
+          message += `\n${index + 1}. ${asset.title}\n`;
+          message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽\n`;
+          message += `   💵 Доход: ${formatNumber(asset.cashFlow || 0)} ₽/мес\n`;
+        });
+      } else {
+        message += `У вас нет подходящих активов для продажи.\n`;
+      }
+    }
+
+    message += `\n💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+
+    // Генерируем клавиатуру
+    const keyboard = this.generateMarketKeyboard(marketCard, player);
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  }
+
+  /**
    * Отправляет сообщение выбора типа сделки
    * @param {number} chatId - ID чата
    * @returns {Promise<number>} ID отправленного сообщения
@@ -1452,6 +1535,173 @@ generateMiscellaneousKeyboard(miscCard, player, canPay = true) {
       await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard });
     }
   }
+
+  /**
+   * Отправляет market карточку с кнопкой "Пропустить"
+   * @param {number} chatId - ID чата
+   * @param {Object} marketCard - Market карточка
+   * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   */
+  async sendMarketCardWithSkipButton(chatId, marketCard, player, game) {
+    let message = `📈 **Рынок**\n\n`;
+    message += `💼 ${marketCard.title}\n\n`;
+    message += `📝 ${marketCard.description}\n\n`;
+
+    if (marketCard.passiveIncome) {
+      message += `💵 Пассивный доход: +${formatNumber(marketCard.passiveIncome)} ₽/мес\n`;
+    }
+
+    if (marketCard.creditMultiple) {
+      message += `💳 Изменение ставок кредитов: ${marketCard.creditMultiple * 100 - 100}% \n`;
+    }
+
+    if (marketCard.inflation) {
+      message += `📊 Инфляция: ${marketCard.inflation}%\n`;
+    }
+
+    message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+    message += `Что вы хотите сделать?`;
+
+    const keyboard = {
+      inline_keyboard: [[{
+        text: 'Пропустить',
+        callback_data: 'skip_market'
+      }]]
+    };
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  }
+
+  /**
+   * Отправляет market карточку с опциями продажи активов
+   * @param {number} chatId - ID чата
+   * @param {Object} marketCard - Market карточка
+   * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры
+   */
+  async sendMarketCardWithSellOptions(chatId, marketCard, player, game) {
+    let message = `📈 **Рынок**\n\n`;
+    message += `💼 ${marketCard.title}\n\n`;
+    message += `📝 ${marketCard.description}\n\n`;
+
+    // Найти подходящие активы игрока
+    const relatedDeals = marketCard.relatedDeals || [];
+    const eligibleAssets = player.assets ? player.assets.filter(asset =>
+      relatedDeals.includes(asset.id || asset.title)
+    ) : [];
+
+    // Кнопки продажи + кнопка пропустить всегда
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    if (eligibleAssets.length > 0) {
+      message += `🏠 Ваши активы:\n\n`;
+      eligibleAssets.forEach((asset, index) => {
+        const sellPrice = calculateMarketSellPrice(marketCard, asset);
+        message += `${index + 1}. ${asset.title}\n`;
+        message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽\n`;
+        message += `   💵 Доход: ${formatNumber(asset.cashFlow || 0)} ₽/мес\n\n`;
+
+        // Добавить кнопку продажи
+        keyboard.inline_keyboard.push([{
+          text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
+          callback_data: `sell_market_asset_${index}`
+        }]);
+      });
+
+      message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+      message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+      message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+      message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+      message += `Что вы хотите сделать?`;
+    } else {
+      // Нет подходящих активов
+      message += `У вас нет подходящих активов для продажи.\n\n`;
+      message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
+      message += `Что вы хотите сделать?`;
+    }
+
+    // Всегда добавить кнопку "Пропустить"
+    keyboard.inline_keyboard.push([{
+      text: 'Пропустить',
+      callback_data: 'skip_market'
+    }]);
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  }
+
+  /**
+   * Генерирует клавиатуру для market карточки
+   * @param {Object} marketCard - Market карточка
+   * @param {Object} player - Объект игрока
+   * @returns {Object} Клавиатура
+   */
+  generateMarketKeyboard(marketCard, player) {
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    // Найти подходящие активы игрока
+    const relatedDeals = marketCard.relatedDeals || [];
+    const eligibleAssets = player.assets ? player.assets.filter(asset =>
+      relatedDeals.includes(asset.id || asset.title)
+    ) : [];
+
+    // Кнопки продажи для подходящих активов
+    if (eligibleAssets.length > 0) {
+      eligibleAssets.forEach((asset, index) => {
+        const sellPrice = calculateMarketSellPrice(marketCard, asset);
+        keyboard.inline_keyboard.push([{
+          text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
+          callback_data: `sell_market_asset_${index}`
+        }]);
+      });
+    }
+
+    // Всегда добавить кнопку "Пропустить"
+    keyboard.inline_keyboard.push([{
+      text: 'Пропустить',
+      callback_data: 'skip_market'
+    }]);
+
+    return keyboard;
+  }
+}
+
+/**
+ * Рассчитывает цену продажи актива по market карточке
+ * @param {Object} marketCard - Market карточка
+ * @param {Object} asset - Актив для продажи
+ * @returns {number} Цена продажи
+ */
+function calculateMarketSellPrice(marketCard, asset) {
+  if (marketCard.cost) {
+    return marketCard.cost;
+  }
+
+  if (marketCard.apartmentCost) {
+    // Для многоквартирных домов - цена за квартиру × количество квартир
+    const apartments = asset.apartments || 1;
+    return apartments * marketCard.apartmentCost;
+  }
+
+  if (marketCard.costMultiple) {
+    // Для партнерств - оригинальная стоимость × множитель
+    return asset.cost * marketCard.costMultiple;
+  }
+
+  return 0;
 }
 
 module.exports = MessageService;

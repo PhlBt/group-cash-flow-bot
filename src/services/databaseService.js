@@ -120,7 +120,12 @@ class DatabaseService {
       currentDealQuantity: 1,
       dealCirculationPlayers: [],
       dealCirculationIndex: 0,
-      dealCirculationOriginalIndex: 0
+      dealCirculationOriginalIndex: 0,
+      currentMarket: null,
+      usedMarketIds: [],
+      marketCirculationPlayers: [],
+      marketCirculationIndex: 0,
+      marketCirculationOriginalIndex: 0
     });
 
     return gameId;
@@ -953,6 +958,167 @@ class DatabaseService {
     await gamesCollection.updateOne(
       { gameId },
       { $set: { currentMiscellaneous: miscCard } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает текущую market карточку
+   * @param {string} gameId - ID игры
+   * @param {Object} marketCard - Объект market карточки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCurrentMarket(gameId, marketCard) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { currentMarket: marketCard } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает использованные ID market карточек
+   * @param {string} gameId - ID игры
+   * @param {Array} usedIds - Массив использованных названий карточек
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setUsedMarketIds(gameId, usedIds) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { usedMarketIds: usedIds } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает список игроков для циркуляции market
+   * @param {string} gameId - ID игры
+   * @param {Array} players - Массив userId игроков
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setMarketCirculationPlayers(gameId, players) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { marketCirculationPlayers: players, marketCirculationIndex: 0 } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает индекс циркуляции market
+   * @param {string} gameId - ID игры
+   * @param {number} index - Индекс циркуляции
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setMarketCirculationIndex(gameId, index) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { marketCirculationIndex: index } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Увеличивает индекс циркуляции market
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string, completed?: boolean}>} Результат операции
+   */
+  async incrementMarketCirculationIndex(gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const newIndex = game.marketCirculationIndex + 1;
+    const completed = newIndex >= game.marketCirculationPlayers.length;
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { marketCirculationIndex: newIndex } }
+    );
+
+    return { success: true, completed };
+  }
+
+  /**
+   * Устанавливает оригинальный индекс циркуляции market
+   * @param {string} gameId - ID игры
+   * @param {number} originalIndex - Оригинальный индекс
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setMarketCirculationOriginalIndex(gameId, originalIndex) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { marketCirculationOriginalIndex: originalIndex } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Очищает данные циркуляции market
+   * @param {string} gameId - ID игры
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async clearMarketCirculation(gameId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      {
+        $set: {
+          marketCirculationPlayers: [],
+          marketCirculationIndex: 0,
+          marketCirculationOriginalIndex: 0
+        }
+      }
     );
 
     return { success: true };

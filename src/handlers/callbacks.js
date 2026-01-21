@@ -157,6 +157,32 @@ async function handleRollDice(query, diceCount, services) {
         // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
       }
+    } else if (moveResult.fieldType === FIELD_TYPES.MARKET) {
+      // Игрок попал на поле "Рынок" - отправить комбинированное сообщение
+      const { handleMarket } = require('./market');
+      const marketCard = await handleMarket(game.gameId, userId, services);
+
+      // Получить обновленную игру после применения эффектов
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+
+      // Отправить комбинированное сообщение с броском кубика и market карточкой
+      await messageService.sendCombinedRollMoveMarketMessage(
+        chatId,
+        updatedPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || [],
+        marketCard
+      );
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Для поля MARKET не передаем ход автоматически - ждем действий игроков
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       await messageService.sendCombinedRollMovePaydayMessage(
@@ -462,9 +488,21 @@ async function handleCallbackQuery(query, services) {
         await handleCancelOffer(query, services);
         break;
 
+      case 'skip_market':
+        // Пропустить market событие
+        const { handleSkipMarket } = require('./market');
+        await handleSkipMarket(query, services);
+        break;
+
       default:
+        // Проверяем market callback
+        if (data.startsWith('sell_market_asset_')) {
+          const assetIndex = parseInt(data.split('_')[3], 10);
+          const { handleSellMarketAsset } = require('./market');
+          await handleSellMarketAsset(query, assetIndex, services);
+        }
         // Проверяем, является ли callback_data выбором пользователя для предложения сделки
-        if (data.startsWith('select_user_')) {
+        else if (data.startsWith('select_user_')) {
           const targetUserId = parseInt(data.split('_')[2], 10);
           await handleSelectUser(query, targetUserId, services);
         }

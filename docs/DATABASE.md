@@ -98,7 +98,12 @@ DatabaseService - это класс, отвечающий за все взаим
   endGameMessageId: number, // ID сообщения голосования за окончание (опционально)
   waitingMessageId: number, // ID сообщения комнаты ожидания (опционально)
   usedBigDealIds: Array, // ID выданных крупных сделок
-  usedSmallDealIds: Array // ID выданных мелких сделок
+  usedSmallDealIds: Array, // ID выданных мелких сделок
+  currentMarket: Object, // Текущая market карточка (опционально)
+  usedMarketIds: Array, // Названия использованных market карточек
+  marketCirculationPlayers: Array, // ID игроков для циркуляции market
+  marketCirculationIndex: number, // Текущий индекс в циркуляции market
+  marketCirculationOriginalIndex: number // Оригинальный индекс циркуляции market
 }
 ```
 
@@ -248,6 +253,67 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
 - **Функционал**:
   - Сохраняет массив ID выданных мелких сделок для предотвращения дубликатов
+
+### setCurrentMarket(gameId, marketCard)
+- **Назначение**: Устанавливает текущую market карточку
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `marketCard` (Object): Объект market карточки
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет объект текущей market карточки в состоянии игры
+
+### setUsedMarketIds(gameId, usedIds)
+- **Назначение**: Устанавливает массив использованных названий market карточек
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `usedIds` (Array<string>): Массив использованных названий
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет массив названий выданных market карточек для предотвращения повторений
+
+### setMarketCirculationPlayers(gameId, players)
+- **Назначение**: Устанавливает список игроков для циркуляции market события
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `players` (Array<string>): Массив ID игроков
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет массив ID игроков, которые могут взаимодействовать с market карточкой
+
+### setMarketCirculationIndex(gameId, index)
+- **Назначение**: Устанавливает текущий индекс в циркуляции market
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `index` (number): Индекс циркуляции
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет текущий индекс игрока в очереди циркуляции
+
+### incrementMarketCirculationIndex(gameId)
+- **Назначение**: Увеличивает индекс циркуляции market
+- **Параметры**:
+  - `gameId` (string): ID игры
+- **Возвращает**: Promise<{success: boolean, error?: string, completed?: boolean}> - результат операции
+- **Функционал**:
+  - Увеличивает индекс на 1, проверяет завершение циркуляции
+
+### setMarketCirculationOriginalIndex(gameId, originalIndex)
+- **Назначение**: Устанавливает оригинальный индекс циркуляции market
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `originalIndex` (number): Оригинальный индекс
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет индекс игрока, который начал циркуляцию
+
+### clearMarketCirculation(gameId)
+- **Назначение**: Очищает данные циркуляции market
+- **Параметры**:
+  - `gameId` (string): ID игры
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сбрасывает все поля циркуляции market в начальное состояние
 
 ### updatePlayerPosition(gameId, userId, newPosition, inFastTrack)
 - **Назначение**: Обновляет позицию игрока

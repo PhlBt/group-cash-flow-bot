@@ -403,6 +403,60 @@ MessageService - класс, отвечающий за формирование 
   - Создает кнопку "💰 Оплатить [сумма] ₽" с callback_data 'pay_dismissal'
   - Возвращает объект inline_keyboard для использования в Telegram API
 
+### sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents, marketCard)
+- **Назначение**: Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Рынок"
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `player` (Object): Объект игрока
+  - `steps` (number): Количество шагов
+  - `newPosition` (number): Новая позиция
+  - `inFastTrack` (boolean): На Fast Track
+  - `paydayEvents` (Array): Массив событий выплат
+  - `marketCard` (Object): Market карточка
+- **Функционал**:
+  - Показывает результат броска кубика и перемещение
+  - Суммирует выплаты за поля PAYDAY
+  - Показывает информацию о market карточке
+  - Отображает эффекты карточки и подходящие активы
+  - Предоставляет клавиатуру generateMarketKeyboard с кнопками действий
+
+### sendMarketCardWithSkipButton(chatId, marketCard, player, game)
+- **Назначение**: Отправляет market карточку с кнопкой "Пропустить"
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `marketCard` (Object): Market карточка
+  - `player` (Object): Объект игрока
+  - `game` (Object): Объект игры
+- **Функционал**:
+  - Показывает market карточку в формате "Рынок"
+  - Отображает эффекты карточки (passiveIncome, creditMultiple, inflation)
+  - Показывает баланс и финансовые показатели игрока
+  - Предоставляет кнопку "Пропустить"
+
+### sendMarketCardWithSellOptions(chatId, marketCard, player, game)
+- **Назначение**: Отправляет market карточку с опциями продажи активов
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `marketCard` (Object): Market карточка
+  - `player` (Object): Объект игрока
+  - `game` (Object): Объект игры
+- **Функционал**:
+  - Показывает market карточку с описанием
+  - Отображает список подходящих активов с ценами продажи
+  - Показывает баланс игрока
+  - Предоставляет кнопки "Продать [актив]" и "Пропустить"
+
+### generateMarketKeyboard(marketCard, player)
+- **Назначение**: Генерирует клавиатуру для market карточки
+- **Параметры**:
+  - `marketCard` (Object): Market карточка
+  - `player` (Object): Объект игрока
+- **Возвращает**: Object - Клавиатура для Telegram
+- **Функционал**:
+  - Создает кнопки "Продать [актив] за [цена]" для подходящих активов
+  - Всегда добавляет кнопку "Пропустить"
+  - Возвращает объект inline_keyboard для использования в Telegram API
+
 ## RateLimiter - Ограничение скорости отправки сообщений
 
 MessageService включает встроенный RateLimiter для соблюдения ограничений Telegram Bot API:
