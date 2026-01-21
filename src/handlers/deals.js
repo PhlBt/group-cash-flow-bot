@@ -163,17 +163,40 @@ async function handleBuyDeal(query, services) {
 
     // Попробовать купить
     let buyResult;
+    const hasMortgage = originalDeal.mortgage !== undefined;
+
     if (isBigDeal) {
-      buyResult = await gameService.buyBigDeal(game.gameId, userId, originalDeal);
+      if (hasMortgage) {
+        // Ипотечный сценарий для крупных сделок
+        buyResult = await gameService.buyBigDeal(game.gameId, userId, originalDeal);
+      } else {
+        // Полная оплата для крупных сделок
+        buyResult = await gameService.buyBigDeal(game.gameId, userId, originalDeal);
+      }
     } else {
-      buyResult = await gameService.buySmallDeal(game.gameId, userId, originalDeal, game.currentDealQuantity);
+      if (hasMortgage) {
+        // Ипотечный сценарий для мелких сделок
+        buyResult = await gameService.buySmallDealWithMortgage(game.gameId, userId, originalDeal, game.currentDealQuantity);
+      } else {
+        // Полная оплата для мелких сделок
+        buyResult = await gameService.buySmallDeal(game.gameId, userId, originalDeal, game.currentDealQuantity);
+      }
     }
 
     if (!buyResult.success) {
-      if (buyResult.error === 'insufficient_funds') {
-        // Удалить кнопки с сообщения карточки сделки
+      if (buyResult.error === 'insufficient_down_payment') {
+        // Предложить оплатить первоначальный взнос кредиткой
         await messageService.removeMessageKeyboard(chatId, query.message.message_id);
-        // Отправить предложение оплаты кредиткой
+
+        const dealWithDownPayment = {
+          ...deal,
+          cost: buyResult.downPayment, // Стоимость = первоначальный взнос
+          title: `Первоначальный взнос за ${deal.title}`
+        };
+
+        await messageService.sendCreditCardOfferMessage(chatId, dealWithDownPayment, currentPlayer, 'mortgage_down_payment');
+      } else if (buyResult.error === 'insufficient_funds') {
+        // Обычная ошибка недостатка средств
         await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal');
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
@@ -611,11 +634,86 @@ async function handlePayExpenses(query, services) {
   }
 }
 
+/**
+ * Обрабатывает покупку первоначального взноса кредиткой для ипотечной сделки
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Получить сохраненную сделку из состояния игры
+    const deal = game.currentDeal;
+    if (!deal) {
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Проверить, что сделка с ипотекой
+    if (!deal.mortgage) {
+      await messageService.sendErrorMessage(chatId, 'Эта сделка не требует ипотеки.');
+      return;
+    }
+
+    // Купить с ипотекой и кредитом на первоначальный взнос
+    const buyResult = await gameService.buySmallDealWithMortgageAndCreditDownPayment(
+      game.gameId,
+      userId,
+      deal,
+      game.currentDealQuantity
+    );
+
+    if (!buyResult.success) {
+      await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
+      return;
+    }
+
+    // Удалить кнопки с сообщения предложения кредитки
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Отправить сообщение об успешной покупке
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}" в ипотеку с кредитом на первоначальный взнос!`);
+
+    // Обработать циркуляцию для anyCanBuySell
+    if (deal.anyCanBuySell) {
+      await processDealAction(game.gameId, userId, chatId, 'buy', services);
+    } else {
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in handleBuyMortgageDownPaymentWithCreditCard:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки.');
+  }
+}
+
 module.exports = {
   handleDealType,
   handleBuyDeal,
   handleSkipDeal,
   handleBuyDealWithCreditCard,
+  handleBuyMortgageDownPaymentWithCreditCard,
   handleChangeQuantity,
   handleSellStocks,
   handlePayExpenses

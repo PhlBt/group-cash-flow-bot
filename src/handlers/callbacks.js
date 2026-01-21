@@ -2,7 +2,7 @@ const { formatNumber } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
 
 // Импорт функций из других модулей
-const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard, handleChangeQuantity, handleSellStocks, handlePayExpenses } = require('./deals');
+const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard, handleBuyMortgageDownPaymentWithCreditCard, handleChangeQuantity, handleSellStocks, handlePayExpenses } = require('./deals');
 const { handleMiscellaneous, handlePayMiscellaneous, handlePayMiscellaneousCreditCard, handleSkipMiscellaneous } = require('./miscellaneous');
 const { handleCharity, handleDonateCharity, handleSkipCharity } = require('./charity');
 const { handleProfile, handleStats, handleAssets, handleCredits } = require('./profile');
@@ -30,6 +30,19 @@ async function handleRollDice(query, diceCount, services) {
     const { validateCurrentPlayer } = require('../utils/validators');
     const currentPlayer = await validateCurrentPlayer(game.gameId, userId, services, chatId);
     if (!currentPlayer) {
+      return;
+    }
+
+    // Проверить, нужно ли пропустить ход
+    if (currentPlayer.skippedTurns > 0) {
+      // Отправить сообщение о пропуске хода
+      await messageService.sendErrorMessage(chatId, `Игрок ${currentPlayer.username} пропускает ход!`);
+
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
       return;
     }
 
@@ -428,6 +441,11 @@ async function handleCallbackQuery(query, services) {
         await handlePayExpenses(query, services);
         break;
 
+      case 'buy_mortgage_down_payment_credit_card':
+        // Покупка первоначального взноса кредиткой для ипотечной сделки
+        await handleBuyMortgageDownPaymentWithCreditCard(query, services);
+        break;
+
       case 'pay_miscellaneous':
         // Оплата miscellaneous
         await handlePayMiscellaneous(query, services);
@@ -794,33 +812,39 @@ async function handlePayLiability(query, liabilityIndex, services) {
     const payResult = await gameService.payLiability(game.gameId, userId, liabilityIndex);
     if (!payResult.success) {
       if (payResult.error === 'insufficient_funds') {
-        // Проверяем, может ли игрок оплатить хотя бы один кредит
-        const hasAssets = currentPlayer.assets && currentPlayer.assets.length > 0;
-        const hasLiabilities = currentPlayer.liabilities && currentPlayer.liabilities.length > 0;
+        // Логика потери игры только для банкротства
+        if (currentPlayer.bankruptcyState) {
+          // Проверяем, может ли игрок оплатить хотя бы один кредит
+          const hasAssets = currentPlayer.assets && currentPlayer.assets.length > 0;
+          const hasLiabilities = currentPlayer.liabilities && currentPlayer.liabilities.length > 0;
 
-        let canPayAnyLiability = false;
-        if (hasLiabilities && currentPlayer.liabilities) {
-          for (const liability of currentPlayer.liabilities) {
-            if (currentPlayer.cash >= liability.loanAmount) {
-              canPayAnyLiability = true;
-              break;
+          let canPayAnyLiability = false;
+          if (hasLiabilities && currentPlayer.liabilities) {
+            for (const liability of currentPlayer.liabilities) {
+              if (currentPlayer.cash >= liability.loanAmount) {
+                canPayAnyLiability = true;
+                break;
+              }
             }
           }
-        }
 
-        if (!canPayAnyLiability && !hasAssets) {
-          // Не может оплатить ни один кредит и нет активов - проигрыш
-          await gameService.endBankruptcy(game.gameId, userId, true);
-          await messageService.sendErrorMessage(chatId, '🥺 Вы проиграли! \nУ вас нет активов для продажи и недостаточно денег для оплаты кредитов.');
+          if (!canPayAnyLiability && !hasAssets) {
+            // Не может оплатить ни один кредит и нет активов - проигрыш
+            await gameService.endBankruptcy(game.gameId, userId, true);
+            await messageService.sendErrorMessage(chatId, '🥺 Вы проиграли! \nУ вас нет активов для продажи и недостаточно денег для оплаты кредитов.');
 
-          // Передать ход следующему игроку
-          const nextTurnResult = await gameService.nextTurn(game.gameId);
-          if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-            await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+            // Передать ход следующему игроку
+            const nextTurnResult = await gameService.nextTurn(game.gameId);
+            if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+              await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+            }
+            return;
+          } else {
+            // Может оплатить другие кредиты или есть активы - обычная ошибка
+            await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита');
           }
-          return;
         } else {
-          // Может оплатить другие кредиты или есть активы - обычная ошибка
+          // При добровольной оплате - просто ошибка
           await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита');
         }
       } else {
@@ -830,24 +854,28 @@ async function handlePayLiability(query, liabilityIndex, services) {
       return;
     }
 
-    // Проверить, разрешена ли банкротство
-    const checkResult = await gameService.checkBankruptcyResolution(game.gameId, userId);
-    if (checkResult.success && checkResult.resolved) {
-      // Банкротство разрешена - завершить
-      await gameService.endBankruptcy(game.gameId, userId, false);
-      await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.');
+    // Для банкротства проверяем разрешение
+    if (currentPlayer.bankruptcyState) {
+      // Проверить, разрешена ли банкротство
+      const checkResult = await gameService.checkBankruptcyResolution(game.gameId, userId);
+      if (checkResult.success && checkResult.resolved) {
+        // Банкротство разрешена - завершить
+        await gameService.endBankruptcy(game.gameId, userId, false);
+        await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.');
 
-      // Передать ход следующему игроку
-      const nextTurnResult = await gameService.nextTurn(game.gameId);
-      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        // Передать ход следующему игроку
+        const nextTurnResult = await gameService.nextTurn(game.gameId);
+        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        }
+        return;
       }
-    } else {
-      // Продолжить банкротство - обновить сообщение кредитов
-      const updatedGame = await gameService.getGame(game.gameId);
-      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendPlayerCreditsMessage(chatId, updatedPlayer, 0, query.message.message_id);
     }
+
+    // Для добровольной оплаты или продолжения банкротства - обновить сообщение кредитов
+    const updatedGame = await gameService.getGame(game.gameId);
+    const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+    await messageService.sendPlayerCreditsMessage(chatId, updatedPlayer, 0, query.message.message_id);
 
   } catch (error) {
     console.error('Error in handlePayLiability:', error);

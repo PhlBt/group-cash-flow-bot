@@ -506,6 +506,7 @@ class GameService {
     const totalIncome = incomePerUnit * quantity;
 
     const asset = {
+      id: deal.id,
       title: deal.title,
       cost: deal.cost,
       cashFlow: totalIncome,
@@ -514,6 +515,160 @@ class GameService {
       quantity: quantity,
       group_Id: deal.group_Id,
       isRealEstate: deal.isRealEstate || false
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    return { success: true };
+  }
+
+  /**
+   * Покупает мелкую сделку с ипотекой
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @param {number} quantity - Количество для unlimitedStocks (по умолчанию 1)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buySmallDealWithMortgage(gameId, userId, deal, quantity = 1) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const totalCost = (deal.cost || 0) * quantity;
+    const totalDownPayment = (deal.downPayment || 0) * quantity;
+    const totalMortgage = (deal.mortgage || 0) * quantity;
+
+    // Проверяем хватает ли денег на первоначальный взнос
+    if (player.cash < totalDownPayment) {
+      return { success: false, error: 'insufficient_down_payment', downPayment: totalDownPayment, availableCash: player.cash };
+    }
+
+    // Рассчитываем ежемесячный платеж по ипотеке (0.01% от стоимости)
+    const monthlyMortgagePayment = Math.floor(totalCost * 0.01); // 0.01%
+
+    // Списываем первоначальный взнос
+    const newCash = player.cash - totalDownPayment;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+    );
+
+    // Генерируем уникальный ID для связи актив-кредит
+    const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+    // Добавляем ипотеку
+    const mortgageLiability = {
+      title: deal.title,
+      cost: totalCost,
+      downPayment: totalDownPayment,
+      loanAmount: totalMortgage,
+      monthlyPayment: monthlyMortgagePayment,
+      type: 'small_deal_mortgage',
+      assetLiabilityId: assetLiabilityId
+    };
+
+    await this.databaseService.addLiability(gameId, userId, mortgageLiability);
+
+    // Добавляем актив
+    const incomePerUnit = deal.passiveIncome || deal.cashFlow || 0;
+    const totalIncome = incomePerUnit * quantity;
+
+    const asset = {
+      id: deal.id,
+      title: deal.title,
+      cost: totalCost,
+      cashFlow: totalIncome,
+      type: 'small_deal_mortgage',
+      description: deal.description,
+      quantity: quantity,
+      group_Id: deal.group_Id,
+      isRealEstate: deal.isRealEstate || false,
+      assetLiabilityId: assetLiabilityId
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    return { success: true };
+  }
+
+  /**
+   * Покупает мелкую сделку с ипотекой и кредитом на первоначальный взнос
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @param {number} quantity - Количество для unlimitedStocks (по умолчанию 1)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buySmallDealWithMortgageAndCreditDownPayment(gameId, userId, deal, quantity = 1) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const totalCost = deal.cost * quantity;
+    const totalDownPayment = deal.downPayment * quantity;
+    const totalMortgage = deal.mortgage * quantity;
+
+    // Рассчитываем платежи
+    const monthlyMortgagePayment = Math.floor(totalCost * 0.01); // 0.01% от стоимости
+    const monthlyCreditPayment = Math.floor(totalDownPayment * 0.02); // 2% от первоначального взноса
+
+    // Генерируем уникальный ID для связи актив-кредит
+    const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+    // Добавляем ипотеку
+    const mortgageLiability = {
+      title: deal.title,
+      cost: totalCost,
+      downPayment: totalDownPayment,
+      loanAmount: totalMortgage,
+      monthlyPayment: monthlyMortgagePayment,
+      type: 'small_deal_mortgage',
+      assetLiabilityId: assetLiabilityId
+    };
+
+    await this.databaseService.addLiability(gameId, userId, mortgageLiability);
+
+    // Добавляем кредит на первоначальный взнос
+    const creditLiability = {
+      title: `Кредитная карта - Первоначальный взнос за ${deal.title}`,
+      cost: totalDownPayment,
+      loanAmount: totalDownPayment,
+      monthlyPayment: monthlyCreditPayment,
+      type: 'credit_card_loan'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, creditLiability);
+
+    // Добавляем актив
+    const incomePerUnit = deal.passiveIncome || deal.cashFlow || 0;
+    const totalIncome = incomePerUnit * quantity;
+
+    const asset = {
+      id: deal.id,
+      title: deal.title,
+      cost: totalCost,
+      cashFlow: totalIncome,
+      type: 'small_deal_mortgage',
+      description: deal.description,
+      quantity: quantity,
+      group_Id: deal.group_Id,
+      isRealEstate: deal.isRealEstate || false,
+      assetLiabilityId: assetLiabilityId
     };
 
     await this.databaseService.addAsset(gameId, userId, asset);
@@ -543,7 +698,7 @@ class GameService {
     if (deal.mortgage !== undefined) {
       // Сделка с кредитом: проверяем хватает ли денег на первоначальный взнос
       if (player.cash < deal.downPayment) {
-        return { success: false, error: 'insufficient_funds' };
+        return { success: false, error: 'insufficient_down_payment', downPayment: deal.downPayment, availableCash: player.cash };
       }
 
       // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
@@ -559,15 +714,20 @@ class GameService {
         { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
       );
 
+      // Генерируем уникальный ID для связи актив-кредит
+      const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
       // Добавляем актив
       const asset = {
+        id: deal.id,
         title: deal.title,
         cost: deal.cost,
         cashFlow: deal.passiveIncome,
         type: 'big_deal',
         description: deal.description,
         isRealEstate: deal.isRealEstate || false,
-        apartments: deal.apartments
+        apartments: deal.apartments,
+        assetLiabilityId: assetLiabilityId
       };
 
       await this.databaseService.addAsset(gameId, userId, asset);
@@ -579,7 +739,8 @@ class GameService {
         downPayment: deal.downPayment,
         loanAmount: loanAmount,
         monthlyPayment: monthlyPayment,
-        type: 'big_deal_loan'
+        type: 'big_deal_loan',
+        assetLiabilityId: assetLiabilityId
       };
 
       await this.databaseService.addLiability(gameId, userId, liability);
@@ -600,6 +761,7 @@ class GameService {
 
       // Добавляем актив
       const asset = {
+        id: deal.id,
         title: deal.title,
         cost: deal.cost,
         cashFlow: deal.passiveIncome,
@@ -640,6 +802,7 @@ class GameService {
     if (!deal.expenses) {
       // Добавляем актив
       const asset = {
+        id: deal.id,
         title: deal.title,
         cost: deal.cost,
         cashFlow: deal.passiveIncome || deal.cashFlow,
@@ -1031,18 +1194,7 @@ class GameService {
     // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
     const monthlyPayment = Math.floor(miscCard.cost * 0.02);
 
-    // Добавляем актив (предмет)
-    const asset = {
-      title: miscCard.description,
-      cost: miscCard.cost,
-      cashFlow: 0,
-      type: 'miscellaneous_credit_card',
-      description: miscCard.description
-    };
-
-    await this.databaseService.addAsset(gameId, userId, asset);
-
-    // Добавляем кредитку как liability
+    // Добавляем кредитку как liability (без добавления актива)
     const liability = {
       title: `Кредитная карта - ${miscCard.description}`,
       cost: miscCard.cost,
@@ -1109,13 +1261,37 @@ class GameService {
     const sellPrice = Math.floor((asset.cost * quantity) / 2); // Продажа за половину стоимости
     const cashFlowReduction = asset.cashFlow || 0;
 
+    // Находим связанные кредиты для закрытия
+    const closedLoans = [];
+    if (player.liabilities && asset.assetLiabilityId) {
+      for (const liability of player.liabilities) {
+        if (liability.assetLiabilityId === asset.assetLiabilityId) {
+          closedLoans.push(liability);
+        }
+      }
+    }
+
     // Удаляем актив из массива
     const updatedAssets = player.assets.filter((_, index) => index !== assetIndex);
 
+    // Вычитаем стоимость закрытых кредитов из дохода от продажи
+    let netIncome = sellPrice;
+    for (const loan of closedLoans) {
+      netIncome -= loan.loanAmount;
+    }
+
+    // Удаляем закрытые кредиты
+    const updatedLiabilities = player.liabilities ? player.liabilities.filter(liability =>
+      !closedLoans.some(closed => closed.assetLiabilityId === liability.assetLiabilityId)
+    ) : [];
+
     // Рассчитываем новые финансовые показатели
+    const newTotalLoanPayments = updatedLiabilities.reduce((sum, liab) => sum + (liab.monthlyPayment || 0), 0);
+    const newTotalLoans = updatedLiabilities.reduce((sum, liab) => sum + (liab.loanAmount || 0), 0);
+    const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
     const newPassiveIncome = player.passiveIncome - cashFlowReduction;
-    const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
-    const newCash = player.cash + sellPrice;
+    const newCashFlow = player.salary + newPassiveIncome - newTotalExpenses;
+    const newCash = netIncome > 0 ? player.cash + netIncome : player.cash;
 
     // Обновляем данные игрока
     await this.databaseService.getDb().collection('games').updateOne(
@@ -1126,6 +1302,11 @@ class GameService {
           [`players.${playerIndex}.assetsCount`]: updatedAssets.length,
           [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
           [`players.${playerIndex}.totalIncome`]: player.salary + newPassiveIncome,
+          [`players.${playerIndex}.liabilities`]: updatedLiabilities,
+          [`players.${playerIndex}.loansCount`]: updatedLiabilities.length,
+          [`players.${playerIndex}.totalLoans`]: newTotalLoans,
+          [`players.${playerIndex}.totalLoanPayments`]: newTotalLoanPayments,
+          [`players.${playerIndex}.totalExpenses`]: newTotalExpenses,
           [`players.${playerIndex}.cashFlow`]: newCashFlow,
           [`players.${playerIndex}.cash`]: newCash
         }
@@ -1154,17 +1335,14 @@ class GameService {
     }
 
     const player = game.players[playerIndex];
-    if (!player.bankruptcyState) {
-      return { success: false, error: 'not_in_bankruptcy' };
-    }
 
     if (!player.liabilities || liabilityIndex >= player.liabilities.length) {
       return { success: false, error: 'liability_not_found' };
     }
 
     const liability = player.liabilities[liabilityIndex];
-    // В банкротстве списываем полную сумму кредита, иначе - ежемесячный платеж
-    const paymentAmount = player.bankruptcyState ? liability.loanAmount : liability.monthlyPayment;
+    // Всегда списываем полную сумму кредита
+    const paymentAmount = liability.loanAmount;
 
     // Проверяем хватает ли денег
     if (player.cash < paymentAmount) {
@@ -1223,6 +1401,17 @@ class GameService {
 
     const resolved = player.cashFlow >= 0;
     return { success: true, resolved };
+  }
+
+  /**
+   * Добавляет пассив игроку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} liability - Объект пассива (title, cost, loanAmount, monthlyPayment, type)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async addLiability(gameId, userId, liability) {
+    return await this.databaseService.addLiability(gameId, userId, liability);
   }
 
   /**

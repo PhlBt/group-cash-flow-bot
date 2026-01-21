@@ -196,12 +196,9 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendGameStatsMessage(chatId, game) {
     const trackName = game.status === 'active' ? 'активна' : 'завершена';
-    const currentPlayer = game.players.find(p => p.userId === game.currentPlayerId);
-    const currentPlayerName = currentPlayer ? `${currentPlayer.profession} ${currentPlayer.username}` : 'Не определен';
 
     let message = `📊 СТАТУС ИГРЫ\n\n`;
     message += `Игра: ${trackName}\n`;
-    message += `Текущий ход: ${currentPlayerName}\n\n`;
     message += `Игроки:\n\n`;
 
     game.players.forEach((player, index) => {
@@ -549,8 +546,14 @@ CashFlow - настольная игра о финансовом планиро�
         message_id: messageId
       }), false);
     } catch (error) {
-      console.error('Error removing keyboard:', error);
-      // Игнорируем ошибки, если сообщение уже изменено или не существует
+      if (error.code === 'ETELEGRAM' && error.response && error.response.statusCode === 400 &&
+        error.response.body && error.response.body.description &&
+        error.response.body.description.includes('message is not modified')) {
+        // Keyboard already removed, ignore this error
+      } else {
+        console.error('Error removing keyboard:', error);
+        // Игнорируем другие ошибки, если сообщение уже изменено или не существует
+      }
     }
   }
 
@@ -866,7 +869,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Проверяем условия
     let canPay = true;
-    if (miscCard.hasKids && (!player.children || player.children === 0)) {
+    if (miscCard.hasKids && (!player.childrenCount || player.childrenCount === 0)) {
       message += `\n❌ У вас нет детей для этой карточки!`;
       canPay = false;
     }
@@ -1140,7 +1143,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Проверяем условия
     let canPay = true;
-    if (miscCard.hasKids && (!player.children || player.children === 0)) {
+    if (miscCard.hasKids && (!player.childrenCount || player.childrenCount === 0)) {
       message += `\n❌ У вас нет детей для этой карточки!\n`;
       canPay = false;
     }
@@ -1296,7 +1299,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object} deal - Объект сделки
    * @param {Object} player - Объект игрока
-   * @param {string} type - Тип ('deal', 'miscellaneous', 'dismissal') по умолчанию 'deal'
+   * @param {string} type - Тип ('deal', 'miscellaneous', 'dismissal', 'mortgage_down_payment') по умолчанию 'deal'
    * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal') {
@@ -1323,7 +1326,16 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Генерируем клавиатуру в зависимости от типа
     let keyboard;
-    if (type === 'dismissal' || type === 'miscellaneous') {
+    if (type === 'mortgage_down_payment') {
+      // Для первоначального взноса ипотеки - специальная кнопка
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '💳 Оплатить первоначальный взнос кредиткой', callback_data: 'buy_mortgage_down_payment_credit_card' }
+          ]
+        ]
+      };
+    } else if (type === 'dismissal' || type === 'miscellaneous') {
       // Для безработицы - только кнопка оплаты кредиткой, без пропуска
       keyboard = {
         inline_keyboard: [
@@ -1493,27 +1505,23 @@ CashFlow - настольная игра о финансовом планиро�
         message += `\n`;
       });
 
-      // Добавляем баланс и денежный поток в банкротстве
-      if (player.bankruptcyState) {
-        message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
-        message += `\n💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес`;
-      }
+      // Добавляем баланс и денежный поток
+      message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽`;
+      message += `\n💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес`;
 
       // Генерируем клавиатуру
       const keyboard = {
         inline_keyboard: []
       };
 
-      // Кнопки кредитов (только в банкротстве)
-      if (player.bankruptcyState) {
-        pageLiabilities.forEach((liability, index) => {
-          const globalIndex = startIndex + index;
-          keyboard.inline_keyboard.push([{
-            text: `💸 Оплатить "${liability.title}" за ${formatNumber(liability.loanAmount)} ₽`,
-            callback_data: `pay_liability_${globalIndex}`
-          }]);
-        });
-      }
+      // Кнопки кредитов
+      pageLiabilities.forEach((liability, index) => {
+        const globalIndex = startIndex + index;
+        keyboard.inline_keyboard.push([{
+          text: `💸 Оплатить "${liability.title}" за ${formatNumber(liability.loanAmount)} ₽`,
+          callback_data: `pay_liability_${globalIndex}`
+        }]);
+      });
 
       // Кнопки навигации
       const navButtons = [];
@@ -1621,7 +1629,8 @@ CashFlow - настольная игра о финансовом планиро�
       inline_keyboard: []
     };
 
-    if (eligibleAssets.length > 0) {
+    // Для карт с passiveIncome не показывать опции продажи, только пропустить
+    if (!marketCard.passiveIncome && eligibleAssets.length > 0) {
       message += `🏠 Ваши активы:\n\n`;
       eligibleAssets.forEach((asset, index) => {
         const sellPrice = calculateMarketSellPrice(marketCard, asset);
@@ -1642,7 +1651,7 @@ CashFlow - настольная игра о финансовом планиро�
       message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
       message += `Что вы хотите сделать?`;
     } else {
-      // Нет подходящих активов
+      // Нет подходящих активов для продажи
       message += `У вас нет подходящих активов для продажи.\n\n`;
       message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
       message += `Что вы хотите сделать?`;
@@ -1677,8 +1686,8 @@ CashFlow - настольная игра о финансовом планиро�
       relatedDeals.includes(asset.id || asset.title)
     ) : [];
 
-    // Кнопки продажи для подходящих активов
-    if (eligibleAssets.length > 0) {
+    // Кнопки продажи для подходящих активов (только если карта не имеет passiveIncome)
+    if (!marketCard.passiveIncome && eligibleAssets.length > 0) {
       eligibleAssets.forEach((asset, index) => {
         const sellPrice = calculateMarketSellPrice(marketCard, asset);
         keyboard.inline_keyboard.push([{

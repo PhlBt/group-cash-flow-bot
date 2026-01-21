@@ -231,6 +231,7 @@ const smallDeals = [
     "sellRange": "1.9 млн ₽ - 4.0 млн ₽",
     "cost": 1500000,
     "mortgage": 1500000,
+    "downPayment": 0,
     "passiveIncome": -3000
   },
   {
@@ -492,6 +493,7 @@ const smallDeals = [
     "sellRange": "1.9 млн ₽ - 4.0 млн ₽",
     "cost": 1500000,
     "mortgage": 1500000,
+    "downPayment": 0,
     "passiveIncome": 9600,
     "canSellToOthers": true
   },

@@ -58,6 +58,7 @@ cashFlow/
 │   │   └── userStatsService.js   # Сервис для статистики пользователей
 │   └── utils/
 │       ├── dealCirculation.js    # Утилита для циркуляции карт между игроками
+│       ├── dealOffer.js          # Утилиты для предложений сделок
 │       ├── index.js              # Вспомогательные функции (форматирование чисел)
 │       ├── keyboards.js          # Inline клавиатуры для бота
 │       ├── rateLimiter.js        # Ограничение скорости отправки сообщений
@@ -70,7 +71,8 @@ cashFlow/
 │   ├── HANDLERS.md      # Описание логики обработчиков команд
 │   ├── MESSAGE.md       # Описание MessageService
 │   ├── PROJECT.md       # Описание проекта и структура
-│   └── USERSTATS.md     # Описание UserStatsService
+│   ├── USERSTATS.md     # Описание UserStatsService
+│   └── UTILS.md         # Описание утилит и вспомогательных функций
 ├── docker/
 │   └── Dockerfile       # Конфигурация Docker контейнера
 ├── docker-compose.yml   # Конфигурация Docker Compose

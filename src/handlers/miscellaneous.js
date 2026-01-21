@@ -98,7 +98,7 @@ async function handlePayMiscellaneous(query, services) {
     }
 
     // Проверить условия для семейных карт
-    if (miscCard.hasKids && (!currentPlayer.children || currentPlayer.children === 0)) {
+    if (miscCard.hasKids && (!currentPlayer.childrenCount || currentPlayer.childrenCount === 0)) {
       await messageService.sendErrorMessage(chatId, 'У вас нет детей для этой карточки!');
       return;
     }
@@ -178,7 +178,7 @@ async function handlePayMiscellaneousCreditCard(query, services) {
     }
 
     // Проверить условия для семейных карт
-    if (miscCard.hasKids && (!currentPlayer.children || currentPlayer.children === 0)) {
+    if (miscCard.hasKids && (!currentPlayer.childrenCount || currentPlayer.childrenCount === 0)) {
       await messageService.sendErrorMessage(chatId, 'У вас нет детей для этой карточки!');
       return;
     }

@@ -80,9 +80,9 @@ async function applyAutomaticMarketEffects(gameId, marketCard, services) {
   const game = await gameService.getGame(gameId);
 
   // Обработать passiveIncome
-  if (marketCard.passiveIncome) {
-    await applyPassiveIncomeEffect(gameId, marketCard, services);
-  }
+    if (marketCard.passiveIncome) {
+      await applyPassiveIncomeEffect(gameId, marketCard, services);
+    }
 
   // TODO: Обработать creditMultiple и inflation
   if (marketCard.creditMultiple) {
@@ -335,13 +335,36 @@ async function sellMarketAsset(gameId, userId, asset, sellPrice, services) {
   // Удалить актив из массива
   const updatedAssets = player.assets.filter(a => a !== asset);
 
-  // Начислить деньги
-  const newCash = player.cash + sellPrice;
+  // Найти и закрыть связанный кредит
+  let netSellPrice = sellPrice;
+  let updatedLiabilities = player.liabilities || [];
+
+  if (asset.assetLiabilityId && player.liabilities) {
+    // Ищем кредит по assetLiabilityId
+    const relatedLiabilityIndex = player.liabilities.findIndex(
+      liability => liability.assetLiabilityId === asset.assetLiabilityId
+    );
+
+    if (relatedLiabilityIndex !== -1) {
+      const liability = player.liabilities[relatedLiabilityIndex];
+      // Вычитаем сумму кредита из стоимости продажи
+      netSellPrice = sellPrice - liability.loanAmount;
+
+      // Удаляем кредит
+      updatedLiabilities = player.liabilities.filter((_, index) => index !== relatedLiabilityIndex);
+    }
+  }
+
+  // Начислить деньги (уже с учетом кредита)
+  const newCash = player.cash + netSellPrice;
 
   // Пересчитать финансы
   const soldCashFlow = asset.cashFlow || 0;
   const newPassiveIncome = player.passiveIncome - soldCashFlow;
-  const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+  const newTotalLoanPayments = updatedLiabilities.reduce((sum, liab) => sum + (liab.monthlyPayment || 0), 0);
+  const newTotalLoans = updatedLiabilities.reduce((sum, liab) => sum + (liab.loanAmount || 0), 0);
+  const newTotalExpenses = player.expenses + player.childrenExpenses + newTotalLoanPayments;
+  const newCashFlow = player.salary + newPassiveIncome - newTotalExpenses;
 
   // Обновить данные игрока
   await gameService.databaseService.getDb().collection('games').updateOne(
@@ -353,6 +376,11 @@ async function sellMarketAsset(gameId, userId, asset, sellPrice, services) {
         [`players.${playerIndex}.assetsCount`]: updatedAssets.length,
         [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
         [`players.${playerIndex}.totalIncome`]: player.salary + newPassiveIncome,
+        [`players.${playerIndex}.liabilities`]: updatedLiabilities,
+        [`players.${playerIndex}.loansCount`]: updatedLiabilities.length,
+        [`players.${playerIndex}.totalLoans`]: newTotalLoans,
+        [`players.${playerIndex}.totalLoanPayments`]: newTotalLoanPayments,
+        [`players.${playerIndex}.totalExpenses`]: newTotalExpenses,
         [`players.${playerIndex}.cashFlow`]: newCashFlow
       }
     }
