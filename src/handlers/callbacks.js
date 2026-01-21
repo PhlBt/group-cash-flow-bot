@@ -212,15 +212,26 @@ async function handleRollDice(query, diceCount, services) {
       // Для поля MARKET не передаем ход автоматически - ждем действий игроков
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
-      await messageService.sendCombinedRollMovePaydayMessage(
-        chatId,
-        currentPlayer,
-        steps,
-        moveResult.newPosition,
-        moveResult.fieldType,
-        moveResult.inFastTrack,
-        moveResult.paydayEvents || []
-      );
+      if (moveResult.inFastTrack) {
+        await messageService.sendFastTrackRollMoveMessage(
+          chatId,
+          currentPlayer,
+          steps,
+          moveResult.newPosition,
+          moveResult.fieldType,
+          moveResult.paydayEvents || []
+        );
+      } else {
+        await messageService.sendCombinedRollMovePaydayMessage(
+          chatId,
+          currentPlayer,
+          steps,
+          moveResult.newPosition,
+          moveResult.fieldType,
+          moveResult.inFastTrack,
+          moveResult.paydayEvents || []
+        );
+      }
 
       // Уменьшить счетчик ходов благотворительности
       if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {

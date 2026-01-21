@@ -614,10 +614,31 @@ CashFlow - настольная игра о финансовом планиро�
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎯 Ваш ход, ${player.profession} ${player.username}!\n\n`;
-    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
-    message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
-    message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
-    message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
+
+    if (player.inFastTrack) {
+      // Fast Track финансы
+      message += `🚀 СКОРОСТНАЯ ДОРОЖКА:\n`;
+      message += `💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽\n`;
+      message += `💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес\n`;
+      message += `🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽\n`;
+
+      // Прогресс к цели
+      const dreamCost = player.dreamCost || 0;
+      if (dreamCost > 0) {
+        const progressPercent = ((player.fastTrackIncome / dreamCost) * 100).toFixed(1);
+        const remaining = Math.max(0, dreamCost - player.fastTrackIncome);
+        message += `📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n\n`;
+      } else {
+        message += `\n`;
+      }
+    } else {
+      // Rat Race финансы
+      message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+      message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+      message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+      message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+    }
+
     message += `📍 ${trackName}, поле ${player.position + 1}\n\n`;
 
     let keyboard;
@@ -685,19 +706,18 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и ходом игрока
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и ходом игрока (для Rat Race)
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {number} steps - Количество шагов
    * @param {number} newPosition - Новая позиция
    * @param {string} fieldType - Тип поля
-   * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    *
    * Примечание: Для поля PAYDAY клавиатура не отправляется, так как никаких действий не требуется
    */
-  async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
+  async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, paydayEvents = []) {
+    const trackName = '🐀 крысиные бега';
     const fieldName = this.getFieldName(fieldType);
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -737,6 +757,65 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и ходом игрока для Fast Track
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {string} fieldType - Тип поля
+   * @param {Array} paydayEvents - Массив событий выплат
+   */
+  async sendFastTrackRollMoveMessage(chatId, player, steps, newPosition, fieldType, paydayEvents = []) {
+    const trackName = '🚀 Скоростная дорожка';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedFastTrackCash = player.fastTrackCash || 0;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedFastTrackCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+    }
+
+    // Fast Track финансы
+    message += `🚀 СКОРОСТНАЯ ДОРОЖКА:\n`;
+    message += `💰 Капитал: ${formatNumber(updatedFastTrackCash)} ₽\n`;
+    message += `💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес\n`;
+    message += `🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽/мес\n`;
+
+    // Прогресс к цели
+    const dreamCost = player.dreamCost || 0;
+    if (dreamCost > 0) {
+      const progressPercent = ((player.fastTrackIncome / dreamCost) * 100).toFixed(1);
+      const remaining = Math.max(0, dreamCost - player.fastTrackIncome);
+      message += `📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n\n`;
+    } else {
+      message += `\n`;
+    }
+
+    // Для поля PAYDAY не отправляем клавиатуру и не добавляем текст "Выберите действие:"
+    const { FIELD_TYPES } = require('../game/board');
+    if (fieldType === FIELD_TYPES.PAYDAY) {
+      await this.sendMessage(chatId, message);
+    } else {
+      message += `Выберите действие:`;
+      const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? require('../utils/keyboards').charityKeyboard : require('../utils/keyboards').gameKeyboard;
+      await this.sendMessage(chatId, message, {
+        reply_markup: keyboard
+      });
+    }
+  }
+
+  /**
    * Возвращает название типа поля
    * @param {string} fieldType - Тип поля
    * @returns {string} Название поля
@@ -764,16 +843,15 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Сделки"
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Сделки" (для Rat Race)
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {number} steps - Количество шагов
    * @param {number} newPosition - Новая позиция
-   * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendCombinedRollMoveDealMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
+  async sendCombinedRollMoveDealMessage(chatId, player, steps, newPosition, paydayEvents = []) {
+    const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -842,18 +920,17 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Miscellaneous"
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Miscellaneous" (для Rat Race)
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {number} steps - Количество шагов
    * @param {number} newPosition - Новая позиция
-   * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    * @param {Object} miscCard - Объект miscellaneous карточки
    * @param {Object} game - Объект игры
    */
-  async sendCombinedRollMoveMiscellaneousMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = [], miscCard, game) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
+  async sendCombinedRollMoveMiscellaneousMessage(chatId, player, steps, newPosition, paydayEvents = [], miscCard, game) {
+    const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -907,16 +984,15 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Безработица"
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Безработица" (для Rat Race)
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {number} steps - Количество шагов
    * @param {number} newPosition - Новая позиция
-   * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
+  async sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, paydayEvents = []) {
+    const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -954,16 +1030,15 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Ребенок"
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Ребенок" (для Rat Race)
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {number} steps - Количество шагов
    * @param {number} newPosition - Новая позиция
-   * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendCombinedRollMoveChildMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
+  async sendCombinedRollMoveChildMessage(chatId, player, steps, newPosition, paydayEvents = []) {
+    const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -1007,8 +1082,8 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Array} paydayEvents - Массив событий выплат
    * @param {Object} marketCard - Market карточка
    */
-  async sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = [], marketCard) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
+  async sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, paydayEvents = [], marketCard) {
+    const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
