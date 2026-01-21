@@ -1612,9 +1612,11 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} marketCard - Market карточка
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
+   * @param {string} customTitle - Кастомный заголовок (опционально)
    */
-  async sendMarketCardWithSellOptions(chatId, marketCard, player, game) {
-    let message = `📈 **Рынок**\n\n`;
+  async sendMarketCardWithSellOptions(chatId, marketCard, player, game, customTitle = null) {
+    let message = customTitle ? `${customTitle}\n\n` : '';
+    message += `📈 **Рынок**\n\n`;
     message += `💼 ${marketCard.title}\n\n`;
     message += `📝 ${marketCard.description}\n\n`;
 

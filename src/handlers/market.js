@@ -221,8 +221,8 @@ async function handleSkipMarket(query, services) {
     // Удалить кнопки
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
-    // Завершить market событие
-    await endMarketEvent(game.gameId, chatId, services);
+    // Перейти к следующему игроку в циркуляции
+    await circulateMarketToNextPlayer(game.gameId, chatId, services);
 
   } catch (error) {
     console.error('Error in handleSkipMarket:', error);
@@ -430,8 +430,9 @@ async function circulateMarketToNextPlayer(gameId, chatId, services) {
       { $set: { currentPlayerIndex: playerIndex } }
     );
 
-    // Показать карточку игроку
-    await messageService.sendMarketCardWithSellOptions(chatId, game.currentMarket, nextPlayer, game);
+    // Показать карточку игроку с уведомлением о переходе
+    const customTitle = `*${nextPlayer.username}*, ваша очередь работать со сделкой`;
+    await messageService.sendMarketCardWithSellOptions(chatId, game.currentMarket, nextPlayer, game, customTitle);
   }
 }
 
