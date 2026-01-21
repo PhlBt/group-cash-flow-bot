@@ -239,6 +239,8 @@ class GameService {
       }
     }
 
+    const { transitioned } = await this.checkAndTransitionToFastTrack(gameId, nextPlayer.userId)
+
     // Обновляем индекс текущего игрока
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
@@ -247,6 +249,7 @@ class GameService {
 
     return {
       success: true,
+      transitioned,
       nextPlayer
     };
   }
@@ -1520,6 +1523,44 @@ class GameService {
 
     const resolved = player.cashFlow >= 0;
     return { success: true, resolved };
+  }
+
+  /**
+   * Проверяет и выполняет переход игрока на Fast Track
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, transitioned?: boolean}>} Результат операции
+   */
+  async checkAndTransitionToFastTrack(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    // Проверяем условие перехода: не на Fast Track и passiveIncome > totalExpenses
+    if (!player.inFastTrack && player.passiveIncome > player.totalExpenses) {
+      // Выполняем переход
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        {
+          $set: {
+            [`players.${playerIndex}.inFastTrack`]: true,
+            [`players.${playerIndex}.position`]: 0
+          }
+        }
+      );
+
+      return { success: true, transitioned: true };
+    }
+
+    return { success: true, transitioned: false };
   }
 
   /**

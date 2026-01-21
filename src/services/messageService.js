@@ -582,6 +582,16 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет сообщение о переходе игрока на скоростную дорожку
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   */
+  async sendFastTrackTransitionMessage(chatId, player) {
+    const message = `🎉 ${player.username} перешел на скоростную дорожку!`;
+    await this.sendMessage(chatId, message);
+  }
+
+  /**
    * Отправляет сообщение с ходом игрока
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока

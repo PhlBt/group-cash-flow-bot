@@ -406,6 +406,18 @@ GameService - это класс, реализующий паттерн Фаса�
 - При победе: `skippedTurns = 3`
 - При поражении: удаляет игрока из игры, обновляет статистику
 
+### checkAndTransitionToFastTrack(gameId, userId)
+- **Назначение**: Проверяет и выполняет автоматический переход игрока на Fast Track
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+- **Возвращает**: Promise<{success: boolean, error?: string, transitioned?: boolean}> - результат операции
+- **Функционал**:
+  - Проверяет условие перехода: `!player.inFastTrack && player.passiveIncome > player.totalExpenses`
+  - При выполнении условия: устанавливает `inFastTrack = true`, `position = 0`
+  - Возвращает `transitioned: true` если переход выполнен
+  - Автоматически вызывается после каждого `nextTurn` в `handleRollDice`
+
 ### Интерфейс банкротства
 Интерфейс банкротства показывается **немедленно после броска кубика**, если игрок стал банкротом, без ожидания следующего хода.
 

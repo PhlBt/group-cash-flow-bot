@@ -464,6 +464,9 @@ async function endMarketEvent(gameId, chatId, services) {
   // Передать ход следующему игроку
   const nextTurnResult = await gameService.nextTurn(gameId);
   if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+    if (nextTurnResult.transitioned) {
+      await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+    }
     await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
   }
 }

@@ -41,6 +41,9 @@ async function handleRollDice(query, diceCount, services) {
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        }
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
       }
       return;
@@ -176,7 +179,9 @@ async function handleRollDice(query, diceCount, services) {
       // Для поля CHILD передаем ход следующему игроку - автоматическое событие
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-        // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        }
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
       }
     } else if (moveResult.fieldType === FIELD_TYPES.MARKET) {
@@ -227,7 +232,9 @@ async function handleRollDice(query, diceCount, services) {
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-        // В групповом чате отправляем всем, но на практике нужно отправлять личные сообщения
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        }
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
       }
     }
@@ -776,13 +783,16 @@ async function handleSellAsset(query, assetIndex, services) {
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        }
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
       }
     } else {
-    // Продолжить банкротство - обновить сообщение активов
-    const updatedGame = await gameService.getGame(game.gameId);
-    const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-    await messageService.sendPlayerAssetsMessage(chatId, updatedPlayer, 0, query.message.message_id);
+      // Продолжить банкротство - обновить сообщение активов
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendPlayerAssetsMessage(chatId, updatedPlayer, 0, query.message.message_id);
     }
 
   } catch (error) {
@@ -845,6 +855,9 @@ async function handlePayLiability(query, liabilityIndex, services) {
             // Передать ход следующему игроку
             const nextTurnResult = await gameService.nextTurn(game.gameId);
             if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+              if (nextTurnResult.transitioned) {
+                await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+              }
               await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
             }
             return;
@@ -875,6 +888,9 @@ async function handlePayLiability(query, liabilityIndex, services) {
         // Передать ход следующему игроку
         const nextTurnResult = await gameService.nextTurn(game.gameId);
         if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+          if (nextTurnResult.transitioned) {
+            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          }
           await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
         }
         return;
@@ -1025,6 +1041,9 @@ async function handlePayDismissal(query, services) {
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
       await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
     }
 
@@ -1093,6 +1112,9 @@ async function handlePayDismissalCreditCard(query, services) {
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
       await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
     }
 

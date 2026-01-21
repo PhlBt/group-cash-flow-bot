@@ -78,6 +78,9 @@ async function handleDonateCharity(query, services) {
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
       await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
     }
 
@@ -121,6 +124,9 @@ async function handleSkipCharity(query, services) {
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
       await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
     }
 

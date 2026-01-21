@@ -3,6 +3,8 @@
 ## Последние изменения
 
 ### Версия [текущая]
+- **Глобальная проверка перехода на Fast Track**: Добавлена проверка `nextTurnResult.transitioned` во всех местах вызова `gameService.nextTurn()` в handlers (callbacks.js, miscellaneous.js, charity.js, market.js, deals.js). Теперь сообщение о переходе на скоростную дорожку отправляется автоматически при передаче хода любому игроку
+- **Новая функция sendFastTrackTransitionMessage**: Добавлена в MessageService функция для отправки поздравительного сообщения о переходе на скоростную дорожку
 - **Исправление ошибки ReferenceError в handleRollDice**: Устранено повторное объявление переменной `game` в блоке обработки поля "Ребенок", вызывавшее ошибку "Cannot access 'game' before initialization"
 - **Добавление поля "Благотворительность"**: Реализована логика попадания на поле благотворительности с выбором: пожертвовать 10% дохода и получить бонус на 3 хода (возможность бросать 1 или 2 кубика), или пропустить ход
 - **Новый модуль charity.js**: Добавлены обработчики handleCharity, handleDonateCharity, handleSkipCharity для управления благотворительностью
@@ -159,6 +161,9 @@ Handlers - модуль функций-обработчиков команд Tel
     - **Поле "Благотворительность" (CHARITY)**: Показывает выбор действия на поле благотворительности
     - **Поле "Безработица" (DISMISSAL)**: Показывает комбинированное сообщение и ждет оплаты расходов
   - Уменьшает счетчик благотворительности через gameService.decreaseCharityTurns() (если активен)
+  - **Передает ход следующему игроку** через gameService.nextTurn()
+  - **Проверяет автоматический переход на Fast Track** для нового игрока - если transitioned = true, отправляет поздравительное сообщение через messageService.sendFastTrackTransitionMessage()
+  - Показывает ход новому игроку через messageService.sendPlayerTurnMessage()
   - Обрабатывает ошибки через messageService.sendErrorMessage()
 
 ### handleCallbackQuery(query, services)
