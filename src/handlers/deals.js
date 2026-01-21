@@ -673,12 +673,15 @@ async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
     }
 
     // Купить с ипотекой и кредитом на первоначальный взнос
-    const buyResult = await gameService.buySmallDealWithMortgageAndCreditDownPayment(
-      game.gameId,
-      userId,
-      deal,
-      game.currentDealQuantity
-    );
+    const isBigDeal = deal.type === 'big';
+    const buyResult = isBigDeal
+      ? await gameService.buyBigDealWithMortgageAndCreditDownPayment(game.gameId, userId, deal)
+      : await gameService.buySmallDealWithMortgageAndCreditDownPayment(
+          game.gameId,
+          userId,
+          deal,
+          game.currentDealQuantity
+        );
 
     if (!buyResult.success) {
       await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');

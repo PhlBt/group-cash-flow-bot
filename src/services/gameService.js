@@ -677,6 +677,73 @@ class GameService {
   }
 
   /**
+   * Покупает крупную сделку с ипотекой и кредитом на первоначальный взнос
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} deal - Объект сделки
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buyBigDealWithMortgageAndCreditDownPayment(gameId, userId, deal) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Рассчитываем платежи
+    const monthlyMortgagePayment = Math.floor(deal.cost * 0.01); // 0.01% от стоимости
+    const monthlyCreditPayment = Math.floor(deal.downPayment * 0.02); // 2% от первоначального взноса
+
+    // Генерируем уникальный ID для связи актив-кредит
+    const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+    // Добавляем ипотеку
+    const mortgageLiability = {
+      title: deal.title,
+      cost: deal.cost,
+      downPayment: deal.downPayment,
+      loanAmount: deal.mortgage,
+      monthlyPayment: monthlyMortgagePayment,
+      type: 'big_deal_loan',
+      assetLiabilityId: assetLiabilityId
+    };
+
+    await this.databaseService.addLiability(gameId, userId, mortgageLiability);
+
+    // Добавляем кредит на первоначальный взнос
+    const creditLiability = {
+      title: `Кредитная карта - Первоначальный взнос за ${deal.title}`,
+      cost: deal.downPayment,
+      loanAmount: deal.downPayment,
+      monthlyPayment: monthlyCreditPayment,
+      type: 'credit_card_loan'
+    };
+
+    await this.databaseService.addLiability(gameId, userId, creditLiability);
+
+    // Добавляем актив
+    const asset = {
+      id: deal.id,
+      title: deal.title,
+      cost: deal.cost,
+      cashFlow: deal.passiveIncome,
+      type: 'big_deal',
+      description: deal.description,
+      isRealEstate: deal.isRealEstate || false,
+      apartments: deal.apartments,
+      assetLiabilityId: assetLiabilityId
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    return { success: true };
+  }
+
+  /**
    * Покупает крупную сделку
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
@@ -795,6 +862,58 @@ class GameService {
       return { success: false, error: 'player_not_found' };
     }
 
+    // Специальная логика для big deals с mortgage: создаем ипотеку + кредит на down payment
+    if (deal.type === 'big' && deal.mortgage !== undefined) {
+      // Рассчитываем платежи
+      const monthlyMortgagePayment = Math.floor(deal.cost * 0.01); // 0.01% от стоимости
+      const monthlyCreditPayment = Math.floor(deal.downPayment * 0.02); // 2% от первоначального взноса
+
+      // Генерируем уникальный ID для связи актив-кредит
+      const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
+      // Добавляем ипотеку
+      const mortgageLiability = {
+        title: deal.title,
+        cost: deal.cost,
+        downPayment: deal.downPayment,
+        loanAmount: deal.mortgage,
+        monthlyPayment: monthlyMortgagePayment,
+        type: 'big_deal_loan',
+        assetLiabilityId: assetLiabilityId
+      };
+
+      await this.databaseService.addLiability(gameId, userId, mortgageLiability);
+
+      // Добавляем кредит на первоначальный взнос
+      const creditLiability = {
+        title: `Кредитная карта - Первоначальный взнос за ${deal.title}`,
+        cost: deal.downPayment,
+        loanAmount: deal.downPayment,
+        monthlyPayment: monthlyCreditPayment,
+        type: 'credit_card_loan'
+      };
+
+      await this.databaseService.addLiability(gameId, userId, creditLiability);
+
+      // Добавляем актив
+      const asset = {
+        id: deal.id,
+        title: deal.title,
+        cost: deal.cost,
+        cashFlow: deal.passiveIncome,
+        type: 'big_deal',
+        description: deal.description,
+        isRealEstate: deal.isRealEstate || false,
+        apartments: deal.apartments,
+        assetLiabilityId: assetLiabilityId
+      };
+
+      await this.databaseService.addAsset(gameId, userId, asset);
+
+      return { success: true };
+    }
+
+    // Стандартная логика для других сделок
     // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
     const monthlyPayment = Math.floor(deal.cost * 0.02);
 

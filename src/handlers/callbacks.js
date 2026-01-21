@@ -74,6 +74,15 @@ async function handleRollDice(query, diceCount, services) {
       return;
     }
 
+    // Проверить, стал ли игрок банкротом после перемещения
+    const updatedGame = await gameService.getGame(game.gameId);
+    const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+    if (updatedPlayer && updatedPlayer.bankruptcyState) {
+      // Игрок стал банкротом - сразу показать интерфейс банкротства и не передавать ход
+      await messageService.sendPlayerTurnMessage(chatId, updatedPlayer);
+      return;
+    }
+
     // Проверить тип поля
     if (moveResult.fieldType === FIELD_TYPES.DEAL) {
       // Игрок попал на поле "Сделки" - показать комбинированное сообщение
