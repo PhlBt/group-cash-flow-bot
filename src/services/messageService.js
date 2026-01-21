@@ -1014,14 +1014,6 @@ CashFlow - настольная игра о финансовом планиро�
       message += `💵 Пассивный доход: +${formatNumber(marketCard.passiveIncome)} ₽/мес\n`;
     }
 
-    if (marketCard.creditMultiple) {
-      message += `💳 Изменение ставок кредитов: ${marketCard.creditMultiple * 100 - 100}% \n`;
-    }
-
-    if (marketCard.inflation) {
-      message += `📊 Инфляция: ${marketCard.inflation}%\n`;
-    }
-
     // Для эффектов продажи показать информацию об активах
     const relatedDeals = marketCard.relatedDeals || [];
     const eligibleAssets = player.assets ? player.assets.filter(asset =>
@@ -1577,14 +1569,6 @@ CashFlow - настольная игра о финансовом планиро�
 
     if (marketCard.passiveIncome) {
       message += `💵 Пассивный доход: +${formatNumber(marketCard.passiveIncome)} ₽/мес\n`;
-    }
-
-    if (marketCard.creditMultiple) {
-      message += `💳 Изменение ставок кредитов: ${marketCard.creditMultiple * 100 - 100}% \n`;
-    }
-
-    if (marketCard.inflation) {
-      message += `📊 Инфляция: ${marketCard.inflation}%\n`;
     }
 
     message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;

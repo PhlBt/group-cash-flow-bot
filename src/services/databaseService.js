@@ -113,6 +113,8 @@ class DatabaseService {
       players: [player],
       status: 'waiting',
       createdAt: new Date(),
+      inflation: 1,
+      creditMultiple: 0,
       endGameVotes: [],
       endGameMessageId: null,
       waitingMessageId: null,
@@ -1119,6 +1121,52 @@ class DatabaseService {
           marketCirculationOriginalIndex: 0
         }
       }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает inflation для игры
+   * @param {string} gameId - ID игры
+   * @param {number} inflation - Новое значение inflation
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setInflation(gameId, inflation) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { inflation } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает creditMultiple для игры
+   * @param {string} gameId - ID игры
+   * @param {number} creditMultiple - Новое значение creditMultiple
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCreditMultiple(gameId, creditMultiple) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const newCreditMultiple = game.creditMultiple + creditMultiple
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { creditMultiple: newCreditMultiple } }
     );
 
     return { success: true };

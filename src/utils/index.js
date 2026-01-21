@@ -26,11 +26,33 @@ function formatNumber(num) {
   }
 }
 
+/**
+ * Применяет inflation к ценовым полям карточки
+ * @param {Object} card - Карточка (deal, miscellaneous, market)
+ * @param {number} inflation - Коэффициент inflation
+ * @returns {Object} Карточка с примененными ценами
+ */
+function applyInflation(card, inflation) {
+  const inflatedCard = { ...card };
+
+  // Поля с ценами для умножения на inflation
+  const priceFields = ['cost', 'mortgage', 'downPayment', 'passiveIncome', 'expenses', 'apartmentCost'];
+
+  priceFields.forEach(field => {
+    if (inflatedCard[field] !== undefined && typeof inflatedCard[field] === 'number') {
+      inflatedCard[field] = Math.round(inflatedCard[field] * inflation);
+    }
+  });
+
+  return inflatedCard;
+}
+
 const RateLimiter = require('./rateLimiter');
 const { initializeDealCirculation, processDealAction, circulateToNextPlayer, endDealCirculation, initializeCanSellStocksCirculation, processCanSellStocksAction } = require('./dealCirculation');
 
 module.exports = {
   formatNumber,
+  applyInflation,
   RateLimiter,
   initializeDealCirculation,
   processDealAction,

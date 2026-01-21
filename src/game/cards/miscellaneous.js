@@ -91,7 +91,7 @@ const miscellaneous = [
     "credit": true
   },
   {
-    "description": "Налоговая ревизия. штраф",
+    "description": "Налоговая ревизия.",
     "cost": 10500
   },
   {

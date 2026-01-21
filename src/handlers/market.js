@@ -3,6 +3,7 @@
  */
 
 const { markets } = require('../game/cards/markets');
+const { applyInflation } = require('../utils');
 
 /**
  * Обрабатывает попадание на поле Market
@@ -65,6 +66,10 @@ async function selectRandomMarketCard(gameId, services) {
   usedIds.push(selectedCard.title);
   await gameService.databaseService.setUsedMarketIds(gameId, usedIds);
 
+  // Применить inflation к ценам market карточки
+  const inflation = game.inflation || 1;
+  selectedCard = applyInflation(selectedCard, inflation);
+
   return selectedCard;
 }
 
@@ -84,15 +89,17 @@ async function applyAutomaticMarketEffects(gameId, marketCard, services) {
       await applyPassiveIncomeEffect(gameId, marketCard, services);
     }
 
-  // TODO: Обработать creditMultiple и inflation
+  // Обработать creditMultiple
   if (marketCard.creditMultiple) {
-    // Пока заглушка
-    console.log('Credit multiple effect:', marketCard.creditMultiple);
+    await gameService.databaseService.setCreditMultiple(gameId, marketCard.creditMultiple);
+    console.log('Credit multiple updated to:', marketCard.creditMultiple);
   }
 
+  // Обработать inflation
   if (marketCard.inflation) {
-    // Пока заглушка
-    console.log('Inflation effect:', marketCard.inflation);
+    const inflation = game.inflation * marketCard.inflation
+    await gameService.databaseService.setInflation(gameId, inflation);
+    console.log('Inflation updated to:', marketCard.inflation);
   }
 }
 

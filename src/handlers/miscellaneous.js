@@ -1,4 +1,4 @@
-const { formatNumber } = require('../utils');
+const { formatNumber, applyInflation } = require('../utils');
 
 /**
  * Обрабатывает попадание игрока на поле miscellaneous
@@ -52,6 +52,10 @@ async function handleMiscellaneous(gameId, userId, services) {
       console.error('Error generating miscellaneous card:', error);
       throw error;
     }
+
+    // Применить inflation к ценам miscellaneous
+    const inflation = game.inflation || 1;
+    miscCard = applyInflation(miscCard, inflation);
 
     // Сохранить карточку в состоянии игры
     await gameService.databaseService.setCurrentMiscellaneous(gameId, miscCard);

@@ -1,4 +1,4 @@
-const { formatNumber, initializeDealCirculation, processDealAction, initializeCanSellStocksCirculation, processCanSellStocksAction } = require('../utils');
+const { formatNumber, applyInflation, initializeDealCirculation, processDealAction, initializeCanSellStocksCirculation, processCanSellStocksAction } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
 
 /**
@@ -84,6 +84,10 @@ async function handleDealType(query, dealType, services) {
         throw error;
       }
     }
+
+    // Применить inflation к ценам сделки
+    const inflation = game.inflation || 1;
+    deal = applyInflation(deal, inflation);
 
     // Сохранить сделку в состоянии игры
     await gameService.databaseService.setCurrentDeal(game.gameId, deal);

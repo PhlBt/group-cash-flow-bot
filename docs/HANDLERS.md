@@ -34,6 +34,9 @@ Handlers - модуль функций-обработчиков команд Tel
 - **commands.js**: Обработчики команд бота (/start, /help, /newgame и т.д.)
 - **callbacks.js**: Обработчики callback-запросов от inline кнопок
 - **deals.js**: Логика обработки инвестиционных сделок
+- **miscellaneous.js**: Обработка miscellaneous карт
+- **charity.js**: Обработка поля благотворительности
+- **market.js**: Обработка поля "Рынок"
 - **profile.js**: Профиль игрока и статистика
 
 Каждый файл:
@@ -41,6 +44,26 @@ Handlers - модуль функций-обработчиков команд Tel
 - Принимает объект services с messageService и gameService
 - Использует асинхронные функции для всех операций
 - Обеспечивает разделение логики обработки команд от Telegram API
+
+### index.js - Главный экспорт обработчиков
+
+Экспортирует все обработчики из других модулей для удобного импорта в main.js:
+
+**Команды:**
+- handleStart, handleHelp, handleNewGame, handlePlay, handleEndGame
+
+**Callbacks:**
+- handleCallbackQuery, handleRollDice, handleEndGameVote
+- handleOfferDeal, handleSelectCommission, handleSelectUser, handleCancelOffer
+- handleSellAsset, handlePayLiability, handleAssetsPage, handleCreditsPage
+- handlePayDismissal, handlePayDismissalCreditCard
+
+**Сделки:**
+- handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard
+- handleChangeQuantity, handleSellStocks, handlePayExpenses
+
+**Профиль:**
+- handleProfile, handleStats, handleAssets, handleCredits
 
 ## Структура модулей
 

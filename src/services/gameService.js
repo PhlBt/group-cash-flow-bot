@@ -551,7 +551,7 @@ class GameService {
     }
 
     // Рассчитываем ежемесячный платеж по ипотеке (0.01% от стоимости)
-    const monthlyMortgagePayment = Math.floor(totalCost * 0.01); // 0.01%
+    const monthlyMortgagePayment = Math.floor(totalCost * (0.01 + game.creditMultiple)); // 0.01%
 
     // Списываем первоначальный взнос
     const newCash = player.cash - totalDownPayment;
@@ -624,8 +624,8 @@ class GameService {
     const totalMortgage = deal.mortgage * quantity;
 
     // Рассчитываем платежи
-    const monthlyMortgagePayment = Math.floor(totalCost * 0.01); // 0.01% от стоимости
-    const monthlyCreditPayment = Math.floor(totalDownPayment * 0.02); // 2% от первоначального взноса
+    const monthlyMortgagePayment = Math.floor(totalCost * (0.01 + game.creditMultiple)); // 0.01% от стоимости
+    const monthlyCreditPayment = Math.floor(totalDownPayment * (0.02 + game.creditMultiple)); // 2% от первоначального взноса
 
     // Генерируем уникальный ID для связи актив-кредит
     const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -695,8 +695,8 @@ class GameService {
     }
 
     // Рассчитываем платежи
-    const monthlyMortgagePayment = Math.floor(deal.cost * 0.01); // 0.01% от стоимости
-    const monthlyCreditPayment = Math.floor(deal.downPayment * 0.02); // 2% от первоначального взноса
+    const monthlyMortgagePayment = Math.floor(deal.cost * (0.01 + game.creditMultiple)); // 0.01% от стоимости
+    const monthlyCreditPayment = Math.floor(deal.downPayment * (0.02 + game.creditMultiple)); // 2% от первоначального взноса
 
     // Генерируем уникальный ID для связи актив-кредит
     const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -769,7 +769,7 @@ class GameService {
       }
 
       // Рассчитываем ежемесячный платеж по кредиту (0.01% от стоимости)
-      const monthlyPayment = Math.floor(deal.cost * 0.01); // 0.01%
+      const monthlyPayment = Math.floor(deal.cost * (0.01 + game.creditMultiple)); // 0.01%
       const loanAmount = deal.mortgage;
 
       // Списываем первоначальный взнос
@@ -865,8 +865,8 @@ class GameService {
     // Специальная логика для big deals с mortgage: создаем ипотеку + кредит на down payment
     if (deal.type === 'big' && deal.mortgage !== undefined) {
       // Рассчитываем платежи
-      const monthlyMortgagePayment = Math.floor(deal.cost * 0.01); // 0.01% от стоимости
-      const monthlyCreditPayment = Math.floor(deal.downPayment * 0.02); // 2% от первоначального взноса
+      const monthlyMortgagePayment = Math.floor(deal.cost * (0.01 + game.creditMultiple)); // 0.01% от стоимости
+      const monthlyCreditPayment = Math.floor(deal.downPayment * (0.02 + game.creditMultiple)); // 2% от первоначального взноса
 
       // Генерируем уникальный ID для связи актив-кредит
       const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -915,7 +915,7 @@ class GameService {
 
     // Стандартная логика для других сделок
     // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
-    const monthlyPayment = Math.floor(deal.cost * 0.02);
+    const monthlyPayment = Math.floor(deal.cost * (0.02 + game.creditMultiple));
 
     // Для expenses-сделок не добавляем актив, только кредит
     if (!deal.expenses) {
@@ -1311,7 +1311,7 @@ class GameService {
     }
 
     // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
-    const monthlyPayment = Math.floor(miscCard.cost * 0.02);
+    const monthlyPayment = Math.floor(miscCard.cost * (0.02 + game.creditMultiple));
 
     // Добавляем кредитку как liability (без добавления актива)
     const liability = {

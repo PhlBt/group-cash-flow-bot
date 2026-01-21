@@ -124,39 +124,46 @@ Utils - модуль вспомогательных функций и утили
 
 ## dealOffer.js - Предложения сделок
 
-### initializeDealOffer(gameId, userId, currentDeal, services)
+### OFFER_STATES
+Константы состояний предложения сделок:
+- `COMMISSION`: Выбор комиссии
+- `SELECT_USER`: Выбор пользователя
+- `CONFIRMED`: Предложение подтверждено
+
+### initializeDealOffer(gameId, offeringUserId, services)
 - **Назначение**: Инициализация предложения сделки другому игроку
 - **Параметры**:
   - `gameId` (string): ID игры
-  - `userId` (string): ID предлагающего игрока
-  - `currentDeal` (Object): Предлагаемая сделка
-  - `services` (Object): Объект с сервисами
-- **Возвращает**: Promise<Object> - начальное состояние предложения
+  - `offeringUserId` (string): ID предлагающего игрока
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Возвращает**: Promise<void>
 - **Функционал**:
-  - Создает состояние предложения с шагом 'commission'
-  - Сохраняет в базе данных
+  - Создает состояние предложения с шагом COMMISSION
+  - Сохраняет в базе данных через databaseService.setOfferState()
 
-### processOfferStep(gameId, userId, step, data, services)
+### processOfferStep(gameId, userId, chatId, action, data, services)
 - **Назначение**: Обработка шага предложения сделки
 - **Параметры**:
   - `gameId` (string): ID игры
   - `userId` (string): ID игрока
-  - `step` (string): Шаг ('commission', 'select_user', 'cancel')
-  - `data` (Object): Данные шага
-  - `services` (Object): Объект с сервисами
-- **Возвращает**: Promise<Object> - обновленное состояние
+  - `chatId` (string): ID чата
+  - `action` (string): Действие ('select_commission', 'select_user', 'cancel')
+  - `data` (Object): Данные действия
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Возвращает**: Promise<void>
 - **Функционал**:
-  - Обновляет состояние предложения в зависимости от шага
-  - Выполняет соответствующие действия
+  - В зависимости от action вызывает соответствующий обработчик
+  - Обрабатывает выбор комиссии, пользователя или отмену
 
 ### calculateDealWithCommission(deal, commission)
 - **Назначение**: Рассчитывает стоимость сделки с комиссией
 - **Параметры**:
   - `deal` (Object): Объект сделки
   - `commission` (number): Процент комиссии
-- **Возвращает**: Object - сделка с новой стоимостью
+- **Возвращает**: Object - сделка с новой стоимостью и комиссией
 - **Функционал**:
   - Увеличивает стоимость на процент комиссии
+  - Добавляет поля commission, originalCost, originalDownPayment
 
 ### calculateCommission(deal, commission)
 - **Назначение**: Рассчитывает сумму комиссии
@@ -165,7 +172,7 @@ Utils - модуль вспомогательных функций и утили
   - `commission` (number): Процент комиссии
 - **Возвращает**: number - сумма комиссии
 - **Функционал**:
-  - Вычисляет комиссию от оригинальной стоимости
+  - Вычисляет комиссию от первоначального взноса или стоимости
 
 ### transferCommission(gameId, offeringUserId, commissionAmount, services)
 - **Назначение**: Переводит комиссию предлагающему игроку
@@ -176,16 +183,19 @@ Utils - модуль вспомогательных функций и утили
   - `services` (Object): Объект с сервисами
 - **Возвращает**: Promise<void>
 - **Функционал**:
-  - Начисляет комиссию на баланс игрока
+  - Начисляет комиссию через databaseService.updatePlayerCash()
 
-### passTurnAfterOffer(gameId, services)
+### passTurnAfterOffer(game, offeringUserId, services)
 - **Назначение**: Передает ход после предложения сделки
 - **Параметры**:
-  - `gameId` (string): ID игры
-  - `services` (Object): Объект с сервисами
+  - `game` (Object): Объект игры
+  - `offeringUserId` (string): ID предлагающего игрока
+  - `services` (Object): Объект с сервисами { gameService, messageService }
 - **Возвращает**: Promise<void>
 - **Функционал**:
-  - Передает ход следующему игроку
+  - Находит индекс следующего игрока
+  - Устанавливает текущего игрока и сбрасывает diceRolledThisTurn
+  - Отправляет сообщение о ходе следующему игроку
 
 ## rateLimiter.js - Ограничение скорости
 
