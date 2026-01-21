@@ -502,6 +502,5 @@ const bigDeals = [
   }
 ]
 
-const getRandomBigDeal = () => bigDeals[Math.floor(Math.random() * bigDeals.length)]
 
-module.exports = { bigDeals, getRandomBigDeal }
+module.exports = { bigDeals }
