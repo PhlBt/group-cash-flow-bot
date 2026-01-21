@@ -16,7 +16,7 @@ const FIELD_TYPES = {
   HEALTH_CARE: 'health_care'       // Забота о здоровье
 };
 
-// Первый круг - "Крысинные бега" (24 поля)
+// Первый круг - "Крысиные бега" (24 поля)
 const RAT_RACE_FIELDS = [
   { type: FIELD_TYPES.DEAL, name: 'Сделка' },
   { type: FIELD_TYPES.MISCELLANEOUS, name: 'Всякая всячина' },

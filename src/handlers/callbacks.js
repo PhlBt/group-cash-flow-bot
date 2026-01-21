@@ -160,7 +160,7 @@ async function handleRollDice(query, diceCount, services) {
     } else if (moveResult.fieldType === FIELD_TYPES.MARKET) {
       // Игрок попал на поле "Рынок" - отправить комбинированное сообщение
       const { handleMarket } = require('./market');
-      const marketCard = await handleMarket(game.gameId, userId, services);
+      const marketCard = await handleMarket(game.gameId, services);
 
       // Получить обновленную игру после применения эффектов
       const updatedGame = await gameService.getGame(game.gameId);
@@ -961,7 +961,7 @@ async function handlePayDismissal(query, services) {
         title: 'Оплата расходов на безработице',
         cost: amount
       };
-      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer);
+      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer, 'dismissal');
       return;
     }
 

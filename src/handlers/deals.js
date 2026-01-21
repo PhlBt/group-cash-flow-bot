@@ -174,7 +174,7 @@ async function handleBuyDeal(query, services) {
         // Удалить кнопки с сообщения карточки сделки
         await messageService.removeMessageKeyboard(chatId, query.message.message_id);
         // Отправить предложение оплаты кредиткой
-        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer);
+        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal');
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
       }
@@ -586,7 +586,7 @@ async function handlePayExpenses(query, services) {
         // Удалить кнопки с сообщения карточки сделки
         await messageService.removeMessageKeyboard(chatId, query.message.message_id);
         // Отправить предложение оплаты кредиткой
-        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer);
+        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal');
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при оплате расходов.');
       }

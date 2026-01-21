@@ -295,7 +295,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
     info += `\n📍 ${trackName}, поле ${player.position + 1}`;
 
     if (player.cashFlow > 0) {
@@ -365,7 +365,7 @@ CashFlow - настольная игра о финансовом планиро�
         }
       }
 
-      const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+      const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
       info += `\n📍 ${trackName}, поле ${player.position + 1}`;
 
       if (player.cashFlow > 0) {
@@ -585,7 +585,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendPlayerTurnMessage(chatId, player) {
-    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎯 Ваш ход, ${player.profession} ${player.username}!\n\n`;
     message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
@@ -671,7 +671,7 @@ CashFlow - настольная игра о финансовом планиро�
    * Примечание: Для поля PAYDAY клавиатура не отправляется, так как никаких действий не требуется
    */
   async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
     const fieldName = this.getFieldName(fieldType);
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -747,7 +747,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Array} paydayEvents - Массив событий выплат
    */
   async sendCombinedRollMoveDealMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -786,7 +786,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} game - Объект игры
    */
   async sendCombinedRollMoveCharityMessage(bot, player, game) {
-    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} попал на поле "Благотворительность"!\n\n`;
     message += `📍 ${trackName}, поле "Благотворительность"\n\n`;
@@ -827,7 +827,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} game - Объект игры
    */
   async sendCombinedRollMoveMiscellaneousMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = [], miscCard, game) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -890,7 +890,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Array} paydayEvents - Массив событий выплат
    */
   async sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -937,7 +937,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Array} paydayEvents - Массив событий выплат
    */
   async sendCombinedRollMoveChildMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = []) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -982,7 +982,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} marketCard - Market карточка
    */
   async sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents = [], marketCard) {
-    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 Крысинные бега';
+    const trackName = inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
     message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
@@ -1155,43 +1155,43 @@ CashFlow - настольная игра о финансовом планиро�
     return { text: message, keyboard };
   }
 
-/**
- * Генерирует клавиатуру для miscellaneous карточки
- * @param {Object} miscCard - Объект miscellaneous карточки
- * @param {Object} player - Объект игрока
- * @param {boolean} canPay - Можно ли оплатить
- * @returns {Object} Клавиатура
- */
-generateMiscellaneousKeyboard(miscCard, player, canPay = true) {
-  const keyboard = {
-    inline_keyboard: []
-  };
+  /**
+   * Генерирует клавиатуру для miscellaneous карточки
+   * @param {Object} miscCard - Объект miscellaneous карточки
+   * @param {Object} player - Объект игрока
+   * @param {boolean} canPay - Можно ли оплатить
+   * @returns {Object} Клавиатура
+   */
+  generateMiscellaneousKeyboard(miscCard, player, canPay = true) {
+    const keyboard = {
+      inline_keyboard: []
+    };
 
-  if (canPay) {
-    // Кнопка оплаты наличными
-    const payText = miscCard.mortgage ? `Оплатить взнос ${formatNumber(miscCard.downPayment)} ₽` : `Оплатить ${formatNumber(miscCard.cost)} ₽`;
-    keyboard.inline_keyboard.push([{
-      text: payText,
-      callback_data: 'pay_miscellaneous'
-    }]);
-
-    // Если карта поддерживает кредит, добавить кнопку оплаты кредиткой
-    if (miscCard.credit) {
+    if (canPay) {
+      // Кнопка оплаты наличными
+      const payText = miscCard.mortgage ? `Оплатить взнос ${formatNumber(miscCard.downPayment)} ₽` : `Оплатить ${formatNumber(miscCard.cost)} ₽`;
       keyboard.inline_keyboard.push([{
-        text: '💳 Кредитная карта',
-        callback_data: 'pay_miscellaneous_credit_card'
+        text: payText,
+        callback_data: 'pay_miscellaneous'
+      }]);
+
+      // Если карта поддерживает кредит, добавить кнопку оплаты кредиткой
+      if (miscCard.credit) {
+        keyboard.inline_keyboard.push([{
+          text: '💳 Кредитная карта',
+          callback_data: 'pay_miscellaneous_credit_card'
+        }]);
+      }
+    } else {
+      // Кнопка пропуска (только если нельзя оплатить)
+      keyboard.inline_keyboard.push([{
+        text: 'Пропустить',
+        callback_data: 'skip_miscellaneous'
       }]);
     }
-  } else {
-    // Кнопка пропуска (только если нельзя оплатить)
-    keyboard.inline_keyboard.push([{
-      text: 'Пропустить',
-      callback_data: 'skip_miscellaneous'
-    }]);
-  }
 
-  return keyboard;
-}
+    return keyboard;
+  }
 
   /**
    * Генерирует текст и клавиатуру для карточки сделки (без отправки)
@@ -1296,11 +1296,14 @@ generateMiscellaneousKeyboard(miscCard, player, canPay = true) {
    * @param {number} chatId - ID чата
    * @param {Object} deal - Объект сделки
    * @param {Object} player - Объект игрока
+   * @param {string} type - Тип ('deal', 'miscellaneous', 'dismissal') по умолчанию 'deal'
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendCreditCardOfferMessage(chatId, deal, player) {
+  async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal') {
     let message = `💼 **${deal.title}**\n\n`;
-    message += `📝 ${deal.description}\n\n`;
+    if (deal.description) {
+      message += `📝 ${deal.description}\n\n`;
+    }
     message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
 
     // Показать денежный поток (cashFlow или passiveIncome)
@@ -1318,9 +1321,25 @@ generateMiscellaneousKeyboard(miscCard, player, canPay = true) {
     message += `📊 Ежемесячный платеж: ${formatNumber(monthlyPayment)} ₽\n\n`;
     message += `Что вы хотите сделать?`;
 
+    // Генерируем клавиатуру в зависимости от типа
+    let keyboard;
+    if (type === 'dismissal' || type === 'miscellaneous') {
+      // Для безработицы - только кнопка оплаты кредиткой, без пропуска
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '💳 Оплатить кредиткой', callback_data: 'pay_dismissal_credit_card' }
+          ]
+        ]
+      };
+    } else {
+      // Для сделок и miscellaneous - стандартная клавиатура с пропуском
+      keyboard = creditCardKeyboard;
+    }
+
     const sentMessage = await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
-      reply_markup: creditCardKeyboard
+      reply_markup: keyboard
     });
 
     return sentMessage.message_id;

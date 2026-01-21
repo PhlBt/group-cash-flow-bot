@@ -120,7 +120,7 @@ async function handlePayMiscellaneous(query, services) {
         // Удалить кнопки с сообщения карточки miscellaneous
         await messageService.removeMessageKeyboard(chatId, query.message.message_id);
         // Отправить предложение оплаты кредиткой
-        await messageService.sendCreditCardOfferMessage(chatId, miscCard, currentPlayer);
+        await messageService.sendCreditCardOfferMessage(chatId, miscCard, currentPlayer, 'miscellaneous');
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при оплате miscellaneous.');
       }
