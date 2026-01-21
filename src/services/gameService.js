@@ -1546,15 +1546,41 @@ class GameService {
 
     // Проверяем условие перехода: не на Fast Track и passiveIncome > totalExpenses
     if (!player.inFastTrack && player.passiveIncome > player.totalExpenses) {
-      // Выполняем переход
+      // Выполняем полное преобразование игрока для Fast Track
+
+      // 1. Увеличиваем пассивный доход в 100 раз
+      const newPassiveIncome = player.passiveIncome * 100;
+
+      // 2. Устанавливаем Fast Track значения
+      const fastTrackIncome = newPassiveIncome;
+      const dreamCost = newPassiveIncome + 1500000;
+      const fastTrackCash = player.cash + newPassiveIncome;
+
+      // 3. Обнуляем расходы и очищаем активы/кредиты
+      const updateData = {
+        [`players.${playerIndex}.inFastTrack`]: true,
+        [`players.${playerIndex}.position`]: 0,
+        [`players.${playerIndex}.fastTrackIncome`]: fastTrackIncome,
+        [`players.${playerIndex}.fastTrackCash`]: fastTrackCash,
+        [`players.${playerIndex}.dreamCost`]: dreamCost,
+        // Обнуляем расходы
+        [`players.${playerIndex}.expenses`]: 0,
+        [`players.${playerIndex}.childrenExpenses`]: 0,
+        [`players.${playerIndex}.totalExpenses`]: 0,
+        [`players.${playerIndex}.totalLoanPayments`]: 0,
+        // Очищаем активы и кредиты
+        [`players.${playerIndex}.assets`]: [],
+        [`players.${playerIndex}.assetsCount`]: 0,
+        [`players.${playerIndex}.liabilities`]: [],
+        [`players.${playerIndex}.loansCount`]: 0,
+        [`players.${playerIndex}.totalLoans`]: 0,
+        // Пересчитываем денежный поток
+        [`players.${playerIndex}.cashFlow`]: newPassiveIncome
+      };
+
       await this.databaseService.getDb().collection('games').updateOne(
         { gameId },
-        {
-          $set: {
-            [`players.${playerIndex}.inFastTrack`]: true,
-            [`players.${playerIndex}.position`]: 0
-          }
-        }
+        { $set: updateData }
       );
 
       return { success: true, transitioned: true };

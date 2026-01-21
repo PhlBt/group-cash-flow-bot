@@ -261,8 +261,10 @@ CashFlow - настольная игра о финансовом планиро�
     // Добавляем статистику пользователя
     if (userStats) {
       const UserStatsService = require('./userStatsService');
-      info += `${UserStatsService.formatUserStats(userStats)}\n\n`;
+      info += `${UserStatsService.formatUserStats(userStats)}\n`;
     }
+
+    if (!player.inFastTrack) info += '\n'
 
     if (!player.inFastTrack) {
       info += `💼 Профессия: ${player.profession}\n\n`;
@@ -295,24 +297,36 @@ CashFlow - настольная игра о финансовом планиро�
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
     info += `\n📍 ${trackName}, поле ${player.position + 1}`;
 
-    if (player.cashFlow > 0) {
-      info += `\n\n✅ Положительный денежный поток!`;
-    } else {
-      info += `\n\n⚠️ Отрицательный денежный поток`;
-    }
-
-    if (player.passiveIncome >= player.totalExpenses) {
-      info += `\n\n🎉 ВЫ ВЫШЛИ ИЗ КРЫСИНЫХ БЕГОВ!`;
-    }
-
     if (player.inFastTrack) {
       info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
       info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
       info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
       info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
+    } else {
+      if (player.cashFlow > 0) {
+        info += `\n\n✅ Положительный денежный поток!`;
+      } else {
+        info += `\n\n⚠️ Отрицательный денежный поток`;
+      }
     }
 
-    await this.sendMessage(chatId, info, { reply_markup: profileKeyboard });
+    // Выбираем клавиатуру в зависимости от статуса игрока
+    let keyboard;
+    if (player.inFastTrack) {
+      // На Fast Track показываем только кнопку активов
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '🏠 Активы', callback_data: 'assets' }
+          ]
+        ]
+      };
+    } else {
+      // На Rat Race показываем обе кнопки
+      keyboard = profileKeyboard;
+    }
+
+    await this.sendMessage(chatId, info, { reply_markup: keyboard });
   }
 
   /**
@@ -327,8 +341,10 @@ CashFlow - настольная игра о финансовом планиро�
     // Добавляем статистику пользователя всегда
     if (userStats) {
       const UserStatsService = require('./userStatsService');
-      info += `${UserStatsService.formatUserStats(userStats)}\n\n`;
+      info += `${UserStatsService.formatUserStats(userStats)}\n`;
     }
+
+    if (!player.inFastTrack) info += '\n'
 
     // Если передан игрок, добавляем информацию об игре
     if (player) {
@@ -362,24 +378,21 @@ CashFlow - настольная игра о финансовом планиро�
         }
       }
 
+
       const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
-      info += `\n📍 ${trackName}, поле ${player.position + 1}`;
-
-      if (player.cashFlow > 0) {
-        info += `\n\n✅ Положительный денежный поток!`;
-      } else {
-        info += `\n\n⚠️ Отрицательный денежный поток`;
-      }
-
-      if (player.passiveIncome >= player.totalExpenses) {
-        info += `\n\n🎉 ВЫ ВЫШЛИ ИЗ КРЫСИНЫХ БЕГОВ!`;
-      }
+      info += `📍 ${trackName}, поле ${player.position + 1}`;
 
       if (player.inFastTrack) {
         info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
         info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
         info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
         info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
+      } else {
+        if (player.cashFlow > 0) {
+          info += `\n\n✅ Положительный денежный поток!`;
+        } else {
+          info += `\n\n⚠️ Отрицательный денежный поток`;
+        }
       }
     }
 
