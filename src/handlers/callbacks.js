@@ -253,7 +253,6 @@ async function handleRollDice(query, diceCount, services) {
           steps,
           moveResult.newPosition,
           moveResult.fieldType,
-          moveResult.inFastTrack,
           moveResult.paydayEvents || []
         );
       }
