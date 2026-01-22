@@ -120,7 +120,6 @@ async function handleRollDice(query, diceCount, services) {
         currentPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.inFastTrack,
         moveResult.paydayEvents || [],
         miscCard,
         game
@@ -200,7 +199,6 @@ async function handleRollDice(query, diceCount, services) {
         updatedPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.inFastTrack,
         moveResult.paydayEvents || [],
         marketCard
       );

@@ -34,7 +34,6 @@ async function handleMarket(gameId, services) {
   await initializeMarketCirculation(gameId, marketCard, services);
 
   // Вернуть карточку для отображения в комбинированном сообщении
-
   return marketCard;
 }
 
