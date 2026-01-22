@@ -78,18 +78,13 @@ async function handlePayFastTrack(query, services) {
       }
 
     } else if (fastTrackEvent.cost && fastTrackEvent.passiveIncome) {
-      // Инвестиция с пассивным доходом
-      const buyResult = await gameService.buyFastTrackAsset(game.gameId, userId, fastTrackEvent);
-      if (!buyResult.success) {
-        if (buyResult.error === 'insufficient_funds') {
-          await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для покупки fastTrack актива.');
-          return;
-        } else {
-          await messageService.sendErrorMessage(chatId, 'Ошибка покупки fastTrack актива.');
-          return;
-        }
-      }
+      // Инвестиция с пассивным доходом - теперь обрабатывается через invest_fastTrack
+      await messageService.sendErrorMessage(chatId, 'Используйте кнопку "Инвестировать".');
+      return;
 
+    } else if (fastTrackEvent.type === 'dream') {
+      // Специальная обработка для мечты - не обрабатываем здесь, ждем выбора игрока
+      return;
     } else if (fastTrackEvent.cost && !fastTrackEvent.passiveIncome) {
       // Обычные расходы
       const payResult = await gameService.payFastTrackExpense(game.gameId, userId, fastTrackEvent.cost);
@@ -222,6 +217,99 @@ async function handleRollDiceFastTrack(query, services) {
 }
 
 /**
+ * Обрабатывает инвестирование в fastTrack поле
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleInvestFastTrack(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Получить сохраненное fastTrack событие
+    const fastTrackEvent = game.currentFastTrack;
+    if (!fastTrackEvent) {
+      await messageService.sendErrorMessage(chatId, 'Событие fastTrack не найдено. Попробуйте еще раз.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Проверить, что поле свободно
+    const occupationCheck = await gameService.isFastTrackFieldOccupied(game.gameId, userId, fastTrackEvent);
+    if (!occupationCheck.success || occupationCheck.occupied) {
+      await messageService.sendErrorMessage(chatId, 'Это поле уже занято другим игроком!');
+      return;
+    }
+
+    // Инвестировать в поле
+    const investResult = await gameService.investInFastTrackField(game.gameId, userId, fastTrackEvent);
+    if (!investResult.success) {
+      if (investResult.error === 'insufficient_funds') {
+        await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для инвестирования.');
+        return;
+      } else {
+        await messageService.sendErrorMessage(chatId, 'Ошибка инвестирования.');
+        return;
+      }
+    }
+
+    // Удалить кнопки с сообщения fastTrack
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Отправить сообщение об успешном инвестировании
+    let successMessage = `✅ ${currentPlayer.username} инвестировал в "${fastTrackEvent.title}"`;
+
+    // Добавить информацию о броске кубика если был
+    if (investResult.diceResult !== null) {
+      successMessage += `\n🎲 Результат броска: ${investResult.diceResult}`;
+      if (investResult.diceResult >= fastTrackEvent.dice) {
+        successMessage += ' (успех!)';
+      } else {
+        successMessage += ' (неудача - ничего не получено)';
+      }
+    }
+
+    // Добавить информацию об изменении баланса или дохода
+    if (investResult.reward) {
+      if (investResult.reward.type === 'cash') {
+        successMessage += `\n💰 Получено: ${formatNumber(investResult.reward.amount)} ₽`;
+      } else if (investResult.reward.type === 'passiveIncome') {
+        successMessage += `\n💵 Пассивный доход: +${formatNumber(investResult.reward.amount)} ₽/мес`;
+      }
+    }
+
+    await messageService.sendErrorMessage(chatId, successMessage);
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handleInvestFastTrack:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при инвестировании в fastTrack поле.');
+  }
+}
+
+/**
  * Обрабатывает пропуск fastTrack события
  * @param {Object} query - Callback query от Telegram
  * @param {Object} services - Объект с сервисами
@@ -271,5 +359,6 @@ module.exports = {
   handleFastTrack,
   handlePayFastTrack,
   handleRollDiceFastTrack,
+  handleInvestFastTrack,
   handleSkipFastTrack
 };

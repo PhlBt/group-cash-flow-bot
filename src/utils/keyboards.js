@@ -82,13 +82,32 @@ const bankruptcyKeyboard = {
 };
 
 /**
- * Клавиатура при эффекте благотворительности
+ * Клавиатура при эффекте благотворительности (Rat Race)
  */
 const charityKeyboard = {
   inline_keyboard: [
     [
       { text: '🎲 Бросить кубик', callback_data: 'roll_dice_1' },
       { text: '🎲 Бросить 2 кубика', callback_data: 'roll_dice_2' }
+    ],
+    [
+      { text: '👤 Профиль', callback_data: 'profile' },
+      { text: '📊 Статистика', callback_data: 'stats' }
+    ]
+  ]
+};
+
+/**
+ * Клавиатура при эффекте благотворительности (Fast Track)
+ */
+const fastTrackCharityKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🎲 Бросить кубик', callback_data: 'roll_dice_1' },
+      { text: '🎲 Бросить 2 кубика', callback_data: 'roll_dice_2' }
+    ],
+    [
+      { text: '🎲 Бросить 3 кубика', callback_data: 'roll_dice_3' }
     ],
     [
       { text: '👤 Профиль', callback_data: 'profile' },
@@ -407,6 +426,51 @@ const gameLostKeyboard = {
 };
 
 /**
+ * Генерирует клавиатуру для поля мечты
+ * @param {Object} dreamField - Объект поля мечты
+ * @param {Object} player - Объект игрока
+ * @param {Array} allPlayers - Массив всех игроков
+ * @returns {Object} Клавиатура
+ */
+function generateDreamKeyboard(dreamField, player, allPlayers) {
+  const keyboard = {
+    inline_keyboard: []
+  };
+
+  // Определяем тип мечты
+  const isOwnDream = player.dream && player.dream.id === dreamField.id;
+  const otherPlayerWithDream = allPlayers.find(p => p.dream && p.dream.id === dreamField.id && p.userId !== player.userId);
+  const isOtherDream = !!otherPlayerWithDream;
+  const isUnclaimedDream = !isOwnDream && !isOtherDream;
+
+  let buyText = 'Купить мечту';
+  let costText = '';
+
+  if (isOwnDream) {
+    buyText = '🎯 Купить мечту (ПОБЕДА!)';
+    costText = `Стоимость: ${formatNumber(dreamField.cost)} ₽`;
+  } else if (isOtherDream) {
+    const doubledCost = dreamField.cost * 2;
+    buyText = `Купить мечту (${otherPlayerWithDream.username})`;
+    costText = `Стоимость: ${formatNumber(doubledCost)} ₽ (удвоена)`;
+  } else {
+    buyText = 'Купить мечту';
+    costText = `Стоимость: ${formatNumber(dreamField.cost)} ₽`;
+  }
+
+  keyboard.inline_keyboard = [
+    [
+      { text: buyText, callback_data: 'buy_dream' }
+    ],
+    [
+      { text: '⏭️ Пропустить', callback_data: 'skip_dream' }
+    ]
+  ];
+
+  return keyboard;
+}
+
+/**
  * Клавиатура для команд /rules и /help
  */
 const developerKeyboard = {
@@ -424,11 +488,14 @@ module.exports = {
   gameKeyboard,
   bankruptcyKeyboard,
   charityKeyboard,
+  fastTrackCharityKeyboard,
   charityChoiceKeyboard,
   dealTypeKeyboard,
   generateDealKeyboard,
+  generateOfferKeyboard,
   creditCardKeyboard,
   generateDismissalKeyboard,
+  generateDreamKeyboard,
   profileKeyboard,
   gameFinishedKeyboard,
   gameLostKeyboard,

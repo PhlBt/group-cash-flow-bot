@@ -6,7 +6,7 @@ const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCa
 const { handleMiscellaneous, handlePayMiscellaneous, handlePayMiscellaneousCreditCard, handleSkipMiscellaneous } = require('./miscellaneous');
 const { handleCharity, handleDonateCharity, handleSkipCharity } = require('./charity');
 const { handleProfile, handleStats, handleAssets, handleCredits } = require('./profile');
-const { handlePayFastTrack, handleRollDiceFastTrack, handleSkipFastTrack } = require('./fastTrack');
+const { handlePayFastTrack, handleRollDiceFastTrack, handleInvestFastTrack, handleSkipFastTrack } = require('./fastTrack');
 
 /**
  * Обрабатывает бросок кубика
@@ -227,7 +227,8 @@ async function handleRollDice(query, diceCount, services) {
         steps,
         moveResult.newPosition,
         moveResult.paydayEvents || [],
-        fieldData
+        fieldData,
+        game
       );
 
       // Для поля INVESTING не передаем ход автоматически - ждем действий игрока
@@ -591,9 +592,29 @@ async function handleCallbackQuery(query, services) {
         await handleSkipMarket(query, services);
         break;
 
+      case 'charity_1':
+        // Благотворительность - бросить 1 кубик
+        await handleCharityFastTrack(query, services, 1);
+        break;
+
+      case 'charity_2':
+        // Благотворительность - бросить 2 кубика
+        await handleCharityFastTrack(query, services, 2);
+        break;
+
+      case 'charity_3':
+        // Благотворительность - бросить 3 кубика
+        await handleCharityFastTrack(query, services, 3);
+        break;
+
       case 'pay_fastTrack':
         // Оплата fastTrack события
         await handlePayFastTrack(query, services);
+        break;
+
+      case 'invest_fastTrack':
+        // Инвестирование в fastTrack поле
+        await handleInvestFastTrack(query, services);
         break;
 
       case 'roll_dice_fastTrack':
@@ -604,6 +625,16 @@ async function handleCallbackQuery(query, services) {
       case 'skip_fastTrack':
         // Пропуск fastTrack события
         await handleSkipFastTrack(query, services);
+        break;
+
+      case 'buy_dream':
+        // Покупка мечты
+        await handleBuyDream(query, services);
+        break;
+
+      case 'skip_dream':
+        // Пропуск мечты
+        await handleSkipDream(query, services);
         break;
 
       default:
@@ -1211,6 +1242,63 @@ async function handlePayDismissalCreditCard(query, services) {
 }
 
 /**
+ * Обрабатывает благотворительность на Fast Track
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ * @param {number} diceCount - Количество кубиков (1, 2 или 3)
+ */
+async function handleCharityFastTrack(query, services, diceCount) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Активировать постоянную благотворительность для Fast Track
+    await gameService.databaseService.getDb().collection('games').updateOne(
+      { gameId: game.gameId },
+      {
+        $set: {
+          [`players.${game.players.indexOf(currentPlayer)}.charityEffect`]: true
+        }
+      }
+    );
+
+    // Удалить кнопки с сообщения
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Отправить сообщение об активации благотворительности
+    await messageService.sendErrorMessage(chatId, `🎲 ${currentPlayer.username} активировал благотворительность! Теперь можно бросать ${diceCount} кубика(ов) за ход.`);
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handleCharityFastTrack:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при активации благотворительности.');
+  }
+}
+
+/**
  * Обрабатывает выбор мечты игроком
  * @param {Object} query - Callback query от Telegram
  * @param {string} dreamTitle - Название выбранной мечты
@@ -1308,6 +1396,128 @@ async function handleDreamPage(query, page, services) {
   }
 }
 
+/**
+ * Обрабатывает покупку мечты
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleBuyDream(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Получить сохраненное fastTrack событие (мечту)
+    const dreamField = game.currentFastTrack;
+    if (!dreamField || dreamField.type !== 'dream') {
+      await messageService.sendErrorMessage(chatId, 'Мечта не найдена.');
+      return;
+    }
+
+    // Купить мечту
+    const buyResult = await gameService.buyDream(game.gameId, userId, dreamField, game.players);
+    if (!buyResult.success) {
+      if (buyResult.error === 'insufficient_funds') {
+        await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для покупки мечты.');
+        return;
+      } else {
+        await messageService.sendErrorMessage(chatId, 'Ошибка покупки мечты.');
+        return;
+      }
+    }
+
+    // Удалить кнопки с сообщения
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Проверить, победил ли игрок
+    if (buyResult.victory) {
+      // Игрок победил - завершить игру
+      await gameService.finishGameWithVictory(game.gameId, userId);
+
+      // Отправить сообщение о победе
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} купил свою мечту и ПОБЕДИЛ в игре!`);
+      await messageService.sendGameFinishedMessage(chatId);
+    } else {
+      // Просто купил мечту другого игрока или ничью
+      const costText = buyResult.cost === dreamField.cost ? `${formatNumber(buyResult.cost)} ₽` : `${formatNumber(buyResult.cost)} ₽ (удвоено)`;
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил мечту за ${costText}`);
+
+      // Передать ход следующему игроку
+      const nextTurnResult = await gameService.nextTurn(game.gameId);
+      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in handleBuyDream:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке мечты.');
+  }
+}
+
+/**
+ * Обрабатывает пропуск мечты
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleSkipDream(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Проверить, что пользователь - текущий игрок
+    const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
+    if (!currentPlayer || currentPlayer.userId !== userId) {
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      return;
+    }
+
+    // Удалить кнопки с сообщения
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+    // Отправить сообщение о пропуске
+    await messageService.sendErrorMessage(chatId, `⏭️ ${currentPlayer.username} пропустил мечту`);
+
+    // Передать ход следующему игроку
+    const nextTurnResult = await gameService.nextTurn(game.gameId);
+    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.transitioned) {
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      }
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    }
+
+  } catch (error) {
+    console.error('Error in handleSkipDream:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске мечты.');
+  }
+}
+
 module.exports = {
   handleCallbackQuery,
   handleRollDice,
@@ -1321,6 +1531,9 @@ module.exports = {
   handleCreditsPage,
   handlePayDismissal,
   handlePayDismissalCreditCard,
+  handleCharityFastTrack,
   handleSelectDream,
-  handleDreamPage
+  handleDreamPage,
+  handleBuyDream,
+  handleSkipDream
 };

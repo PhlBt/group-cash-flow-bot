@@ -163,13 +163,33 @@ class GameService {
 
       if (field.type === FIELD_TYPES.PAYDAY) {
         // Обрабатываем PAYDAY
-        const paydayResult = await this.processPayday(gameId, userId);
-        if (paydayResult.success) {
+        if (inFastTrack) {
+          // На Fast Track PAYDAY дает fastTrackIncome
+          const game = await this.databaseService.getGame(gameId);
+          const player = game.players.find(p => p.userId === userId);
+          const income = player.fastTrackIncome || 0;
+          const newCash = player.cash + income;
+
+          await this.databaseService.getDb().collection('games').updateOne(
+            { gameId },
+            { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+          );
+
           paydayEvents.push({
             position,
-            cashFlow: paydayResult.cashFlow,
-            newCash: paydayResult.newCash
+            cashFlow: income,
+            newCash
           });
+        } else {
+          // На Rat Race PAYDAY дает обычный денежный поток
+          const paydayResult = await this.processPayday(gameId, userId);
+          if (paydayResult.success) {
+            paydayEvents.push({
+              position,
+              cashFlow: paydayResult.cashFlow,
+              newCash: paydayResult.newCash
+            });
+          }
         }
       }
     }
@@ -1860,6 +1880,232 @@ class GameService {
    */
   async setCurrentFastTrack(gameId, fastTrackEvent) {
     return await this.databaseService.setCurrentFastTrack(gameId, fastTrackEvent);
+  }
+
+  /**
+   * Проверяет, занято ли поле fastTrack другим игроком
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID текущего игрока
+   * @param {Object} fastTrackEvent - Объект fastTrack события
+   * @returns {Promise<{success: boolean, occupied?: boolean, error?: string}>} Результат операции
+   */
+  async isFastTrackFieldOccupied(gameId, userId, fastTrackEvent) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    // Проверить, есть ли это поле в активах у других игроков
+    for (const player of game.players) {
+      if (player.userId !== userId && player.assets) {
+        const hasField = player.assets.some(asset =>
+          asset.title === fastTrackEvent.title && asset.type === 'fast_track_asset'
+        );
+        if (hasField) {
+          return { success: true, occupied: true };
+        }
+      }
+    }
+
+    return { success: true, occupied: false };
+  }
+
+  /**
+   * Обрабатывает инвестирование в fastTrack поле
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} fastTrackEvent - Объект fastTrack события
+   * @returns {Promise<{success: boolean, error?: string, diceResult?: number, reward?: Object}>} Результат операции
+   */
+  async investInFastTrackField(gameId, userId, fastTrackEvent) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    // Проверить хватает ли денег
+    if (player.cash < fastTrackEvent.cost) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списать стоимость
+    const newCash = player.cash - fastTrackEvent.cost;
+
+    let diceResult = null;
+    let reward = null;
+    let addAsset = false;
+
+    if (fastTrackEvent.dice) {
+      // Бросить кубик
+      diceResult = this.rollDice(1);
+
+      if (diceResult >= fastTrackEvent.dice) {
+        // Успех - применить награду и добавить актив
+        if (fastTrackEvent.cash) {
+          reward = { type: 'cash', amount: fastTrackEvent.cash };
+        } else if (fastTrackEvent.passiveIncome) {
+          reward = { type: 'passiveIncome', amount: fastTrackEvent.passiveIncome };
+        }
+        addAsset = true;
+      }
+      // Если неудача - ничего не получаем, актив не добавляется
+    } else {
+      // Без кубика - всегда получаем passiveIncome и актив
+      reward = { type: 'passiveIncome', amount: fastTrackEvent.passiveIncome };
+      addAsset = true;
+    }
+
+    // Применить награду
+    let updatedCash = newCash;
+    let newPassiveIncome = player.passiveIncome;
+
+    if (reward) {
+      if (reward.type === 'cash') {
+        updatedCash += reward.amount;
+      } else if (reward.type === 'passiveIncome') {
+        newPassiveIncome += reward.amount;
+      }
+    }
+
+    // Добавить актив только если нужно
+    if (addAsset) {
+      const asset = {
+        id: `fastTrack_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: fastTrackEvent.title,
+        cost: fastTrackEvent.cost,
+        cashFlow: fastTrackEvent.passiveIncome || 0,
+        type: 'fast_track_asset',
+        description: fastTrackEvent.description
+      };
+
+      await this.databaseService.addAsset(gameId, userId, asset);
+    }
+
+    // Обновить данные игрока
+    const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.cash`]: updatedCash,
+          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow
+        }
+      }
+    );
+
+    return {
+      success: true,
+      diceResult,
+      reward
+    };
+  }
+
+  /**
+   * Обрабатывает покупку мечты игроком
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} dreamField - Объект поля мечты
+   * @param {Array} allPlayers - Массив всех игроков
+   * @returns {Promise<{success: boolean, error?: string, victory?: boolean, cost?: number}>} Результат операции
+   */
+  async buyDream(gameId, userId, dreamField, allPlayers) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    // Определяем тип мечты
+    const isOwnDream = player.dream && player.dream.id === dreamField.id;
+    const otherPlayerWithDream = allPlayers.find(p => p.dream && p.dream.id === dreamField.id && p.userId !== userId);
+    const isOtherDream = !!otherPlayerWithDream;
+    const isUnclaimedDream = !isOwnDream && !isOtherDream;
+
+    let cost = dreamField.cost;
+    let victory = false;
+
+    if (isOwnDream) {
+      // Своя мечта - победа
+      victory = true;
+    } else if (isOtherDream) {
+      // Мечта другого игрока - удвоенная стоимость
+      cost = dreamField.cost * 2;
+    } else {
+      // Ничья мечта - обычная стоимость, ничего не происходит
+      cost = dreamField.cost;
+    }
+
+    // Проверяем хватает ли денег
+    if (player.cash < cost) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем стоимость
+    const newCash = player.cash - cost;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    return {
+      success: true,
+      victory,
+      cost
+    };
+  }
+
+  /**
+   * Завершает игру победой игрока
+   * @param {string} gameId - ID игры
+   * @param {string} winnerUserId - ID победившего игрока
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async finishGameWithVictory(gameId, winnerUserId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    // Обновляем статус игры на 'finished'
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          status: 'finished',
+          winner: winnerUserId,
+          finishedAt: new Date()
+        }
+      }
+    );
+
+    // Обновляем статистику победителя
+    await this.userStatsService.updateUserStats(winnerUserId, { wins: (await this.userStatsService.getUserStats(winnerUserId)).wins + 1 });
+
+    // Обновляем статистику проигравших
+    for (const player of game.players) {
+      if (player.userId !== winnerUserId) {
+        await this.userStatsService.updateUserStats(player.userId, { losses: (await this.userStatsService.getUserStats(player.userId)).losses + 1 });
+      }
+    }
+
+    return { success: true };
   }
 }
 

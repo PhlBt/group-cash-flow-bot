@@ -1,5 +1,6 @@
 const { formatNumber, RateLimiter } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, bankruptcyKeyboard, charityKeyboard, dealTypeKeyboard, generateDealKeyboard, creditCardKeyboard, profileKeyboard, gameFinishedKeyboard, gameLostKeyboard, developerKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, bankruptcyKeyboard, charityKeyboard, fastTrackCharityKeyboard, dealTypeKeyboard, generateDealKeyboard, generateDreamKeyboard, creditCardKeyboard, profileKeyboard, gameFinishedKeyboard, gameLostKeyboard, developerKeyboard } = require('../utils/keyboards');
+const { FIELD_TYPES } = require('../game/board');
 
 class MessageService {
   constructor(bot) {
@@ -853,6 +854,9 @@ CashFlow - настольная игра о финансовом планиро�
     } else if (player.charityEffect && player.charityTurnsLeft > 0) {
       message += `Выберите действие:`;
       keyboard = charityKeyboard;
+    } else if (player.charityEffect && player.inFastTrack) {
+      message += `Выберите действие:`;
+      keyboard = fastTrackCharityKeyboard;
     } else {
       message += `Выберите действие:`;
       keyboard = gameKeyboard;
@@ -1361,8 +1365,9 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    * @param {Object} fastTrackEvent - fastTrack событие
+   * @param {Object} game - Объект игры для проверки занятости полей
    */
-  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent) {
+  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent, game) {
     const trackName = '🚀 Скоростная дорожка';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1422,7 +1427,14 @@ CashFlow - настольная игра о финансовом планиро�
     message += `Что вы хотите сделать?`;
 
     // Генерируем клавиатуру для fastTrack события
-    const keyboard = this.generateFastTrackKeyboard(fastTrackEvent, player);
+    let keyboard;
+    if (fastTrackEvent.type === FIELD_TYPES.DREAM) {
+      // Для мечты используем специальную клавиатуру
+      const { generateDreamKeyboard } = require('../utils/keyboards');
+      keyboard = generateDreamKeyboard(fastTrackEvent, player, game.players);
+    } else {
+      keyboard = this.generateFastTrackKeyboard(fastTrackEvent, player, { gameId: game.gameId, gameService: game.gameService });
+    }
 
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
@@ -1434,50 +1446,105 @@ CashFlow - настольная игра о финансовом планиро�
    * Генерирует клавиатуру для fastTrack события
    * @param {Object} fastTrackEvent - fastTrack событие
    * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры (для проверки занятости поля)
    * @returns {Object} Клавиатура
    */
-  generateFastTrackKeyboard(fastTrackEvent, player) {
+  generateFastTrackKeyboard(fastTrackEvent, player, game) {
     const keyboard = {
       inline_keyboard: []
     };
 
-    if (fastTrackEvent.cash) {
-      // Просто получение денег - одна кнопка
-      keyboard.inline_keyboard.push([{
-        text: `💰 Получить ${formatNumber(fastTrackEvent.cash)} ₽`,
-        callback_data: 'pay_fastTrack'
-      }]);
-    } else if (fastTrackEvent.charity) {
-      // Благотворительность - выбор количества кубиков
-      keyboard.inline_keyboard.push(
-        [{ text: '1 кубик', callback_data: 'pay_fastTrack' }],
-        [{ text: '2 кубика', callback_data: 'pay_fastTrack' }],
-        [{ text: '3 кубика', callback_data: 'pay_fastTrack' }]
-      );
-    } else if (fastTrackEvent.dice) {
-      // Рискованное событие - бросок кубика
-      keyboard.inline_keyboard.push([{
-        text: `🎲 Бросить кубик`,
-        callback_data: 'roll_dice_fastTrack'
-      }]);
-    } else if (fastTrackEvent.expenseBalanceMultiply) {
-      // Расходы процента от баланса
-      const amount = Math.floor(player.cash * fastTrackEvent.expenseBalanceMultiply);
-      keyboard.inline_keyboard.push([{
-        text: `💸 Оплатить ${formatNumber(amount)} ₽`,
-        callback_data: 'pay_fastTrack'
-      }]);
-    } else if (fastTrackEvent.cost) {
-      // Обычные расходы или инвестиции
-      keyboard.inline_keyboard.push([{
-        text: `💰 Оплатить ${formatNumber(fastTrackEvent.cost)} ₽`,
-        callback_data: 'pay_fastTrack'
-      }]);
+    const eventData = fastTrackEvent.data || {};
+
+    // Используем switch по типу поля для лучшей читаемости
+    switch (fastTrackEvent.type) {
+
+      case FIELD_TYPES.CHARITY:
+        // Благотворительность - оплата за эффект
+        if (eventData.cost) {
+          keyboard.inline_keyboard.push([{
+            text: `💰 Оплатить ${formatNumber(eventData.cost)} ₽`,
+            callback_data: 'pay_fastTrack'
+          }]);
+        }
+        break;
+
+      case FIELD_TYPES.EXPENSES:
+        // Расходы - оплата процента от баланса
+        if (eventData.expenseBalanceMultiply) {
+          const amount = Math.floor(player.cash * eventData.expenseBalanceMultiply);
+          keyboard.inline_keyboard.push([{
+            text: `💸 Оплатить ${formatNumber(amount)} ₽`,
+            callback_data: 'pay_fastTrack'
+          }]);
+        }
+        break;
+
+      case FIELD_TYPES.INVESTING:
+        // Инвестиции - проверяем занятость поля
+        if (game && game.gameService && game.gameId) {
+          const occupationCheck = game.gameService.isFastTrackFieldOccupied(game.gameId, player.userId, fastTrackEvent);
+          if (occupationCheck.success && occupationCheck.occupied) {
+            // Поле занято - только кнопка пропуска
+            keyboard.inline_keyboard.push([{
+              text: '⏭️ Пропустить',
+              callback_data: 'skip_fastTrack'
+            }]);
+          } else {
+            // Поле свободно - кнопки инвестирования и пропуска
+            if (eventData.dice) {
+              // Рискованное событие - бросок кубика
+              keyboard.inline_keyboard.push([{
+                text: `🎲 Инвестировать ${formatNumber(eventData.cost)} ₽`,
+                callback_data: 'invest_fastTrack'
+              }]);
+            } else if (eventData.cost) {
+              // Обычные инвестиции
+              keyboard.inline_keyboard.push([{
+                text: `💰 Инвестировать ${formatNumber(eventData.cost)} ₽`,
+                callback_data: 'invest_fastTrack'
+              }]);
+            }
+            keyboard.inline_keyboard.push([{
+              text: '⏭️ Пропустить',
+              callback_data: 'skip_fastTrack'
+            }]);
+          }
+        } else {
+          // Fallback для случаев без game объекта
+          if (eventData.dice) {
+            keyboard.inline_keyboard.push([{
+              text: `🎲 Бросить кубик`,
+              callback_data: 'roll_dice_fastTrack'
+            }]);
+          } else if (eventData.cost) {
+            keyboard.inline_keyboard.push([{
+              text: `💰 Инвестировать ${formatNumber(eventData.cost)} ₽`,
+              callback_data: 'pay_fastTrack'
+            }]);
+          }
+        }
+        break;
+
+      case FIELD_TYPES.DREAM:
+        // Мечты - специальная обработка с кнопками "Купить" и "Пропустить"
+        // Клавиатура генерируется в sendCombinedRollMoveFastTrackMessage
+        break;
+
+      default:
+        // Fallback для неизвестных типов
+        if (eventData.cost) {
+          keyboard.inline_keyboard.push([{
+            text: `💰 Оплатить ${formatNumber(eventData.cost)} ₽`,
+            callback_data: 'pay_fastTrack'
+          }]);
+        }
+        break;
     }
 
     // Для событий без обязательных действий добавляем пропуск
     // Исключаем поля с expenseBalanceMultiply - они всегда требуют оплаты
-    if (fastTrackEvent.cash && !fastTrackEvent.dice && !fastTrackEvent.charity && !fastTrackEvent.expenseBalanceMultiply) {
+    if (eventData.cash && !eventData.dice && !eventData.charity && !eventData.expenseBalanceMultiply && fastTrackEvent.type !== FIELD_TYPES.INVESTING) {
       keyboard.inline_keyboard.push([{
         text: '⏭️ Пропустить',
         callback_data: 'skip_fastTrack'
