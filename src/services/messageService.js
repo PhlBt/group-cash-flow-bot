@@ -1339,7 +1339,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     message += `💰 Ваш доход: ${formatNumber(income)} ₽/месяц\n`;
     message += `💸 Пожертвование: ${formatNumber(donationAmount)} ₽\n\n`;
-    message += `💰 Баланс: ${formatNumber(player.fastTrackCash)} ₽\n\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
     message += `Что вы хотите сделать?`;
 
     const { charityChoiceKeyboard } = require('../utils/keyboards');
@@ -1373,22 +1373,12 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Суммируем выплаты
     let totalPayday = 0;
-    let updatedFastTrackCash = player.fastTrackCash || 0;
+    let updatedCash = player.cash;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        // Для Fast Track используем newFastTrackCash из события
-        if (event.newFastTrackCash !== undefined) {
-          totalPayday += event.cashFlow;
-          updatedFastTrackCash = event.newFastTrackCash;
-        } else {
-          // Для обычных полей используем cashFlow
-          totalPayday += event.cashFlow;
-        }
+        totalPayday += event.cashFlow;
       }
-      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
-      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
-        updatedFastTrackCash += totalPayday;
-      }
+      updatedCash += totalPayday;
 
       // Показываем информацию о выплатах только если сумма не равна 0
       if (totalPayday !== 0) {
