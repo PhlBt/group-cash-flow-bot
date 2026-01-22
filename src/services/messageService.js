@@ -1665,20 +1665,20 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     // Показать параметры события
-    if (fastTrackEvent.data.cost && fastTrackEvent.data.passiveIncome) {
+    if (fastTrackEvent.data && fastTrackEvent.data.cost && fastTrackEvent.data.passiveIncome) {
       message += `💰 Стоимость: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
       message += `💵 Пассивный доход: ${formatNumber(fastTrackEvent.data.passiveIncome)} ₽/мес\n`;
-    } else if (fastTrackEvent.data.cost) {
+    } else if (fastTrackEvent.data && fastTrackEvent.data.cost) {
       message += `💰 Стоимость: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
-    } else if (fastTrackEvent.data.expenseBalanceMultiply) {
+    } else if (fastTrackEvent.data && fastTrackEvent.data.expenseBalanceMultiply) {
       const playerBalance = player.fastTrackCash || 0;
       const amount = Math.floor(playerBalance * fastTrackEvent.data.expenseBalanceMultiply);
       message += `💸 Расходы: ${formatNumber(amount)} ₽ (${fastTrackEvent.data.expenseBalanceMultiply * 100}% от баланса)\n`;
-    } else if (fastTrackEvent.data.cash) {
+    } else if (fastTrackEvent.data && fastTrackEvent.data.cash) {
       message += `💰 Получение: ${formatNumber(fastTrackEvent.data.cash)} ₽\n`;
-    } else if (fastTrackEvent.data.charity) {
+    } else if (fastTrackEvent.data && fastTrackEvent.data.charity) {
       message += `❤️ Благотворительность - выбор количества кубиков\n`;
-    } else if (fastTrackEvent.data.dice) {
+    } else if (fastTrackEvent.data && fastTrackEvent.data.dice) {
       message += `🎲 Рискованное событие (кубик >= ${fastTrackEvent.data.dice})\n`;
       if (fastTrackEvent.data.cash) {
         message += `💰 Награда: ${formatNumber(fastTrackEvent.data.cash)} ₽\n`;
