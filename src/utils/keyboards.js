@@ -14,6 +14,9 @@ const welcomeKeyboard = {
     [
       { text: '📋 Правила игры', callback_data: 'rules' },
       { text: '❓ Помощь', callback_data: 'help' }
+    ],
+    [
+      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]
 };
@@ -381,6 +384,39 @@ const profileKeyboard = {
   ]
 };
 
+/**
+ * Клавиатура для сообщения о завершении игры
+ */
+const gameFinishedKeyboard = {
+  inline_keyboard: [
+    [
+      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+    ]
+  ]
+};
+
+/**
+ * Клавиатура для сообщения о проигрыше
+ */
+const gameLostKeyboard = {
+  inline_keyboard: [
+    [
+      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+    ]
+  ]
+};
+
+/**
+ * Клавиатура для команд /rules и /help
+ */
+const developerKeyboard = {
+  inline_keyboard: [
+    [
+      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+    ]
+  ]
+};
+
 module.exports = {
   welcomeKeyboard,
   endGameVoteKeyboard,
@@ -393,5 +429,8 @@ module.exports = {
   generateDealKeyboard,
   creditCardKeyboard,
   generateDismissalKeyboard,
-  profileKeyboard
+  profileKeyboard,
+  gameFinishedKeyboard,
+  gameLostKeyboard,
+  developerKeyboard
 };

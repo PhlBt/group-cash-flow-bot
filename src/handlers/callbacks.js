@@ -941,7 +941,7 @@ async function handlePayLiability(query, liabilityIndex, services) {
           if (!canPayAnyLiability && !hasAssets) {
             // Не может оплатить ни один кредит и нет активов - проигрыш
             await gameService.endBankruptcy(game.gameId, userId, true);
-            await messageService.sendErrorMessage(chatId, '🥺 Вы проиграли! \nУ вас нет активов для продажи и недостаточно денег для оплаты кредитов.');
+            await messageService.sendGameLostMessage(chatId);
 
             // Передать ход следующему игроку
             const nextTurnResult = await gameService.nextTurn(game.gameId);

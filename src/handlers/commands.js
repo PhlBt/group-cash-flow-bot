@@ -156,6 +156,18 @@ async function handleProfile(msg, services) {
 }
 
 /**
+ * Обрабатывает команду /rules
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { messageService }
+ */
+async function handleRules(msg, services) {
+  const { messageService } = services;
+  const chatId = msg.chat.id;
+
+  await messageService.sendRulesMessage(chatId);
+}
+
+/**
  * Обрабатывает голосование за окончание игры
  * @param {Object} query - Callback query от Telegram
  * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
@@ -231,5 +243,6 @@ module.exports = {
   handlePlay,
   handleEndGame,
   handleProfile,
+  handleRules,
   handleEndGameVote
 };

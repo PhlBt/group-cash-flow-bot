@@ -48,6 +48,7 @@ async function setBotCommands() {
   const commands = [
     { command: 'start', description: 'Запуск бота и приветствие пользователя' },
     { command: 'help', description: 'Показать список всех доступных команд' },
+    { command: 'rules', description: 'Показать правила игры' },
     { command: 'profile', description: 'Показать профиль игрока или статистику' },
     { command: 'endgame', description: 'Начать голосование за окончание игры' }
   ];
@@ -81,6 +82,15 @@ async function startBot() {
       return;
     }
     await handlers.handleHelp(msg, services);
+  });
+
+  // Обработчик команды /rules
+  bot.onText(/\/rules/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /rules ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
+    await handlers.handleRules(msg, services);
   });
 
   // Обработчик команды /profile
