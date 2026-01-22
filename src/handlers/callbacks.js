@@ -95,7 +95,6 @@ async function handleRollDice(query, diceCount, services) {
         currentPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.inFastTrack,
         moveResult.paydayEvents || []
       );
 
@@ -143,7 +142,6 @@ async function handleRollDice(query, diceCount, services) {
         currentPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.inFastTrack,
         moveResult.paydayEvents || []
       );
 
@@ -167,7 +165,6 @@ async function handleRollDice(query, diceCount, services) {
         updatedPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.inFastTrack,
         moveResult.paydayEvents || []
       );
 
@@ -229,7 +226,6 @@ async function handleRollDice(query, diceCount, services) {
         currentPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.inFastTrack,
         moveResult.paydayEvents || [],
         fieldData
       );
@@ -243,7 +239,6 @@ async function handleRollDice(query, diceCount, services) {
           currentPlayer,
           steps,
           moveResult.newPosition,
-          moveResult.fieldType,
           moveResult.paydayEvents || []
         );
       } else {
