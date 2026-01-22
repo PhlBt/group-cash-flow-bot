@@ -6,6 +6,7 @@ const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCa
 const { handleMiscellaneous, handlePayMiscellaneous, handlePayMiscellaneousCreditCard, handleSkipMiscellaneous } = require('./miscellaneous');
 const { handleCharity, handleDonateCharity, handleSkipCharity } = require('./charity');
 const { handleProfile, handleStats, handleAssets, handleCredits } = require('./profile');
+const { handlePayFastTrack, handleRollDiceFastTrack, handleSkipFastTrack } = require('./fastTrack');
 
 /**
  * Обрабатывает бросок кубика
@@ -210,6 +211,32 @@ async function handleRollDice(query, diceCount, services) {
       }
 
       // Для поля MARKET не передаем ход автоматически - ждем действий игроков
+    } else if (moveResult.fieldType === FIELD_TYPES.INVESTING || moveResult.fieldType === FIELD_TYPES.EXPENSES || moveResult.fieldType === FIELD_TYPES.DREAM) {
+      // Игрок попал на поле "Инвестиция" или "Расходы" - обработать fastTrack событие
+      const { handleFastTrack } = require('./fastTrack');
+      const { FAST_TRACK_FIELDS } = require('../game/board');
+      const fieldData = FAST_TRACK_FIELDS[moveResult.newPosition % FAST_TRACK_FIELDS.length];
+
+      // Уменьшить счетчик ходов благотворительности
+      if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
+        await gameService.decreaseCharityTurns(game.gameId, userId);
+      }
+
+      // Обработать fastTrack событие
+      await handleFastTrack(game.gameId, userId, fieldData, services);
+
+      // Показать комбинированное сообщение с fastTrack событием
+      await messageService.sendCombinedRollMoveFastTrackMessage(
+        chatId,
+        currentPlayer,
+        steps,
+        moveResult.newPosition,
+        moveResult.inFastTrack,
+        moveResult.paydayEvents || [],
+        fieldData
+      );
+
+      // Для поля INVESTING не передаем ход автоматически - ждем действий игрока
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       if (moveResult.inFastTrack) {
@@ -537,6 +564,21 @@ async function handleCallbackQuery(query, services) {
         // Пропустить market событие
         const { handleSkipMarket } = require('./market');
         await handleSkipMarket(query, services);
+        break;
+
+      case 'pay_fastTrack':
+        // Оплата fastTrack события
+        await handlePayFastTrack(query, services);
+        break;
+
+      case 'roll_dice_fastTrack':
+        // Бросок кубика для fastTrack
+        await handleRollDiceFastTrack(query, services);
+        break;
+
+      case 'skip_fastTrack':
+        // Пропуск fastTrack события
+        await handleSkipFastTrack(query, services);
         break;
 
       default:

@@ -1148,6 +1148,141 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет комбинированное сообщение с броском, перемещением, выплатами и fastTrack событием
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} steps - Количество шагов
+   * @param {number} newPosition - Новая позиция
+   * @param {boolean} inFastTrack - На Fast Track
+   * @param {Array} paydayEvents - Массив событий выплат
+   * @param {Object} fastTrackEvent - fastTrack событие
+   */
+  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent) {
+    const trackName = '🚀 Скоростная дорожка';
+
+    let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
+    message += `📍 ${trackName}, поле ${newPosition + 1}\n\n`;
+
+    // Суммируем выплаты
+    let totalPayday = 0;
+    let updatedCash = player.cash;
+    if (paydayEvents && paydayEvents.length > 0) {
+      for (const event of paydayEvents) {
+        totalPayday += event.cashFlow;
+      }
+      updatedCash += totalPayday;
+
+      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+      const absPayday = Math.abs(totalPayday);
+
+      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+    }
+
+    message += `💼 ${fastTrackEvent.title}\n\n`;
+    message += `📝 ${fastTrackEvent.description}\n\n`;
+
+    // Показать параметры события
+    if (fastTrackEvent.cost && fastTrackEvent.passiveIncome) {
+      message += `💰 Стоимость: ${formatNumber(fastTrackEvent.cost)} ₽\n`;
+      message += `💵 Пассивный доход: ${formatNumber(fastTrackEvent.passiveIncome)} ₽/мес\n`;
+    } else if (fastTrackEvent.cost) {
+      message += `💰 Стоимость: ${formatNumber(fastTrackEvent.cost)} ₽\n`;
+    } else if (fastTrackEvent.expenseBalanceMultiply) {
+      const amount = Math.floor(player.cash * fastTrackEvent.expenseBalanceMultiply);
+      message += `💸 Расходы: ${formatNumber(amount)} ₽ (${fastTrackEvent.expenseBalanceMultiply * 100}% от баланса)\n`;
+    } else if (fastTrackEvent.cash) {
+      message += `💰 Получение: ${formatNumber(fastTrackEvent.cash)} ₽\n`;
+    } else if (fastTrackEvent.charity) {
+      message += `❤️ Благотворительность - выбор количества кубиков\n`;
+    } else if (fastTrackEvent.dice) {
+      message += `🎲 Рискованное событие (кубик >= ${fastTrackEvent.dice})\n`;
+      if (fastTrackEvent.cash) {
+        message += `💰 Награда: ${formatNumber(fastTrackEvent.cash)} ₽\n`;
+      }
+      if (fastTrackEvent.passiveIncome) {
+        message += `💵 Пассивный доход: ${formatNumber(fastTrackEvent.passiveIncome)} ₽/мес\n`;
+      }
+    }
+
+    message += `\n💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+
+    if (!player.inFastTrack) {
+      message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+      message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+      message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
+    } else {
+      message += `\n`;
+    }
+
+    message += `Что вы хотите сделать?`;
+
+    // Генерируем клавиатуру для fastTrack события
+    const keyboard = this.generateFastTrackKeyboard(fastTrackEvent, player);
+
+    await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  }
+
+  /**
+   * Генерирует клавиатуру для fastTrack события
+   * @param {Object} fastTrackEvent - fastTrack событие
+   * @param {Object} player - Объект игрока
+   * @returns {Object} Клавиатура
+   */
+  generateFastTrackKeyboard(fastTrackEvent, player) {
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    if (fastTrackEvent.cash) {
+      // Просто получение денег - одна кнопка
+      keyboard.inline_keyboard.push([{
+        text: `💰 Получить ${formatNumber(fastTrackEvent.cash)} ₽`,
+        callback_data: 'pay_fastTrack'
+      }]);
+    } else if (fastTrackEvent.charity) {
+      // Благотворительность - выбор количества кубиков
+      keyboard.inline_keyboard.push(
+        [{ text: '1 кубик', callback_data: 'pay_fastTrack' }],
+        [{ text: '2 кубика', callback_data: 'pay_fastTrack' }],
+        [{ text: '3 кубика', callback_data: 'pay_fastTrack' }]
+      );
+    } else if (fastTrackEvent.dice) {
+      // Рискованное событие - бросок кубика
+      keyboard.inline_keyboard.push([{
+        text: `🎲 Бросить кубик`,
+        callback_data: 'roll_dice_fastTrack'
+      }]);
+    } else if (fastTrackEvent.expenseBalanceMultiply) {
+      // Расходы процента от баланса
+      const amount = Math.floor(player.cash * fastTrackEvent.expenseBalanceMultiply);
+      keyboard.inline_keyboard.push([{
+        text: `💸 Оплатить ${formatNumber(amount)} ₽`,
+        callback_data: 'pay_fastTrack'
+      }]);
+    } else if (fastTrackEvent.cost) {
+      // Обычные расходы или инвестиции
+      keyboard.inline_keyboard.push([{
+        text: `💰 Оплатить ${formatNumber(fastTrackEvent.cost)} ₽`,
+        callback_data: 'pay_fastTrack'
+      }]);
+    }
+
+    // Для событий без обязательных действий добавляем пропуск
+    // Исключаем поля с expenseBalanceMultiply - они всегда требуют оплаты
+    if (fastTrackEvent.cash && !fastTrackEvent.dice && !fastTrackEvent.charity && !fastTrackEvent.expenseBalanceMultiply) {
+      keyboard.inline_keyboard.push([{
+        text: '⏭️ Пропустить',
+        callback_data: 'skip_fastTrack'
+      }]);
+    }
+
+    return keyboard;
+  }
+
+  /**
    * Отправляет сообщение выбора типа сделки
    * @param {number} chatId - ID чата
    * @returns {Promise<number>} ID отправленного сообщения

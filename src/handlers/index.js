@@ -4,6 +4,7 @@ const callbacks = require('./callbacks');
 const deals = require('./deals');
 const profile = require('./profile');
 const charity = require('./charity');
+const fastTrack = require('./fastTrack');
 
 // Экспорт всех функций для совместимости с main.js
 module.exports = {

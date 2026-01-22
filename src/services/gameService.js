@@ -1661,6 +1661,199 @@ class GameService {
       return { success: true };
     }
   }
+
+  /**
+   * Оплачивает fastTrack расходы
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} amount - Сумма расходов
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async payFastTrackExpense(gameId, userId, amount) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    // Проверяем хватает ли денег
+    if (player.cash < amount) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем расходы
+    const newCash = player.cash - amount;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Покупает fastTrack актив
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} fastTrackEvent - Объект fastTrack события
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async buyFastTrackAsset(gameId, userId, fastTrackEvent) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    // Проверяем хватает ли денег
+    if (player.cash < fastTrackEvent.cost) {
+      return { success: false, error: 'insufficient_funds' };
+    }
+
+    // Списываем стоимость
+    const newCash = player.cash - fastTrackEvent.cost;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    // Добавляем актив
+    const asset = {
+      id: `fastTrack_${Date.now()}`,
+      title: fastTrackEvent.title,
+      cost: fastTrackEvent.cost,
+      cashFlow: fastTrackEvent.passiveIncome || 0,
+      type: 'fast_track_asset',
+      description: fastTrackEvent.description
+    };
+
+    await this.databaseService.addAsset(gameId, userId, asset);
+
+    return { success: true };
+  }
+
+  /**
+   * Добавляет наличные игроку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} amount - Сумма наличных
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async addFastTrackCash(gameId, userId, amount) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const newCash = player.cash + amount;
+
+    // Обновляем баланс
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Добавляет пассивный доход игроку
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} amount - Сумма пассивного дохода
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async addFastTrackPassiveIncome(gameId, userId, amount) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+    const newPassiveIncome = player.passiveIncome + amount;
+    const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+
+    // Обновляем показатели
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+          [`players.${playerIndex}.cashFlow`]: newCashFlow
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Активирует эффект благотворительности
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async activateCharity(gameId, userId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Устанавливаем эффект благотворительности
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.charityEffect`]: true,
+          [`players.${playerIndex}.charityTurnsLeft`]: 3
+        }
+      }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает текущее fastTrack событие
+   * @param {string} gameId - ID игры
+   * @param {Object} fastTrackEvent - Объект fastTrack события
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCurrentFastTrack(gameId, fastTrackEvent) {
+    return await this.databaseService.setCurrentFastTrack(gameId, fastTrackEvent);
+  }
 }
 
 module.exports = GameService;

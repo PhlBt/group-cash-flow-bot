@@ -966,6 +966,28 @@ class DatabaseService {
   }
 
   /**
+   * Устанавливает текущее fastTrack событие
+   * @param {string} gameId - ID игры
+   * @param {Object} fastTrackEvent - Объект fastTrack события
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setCurrentFastTrack(gameId, fastTrackEvent) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { currentFastTrack: fastTrackEvent } }
+    );
+
+    return { success: true };
+  }
+
+  /**
    * Устанавливает текущую market карточку
    * @param {string} gameId - ID игры
    * @param {Object} marketCard - Объект market карточки
