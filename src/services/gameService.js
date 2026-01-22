@@ -2054,17 +2054,17 @@ class GameService {
     }
 
     // Проверяем хватает ли денег
-    if (player.cash < cost) {
+    if ((player.fastTrackCash || 0) < cost) {
       return { success: false, error: 'insufficient_funds' };
     }
 
     // Списываем стоимость
-    const newCash = player.cash - cost;
+    const newCash = (player.fastTrackCash || 0) - cost;
 
     // Обновляем баланс
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
-      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+      { $set: { [`players.${playerIndex}.fastTrackCash`]: newCash } }
     );
 
     return {
