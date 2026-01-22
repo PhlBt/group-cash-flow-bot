@@ -1,7 +1,8 @@
 class GameService {
-  constructor(databaseService, userStatsService) {
+  constructor(databaseService, userStatsService, messageService = null) {
     this.databaseService = databaseService;
     this.userStatsService = userStatsService;
+    this.messageService = messageService;
   }
 
   /**

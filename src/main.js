@@ -36,7 +36,7 @@ async function connectToMongoDB() {
     databaseService = new DatabaseService(MONGODB_URL, MONGODB_DATABASE);
     await databaseService.connect();
     userStatsService = new UserStatsService(databaseService);
-    gameService = new GameService(databaseService, userStatsService);
+    gameService = new GameService(databaseService, userStatsService, messageService);
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);

@@ -504,13 +504,44 @@ CashFlow - настольная игра о финансовом планиро�
    * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendWaitingRoomMessage(chatId, game) {
-    const playersList = game.players.map(player => `- ${player.username}`).join('\n');
-    const waitingText = game.players.length === 1 ? 'Этот игрок ждёт вас' : 'Эти игроки ждут вас';
+    const playersList = game.players.map(player => {
+      const status = player.dream ? '✅' : '❌';
+      return `${status} ${player.username}`;
+    }).join('\n');
+
+    const allDreamsSelected = game.players.every(player => player.dream);
+    const waitingText = allDreamsSelected
+      ? 'Все игроки выбрали мечту! Можно начинать игру.'
+      : 'Ожидание выбора мечты всеми игроками...';
 
     const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
 
+    // Всегда показывать кнопку присоединения
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🎮 Присоединиться к игре', callback_data: 'play' }
+        ],
+        [
+          { text: '📋 Правила игры', callback_data: 'rules' },
+          { text: '❓ Помощь', callback_data: 'help' }
+        ]
+      ]
+    };
+
+    // Добавить кнопку "start_game" в зависимости от статуса выбора мечты
+    if (allDreamsSelected) {
+      keyboard.inline_keyboard.push([
+        { text: '🚀 Начать игру', callback_data: 'start_game' }
+      ]);
+    } else {
+      keyboard.inline_keyboard.push([
+        { text: '🚫 Нельзя начать (не все выбрали мечту)', callback_data: 'start_game_blocked' }
+      ]);
+    }
+
     const sentMessage = await this.sendMessage(chatId, message, {
-      reply_markup: waitingRoomKeyboard
+      reply_markup: keyboard
     });
 
     return sentMessage.message_id;
@@ -523,13 +554,44 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} game - Объект игры
    */
   async updateWaitingRoomMessage(chatId, messageId, game) {
-    const playersList = game.players.map(player => `- ${player.username}`).join('\n');
-    const waitingText = game.players.length === 1 ? 'Этот игрок ждёт вас' : 'Эти игроки ждут вас';
+    const playersList = game.players.map(player => {
+      const status = player.dream ? '✅' : '❌';
+      return `${status} ${player.username}`;
+    }).join('\n');
+
+    const allDreamsSelected = game.players.every(player => player.dream);
+    const waitingText = allDreamsSelected
+      ? 'Все игроки выбрали мечту! Можно начинать игру.'
+      : 'Ожидание выбора мечты всеми игроками...';
 
     const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
 
+    // Всегда показывать кнопку присоединения
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🎮 Присоединиться к игре', callback_data: 'play' }
+        ],
+        [
+          { text: '📋 Правила игры', callback_data: 'rules' },
+          { text: '❓ Помощь', callback_data: 'help' }
+        ]
+      ]
+    };
+
+    // Добавить кнопку "start_game" в зависимости от статуса выбора мечты
+    if (allDreamsSelected) {
+      keyboard.inline_keyboard.push([
+        { text: '🚀 Начать игру', callback_data: 'start_game' }
+      ]);
+    } else {
+      keyboard.inline_keyboard.push([
+        { text: '🚫 Нельзя начать (не все выбрали мечту)', callback_data: 'start_game_blocked' }
+      ]);
+    }
+
     await this.editMessageText(chatId, messageId, message, {
-      reply_markup: waitingRoomKeyboard
+      reply_markup: keyboard
     });
   }
 
@@ -592,6 +654,91 @@ CashFlow - настольная игра о финансовом планиро�
    */
   async sendErrorMessage(chatId, errorText) {
     await this.sendMessage(chatId, errorText);
+  }
+
+  /**
+   * Отправляет сообщение выбора мечты с пагинацией
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} page - Страница для пагинации (начиная с 0)
+   * @param {number} messageId - ID сообщения для редактирования (опционально)
+   * @param {Array} selectedDreams - Массив названий уже выбранных мечтаний
+   */
+  async sendDreamSelectionMessage(chatId, player, page = 0, messageId = null, selectedDreams = []) {
+    const content = this.generateDreamSelectionContent(player, page, selectedDreams);
+
+    if (messageId) {
+      // Редактируем существующее сообщение
+      await this.editMessageText(chatId, messageId, content.text, {
+        parse_mode: 'Markdown',
+        reply_markup: content.keyboard
+      });
+    } else {
+      // Отправляем новое сообщение
+      const sentMessage = await this.sendMessage(chatId, content.text, {
+        parse_mode: 'Markdown',
+        reply_markup: content.keyboard
+      });
+      return sentMessage.message_id;
+    }
+  }
+
+  /**
+   * Генерирует текст и клавиатуру для сообщения выбора мечты с пагинацией
+   * @param {Object} player - Объект игрока
+   * @param {number} page - Страница для пагинации (начиная с 0)
+   * @param {Array} selectedDreams - Массив названий уже выбранных мечтаний
+   * @returns {Object} Объект с text и keyboard
+   */
+  generateDreamSelectionContent(player, page = 0, selectedDreams = []) {
+    const { FAST_TRACK_FIELDS, FIELD_TYPES } = require('../game/board');
+    const ITEMS_PER_PAGE = 5;
+
+    // Получаем список мечтаний (полей типа DREAM), исключая уже выбранные другими игроками
+    const dreams = FAST_TRACK_FIELDS.filter(field =>
+      field.type === FIELD_TYPES.DREAM &&
+      !selectedDreams.includes(field.id)
+    );
+    const totalPages = Math.ceil(dreams.length / ITEMS_PER_PAGE);
+    const startIndex = page * ITEMS_PER_PAGE;
+    const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, dreams.length);
+    const pageDreams = dreams.slice(startIndex, endIndex);
+
+    let message = `🎯 ${player.username}, выбери свою мечту!\n\n`;
+    message += `💼 Ваша профессия: ${player.profession}\n\n`;
+    message += `Выберите одну из следующих мечтаний:\n\n`;
+
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    pageDreams.forEach((dream, index) => {
+      const globalIndex = startIndex + index;
+      message += `${globalIndex + 1}. **${dream.title}**\n`;
+      message += `   ${dream.description}\n\n`;
+
+      keyboard.inline_keyboard.push([{
+        text: `${globalIndex + 1}. ${dream.title}`,
+        callback_data: `select_dream_${dream.id}`
+      }]);
+    });
+
+    message += `Страница ${page + 1} из ${totalPages}\n\n`;
+    message += `Выберите мечту, которая мотивирует вас в игре!`;
+
+    // Кнопки навигации
+    const navButtons = [];
+    if (page > 0) {
+      navButtons.push({ text: '⬅️ Назад', callback_data: `dream_page_${page - 1}` });
+    }
+    if (page < totalPages - 1) {
+      navButtons.push({ text: 'Вперед ➡️', callback_data: `dream_page_${page + 1}` });
+    }
+    if (navButtons.length > 0) {
+      keyboard.inline_keyboard.push(navButtons);
+    }
+
+    return { text: message, keyboard };
   }
 
   /**

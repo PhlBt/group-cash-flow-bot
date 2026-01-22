@@ -99,6 +99,7 @@ class DatabaseService {
       inFastTrack: false,
       fastTrackCash: 0,
       fastTrackIncome: 0,
+      dream: null,
       dreamCost: 0,
       charityEffect: false,
       charityTurnsLeft: 0,
@@ -200,6 +201,7 @@ class DatabaseService {
       inFastTrack: false,
       fastTrackCash: 0,
       fastTrackIncome: 0,
+      dream: null,
       dreamCost: 0,
       charityEffect: false,
       charityTurnsLeft: 0,
@@ -1189,6 +1191,39 @@ class DatabaseService {
     await gamesCollection.updateOne(
       { gameId },
       { $set: { creditMultiple: newCreditMultiple } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Устанавливает мечту игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {Object} dream - Объект мечты
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async setPlayerDream(gameId, userId, dream) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      {
+        $set: {
+          [`players.${playerIndex}.dream`]: dream,
+          [`players.${playerIndex}.dreamCost`]: dream.cost
+        }
+      }
     );
 
     return { success: true };

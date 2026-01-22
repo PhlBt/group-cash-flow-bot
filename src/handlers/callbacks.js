@@ -302,45 +302,78 @@ async function handleCallbackQuery(query, services) {
     switch (data) {
       case 'play':
 
-        // Проверить наличие активной игры для чата
-        const existingGame = await gameService.getActiveGameByChatId(chatId);
-        if (existingGame) {
-          // Присоединиться к существующей игре
-          const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
-          if (joinResult.success) {
-            // Удалить кнопки с сообщения
-            await messageService.removeMessageKeyboard(chatId, query.message.message_id);
-            // Отправить карточку игрока
-            await messageService.sendPlayerCard(chatId, joinResult.player);
+    // Проверить наличие активной игры для чата
+    const existingGame = await gameService.getActiveGameByChatId(chatId);
+    if (existingGame) {
+      // Присоединиться к существующей игре
+      const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
+      if (joinResult.success) {
+        // Удалить кнопки с сообщения
+        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
-            // Удалить старое сообщение комнаты ожидания и отправить новое
-            const updatedGame = await gameService.getGame(existingGame.gameId);
-            if (existingGame.waitingMessageId) {
-              await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
+        // Получить список уже выбранных мечтаний
+        const selectedDreams = existingGame.players
+          .filter(p => p.dream && p.userId !== joinResult.player.userId)
+          .map(p => p.dream.id);
+
+        // Отправить выбор мечты новому игроку
+        const messageId = await messageService.sendDreamSelectionMessage(chatId, joinResult.player, 0, null, selectedDreams);
+        // Сохранить ID сообщения мечты для игрока
+        const playerIndex = existingGame.players.length; // Индекс нового игрока
+        await gameService.databaseService.getDb().collection('games').updateOne(
+          { gameId: existingGame.gameId },
+          {
+            $set: {
+              [`players.${playerIndex}.dreamMessageId`]: messageId
             }
-            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
-            await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
-          } else {
-            await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
-        } else {
-          // Удалить кнопки с сообщения
-          await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+        );
 
-          // Создать новую игру для чата
-          const gameId = await gameService.createGame(chatId, userId, username);
+        // Отправить карточку игрока
+        await messageService.sendPlayerCard(chatId, joinResult.player);
 
-          // Отправить карточку игрока создателю
-          const game = await gameService.getGame(gameId);
-          const player = game.players.find(p => p.userId === userId);
-          if (player) {
-            await messageService.sendPlayerCard(chatId, player);
-          }
-
-          // Отправить сообщение комнаты ожидания
-          const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
-          await gameService.setWaitingMessageId(gameId, messageId);
+        // Удалить старое сообщение комнаты ожидания и отправить новое
+        const updatedGame = await gameService.getGame(existingGame.gameId);
+        if (existingGame.waitingMessageId) {
+          await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
         }
+        const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+        await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
+      } else {
+        await messageService.sendJoinErrorMessage(chatId, joinResult.error);
+      }
+    } else {
+      // Удалить кнопки с сообщения
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
+      // Создать новую игру для чата
+      const gameId = await gameService.createGame(chatId, userId, username);
+
+      // Отправить выбор мечты создателю
+      const game = await gameService.getGame(gameId);
+      const player = game.players.find(p => p.userId === userId);
+      if (player) {
+        const messageId = await messageService.sendDreamSelectionMessage(chatId, player, 0, null, []);
+        // Сохранить ID сообщения мечты для создателя
+        await gameService.databaseService.getDb().collection('games').updateOne(
+          { gameId },
+          {
+            $set: {
+              [`players.0.dreamMessageId`]: messageId
+            }
+          }
+        );
+      }
+
+      // Отправить карточку игрока создателю
+      if (player) {
+        await messageService.sendPlayerCard(chatId, player);
+      }
+
+      // Отправить сообщение комнаты ожидания
+      const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
+      await gameService.setWaitingMessageId(gameId, messageId);
+    }
         break;
 
       case 'start_game':
@@ -609,6 +642,14 @@ async function handleCallbackQuery(query, services) {
         else if (data.startsWith('credits_page_')) {
           const page = parseInt(data.split('_')[2], 10);
           await handleCreditsPage(query, page, services);
+        }
+        else if (data.startsWith('select_dream_')) {
+          const dreamTitle = data.replace('select_dream_', '');
+          await handleSelectDream(query, dreamTitle, services);
+        }
+        else if (data.startsWith('dream_page_')) {
+          const page = parseInt(data.split('_')[2], 10);
+          await handleDreamPage(query, page, services);
         }
         else {
           console.warn('Unknown callback data:', data);
@@ -1177,6 +1218,104 @@ async function handlePayDismissalCreditCard(query, services) {
   }
 }
 
+/**
+ * Обрабатывает выбор мечты игроком
+ * @param {Object} query - Callback query от Telegram
+ * @param {string} dreamTitle - Название выбранной мечты
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleSelectDream(query, dreamTitle, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Найти мечту по ID
+    const { FAST_TRACK_FIELDS, FIELD_TYPES } = require('../game/board');
+    const selectedDream = FAST_TRACK_FIELDS.find(field =>
+      field.type === FIELD_TYPES.DREAM && field.id === dreamTitle
+    );
+
+    if (!selectedDream) {
+      await messageService.sendErrorMessage(chatId, 'Мечта не найдена.');
+      return;
+    }
+
+    // Проверить, что эта мечта еще не выбрана другим игроком
+    const playersDreamIds = game.players.map(p => p.dream ? p.dream.id : null).filter(id => id);
+    if (playersDreamIds.includes(selectedDream.id)) {
+      await messageService.sendErrorMessage(chatId, 'Эта мечта уже выбрана другим игроком!');
+      return;
+    }
+
+    // Сохранить выбранную мечту
+    await gameService.databaseService.setPlayerDream(game.gameId, userId, selectedDream);
+
+    // Удалить сообщение выбора мечты
+    await messageService.deleteMessage(chatId, query.message.message_id);
+
+    // Отправить сообщение о выборе мечты
+    await messageService.sendErrorMessage(chatId, `🎯 ${query.from.first_name || query.from.username || 'Игрок'} выбрал мечту: "${selectedDream.title}"`);
+
+    // Обновить комнату ожидания
+    const updatedGame = await gameService.getGame(game.gameId);
+    if (game.waitingMessageId) {
+      await messageService.updateWaitingRoomMessage(chatId, game.waitingMessageId, updatedGame);
+    }
+
+  } catch (error) {
+    console.error('Error in handleSelectDream:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе мечты.');
+  }
+}
+
+/**
+ * Обрабатывает пагинацию списка мечтаний
+ * @param {Object} query - Callback query от Telegram
+ * @param {number} page - Номер страницы
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleDreamPage(query, page, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Найти игрока, который выбирает мечту
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      return;
+    }
+
+    // Получить список уже выбранных мечтаний
+    const selectedDreams = game.players
+      .filter(p => p.dream && p.userId !== player.userId)
+      .map(p => p.dream.id);
+
+    // Обновить сообщение с новой страницей мечтаний
+    await messageService.sendDreamSelectionMessage(chatId, player, page, query.message.message_id, selectedDreams);
+
+  } catch (error) {
+    console.error('Error in handleDreamPage:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.');
+  }
+}
+
 module.exports = {
   handleCallbackQuery,
   handleRollDice,
@@ -1189,5 +1328,7 @@ module.exports = {
   handleAssetsPage,
   handleCreditsPage,
   handlePayDismissal,
-  handlePayDismissalCreditCard
+  handlePayDismissalCreditCard,
+  handleSelectDream,
+  handleDreamPage
 };
