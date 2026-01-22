@@ -1431,7 +1431,8 @@ CashFlow - настольная игра о финансовом планиро�
     } else if (fastTrackEvent.data.cost) {
       message += `💰 Стоимость: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
     } else if (fastTrackEvent.data.expenseBalanceMultiply) {
-      const amount = Math.floor(player.cash * fastTrackEvent.data.expenseBalanceMultiply);
+      const playerBalance = player.fastTrackCash || 0;
+      const amount = Math.floor(playerBalance * fastTrackEvent.data.expenseBalanceMultiply);
       message += `💸 Расходы: ${formatNumber(amount)} ₽ (${fastTrackEvent.data.expenseBalanceMultiply * 100}% от баланса)\n`;
     } else if (fastTrackEvent.data.cash) {
       message += `💰 Получение: ${formatNumber(fastTrackEvent.data.cash)} ₽\n`;
@@ -1447,7 +1448,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    message += `\n💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `\n💰 Баланс: ${formatNumber(player.fastTrackCash)} ₽\n`;
 
     if (!player.inFastTrack) {
       message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
@@ -1496,7 +1497,7 @@ CashFlow - настольная игра о финансовом планиро�
         // Благотворительность - оплата за эффект
         if (eventData.cost) {
           keyboard.inline_keyboard.push([{
-            text: `💰 Оплатить ${formatNumber(eventData.cost)} ₽`,
+            text: `💰 Пожертвовать ${formatNumber(eventData.cost)} ₽`,
             callback_data: 'pay_fastTrack'
           }]);
         }
@@ -1505,7 +1506,8 @@ CashFlow - настольная игра о финансовом планиро�
       case FIELD_TYPES.EXPENSES:
         // Расходы - оплата процента от баланса
         if (eventData.expenseBalanceMultiply) {
-          const amount = Math.floor(player.cash * eventData.expenseBalanceMultiply);
+          const playerBalance = player.fastTrackCash || 0;
+          const amount = Math.floor(playerBalance * eventData.expenseBalanceMultiply);
           keyboard.inline_keyboard.push([{
             text: `💸 Оплатить ${formatNumber(amount)} ₽`,
             callback_data: 'pay_fastTrack'
@@ -1515,47 +1517,32 @@ CashFlow - настольная игра о финансовом планиро�
 
       case FIELD_TYPES.INVESTING:
         // Инвестиции - проверяем занятость поля
-        if (game && game.gameService && game.gameId) {
-          const occupationCheck = game.gameService.isFastTrackFieldOccupied(game.gameId, player.userId, fastTrackEvent);
-          if (occupationCheck.success && occupationCheck.occupied) {
-            // Поле занято - только кнопка пропуска
-            keyboard.inline_keyboard.push([{
-              text: '⏭️ Пропустить',
-              callback_data: 'skip_fastTrack'
-            }]);
-          } else {
-            // Поле свободно - кнопки инвестирования и пропуска
-            if (eventData.dice) {
-              // Рискованное событие - бросок кубика
-              keyboard.inline_keyboard.push([{
-                text: `🎲 Инвестировать ${formatNumber(eventData.cost)} ₽`,
-                callback_data: 'invest_fastTrack'
-              }]);
-            } else if (eventData.cost) {
-              // Обычные инвестиции
-              keyboard.inline_keyboard.push([{
-                text: `💰 Инвестировать ${formatNumber(eventData.cost)} ₽`,
-                callback_data: 'invest_fastTrack'
-              }]);
-            }
-            keyboard.inline_keyboard.push([{
-              text: '⏭️ Пропустить',
-              callback_data: 'skip_fastTrack'
-            }]);
-          }
+        const occupationCheck = game.gameService.isFastTrackFieldOccupied(game.gameId, player.userId, fastTrackEvent);
+        if (occupationCheck.success && occupationCheck.occupied) {
+          // Поле занято - только кнопка пропуска
+          keyboard.inline_keyboard.push([{
+            text: '⏭️ Пропустить',
+            callback_data: 'skip_fastTrack'
+          }]);
         } else {
-          // Fallback для случаев без game объекта
+          // Поле свободно - кнопки инвестирования и пропуска
           if (eventData.dice) {
+            // Рискованное событие - бросок кубика
             keyboard.inline_keyboard.push([{
-              text: `🎲 Бросить кубик`,
-              callback_data: 'roll_dice_fastTrack'
+              text: `🎲 Инвестировать ${formatNumber(eventData.cost)} ₽`,
+              callback_data: 'invest_fastTrack'
             }]);
           } else if (eventData.cost) {
+            // Обычные инвестиции
             keyboard.inline_keyboard.push([{
               text: `💰 Инвестировать ${formatNumber(eventData.cost)} ₽`,
-              callback_data: 'pay_fastTrack'
+              callback_data: 'invest_fastTrack'
             }]);
           }
+          keyboard.inline_keyboard.push([{
+            text: '⏭️ Пропустить',
+            callback_data: 'skip_fastTrack'
+          }]);
         }
         break;
 

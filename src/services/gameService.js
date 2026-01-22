@@ -1709,18 +1709,21 @@ class GameService {
 
     const player = game.players[playerIndex];
 
+    // Для Fast Track используем fastTrackCash вместо cash
+    const currentBalance = player.fastTrackCash || 0;
+
     // Проверяем хватает ли денег
-    if (player.cash < amount) {
+    if (currentBalance < amount) {
       return { success: false, error: 'insufficient_funds' };
     }
 
     // Списываем расходы
-    const newCash = player.cash - amount;
+    const newBalance = currentBalance - amount;
 
-    // Обновляем баланс
+    // Обновляем баланс fastTrackCash
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
-      { $set: { [`players.${playerIndex}.cash`]: newCash } }
+      { $set: { [`players.${playerIndex}.fastTrackCash`]: newBalance } }
     );
 
     return { success: true };

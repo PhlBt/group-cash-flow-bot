@@ -67,8 +67,9 @@ async function handlePayFastTrack(query, services) {
     // Обработать разные типы fastTrack событий
     if (fastTrackEvent.expenseBalanceMultiply) {
       // Оплата процента от баланса - списывается все, если денег недостаточно
-      const calculatedAmount = Math.floor(currentPlayer.cash * fastTrackEvent.expenseBalanceMultiply);
-      const amount = Math.min(calculatedAmount, currentPlayer.cash); // Не больше текущего баланса
+      const playerBalance = currentPlayer.fastTrackCash || 0;
+      const calculatedAmount = Math.floor(playerBalance * fastTrackEvent.expenseBalanceMultiply);
+      const amount = Math.min(calculatedAmount, playerBalance); // Не больше текущего баланса
 
       // Оплатить
       const payResult = await gameService.payFastTrackExpense(game.gameId, userId, amount);
@@ -120,7 +121,7 @@ async function handlePayFastTrack(query, services) {
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешном выполнении
-    let successMessage = `✅ ${currentPlayer.username} выполнил "${fastTrackEvent.title}"`;
+    let successMessage = `✅ ${currentPlayer.username} инвестировал в "${fastTrackEvent.title}"`;
     if (fastTrackEvent.cash) {
       successMessage += ` и получил ${formatNumber(fastTrackEvent.cash)} ₽`;
     }
