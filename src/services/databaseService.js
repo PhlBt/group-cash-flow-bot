@@ -118,6 +118,8 @@ class DatabaseService {
       creditMultiple: 0,
       endGameVotes: [],
       endGameMessageId: null,
+      kickVotes: {},
+      kickMessageId: null,
       waitingMessageId: null,
       currentDeal: null,
       currentDealQuantity: 1,
@@ -372,6 +374,164 @@ class DatabaseService {
       { gameId },
       { $set: { status: 'finished', finishedAt: new Date() } }
     );
+
+    return { success: true };
+  }
+
+  /**
+   * Инициирует голосование за исключение игрока
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @param {number} messageId - ID сообщения голосования
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async initiateKickVote(userId, gameId, messageId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.status !== 'active') {
+      return { success: false, error: 'game_not_active' };
+    }
+
+    if (game.players.length < 3) {
+      return { success: false, error: 'not_enough_players' };
+    }
+
+    if (!game.players.some(player => player.userId === userId)) {
+      return { success: false, error: 'not_player' };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { kickVotes: {}, kickMessageId: messageId } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Голосует за исключение игрока
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @param {string} targetUserId - ID цели голосования
+   * @returns {Promise<{success: boolean, error?: string, shouldKick?: boolean, kickedUserId?: string}>} Результат операции
+   */
+  async voteToKickPlayer(userId, gameId, targetUserId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    if (game.status !== 'active') {
+      return { success: false, error: 'game_not_active' };
+    }
+
+    if (!game.players.some(player => player.userId === userId)) {
+      return { success: false, error: 'not_player' };
+    }
+
+    if (!game.players.some(player => player.userId === targetUserId)) {
+      return { success: false, error: 'target_not_player' };
+    }
+
+    if (userId === targetUserId) {
+      return { success: false, error: 'cannot_vote_self' };
+    }
+
+    if (game.kickVotes[userId]) {
+      return { success: false, error: 'already_voted' };
+    }
+
+    const newKickVotes = { ...game.kickVotes, [userId]: targetUserId };
+
+    // Подсчитываем голоса за каждого игрока
+    const voteCounts = {};
+    Object.values(newKickVotes).forEach(target => {
+      voteCounts[target] = (voteCounts[target] || 0) + 1;
+    });
+
+    // Проверяем majority для каждого
+    const majority = Math.ceil(game.players.length / 2);
+    let shouldKick = false;
+    let kickedUserId = null;
+
+    for (const [targetId, count] of Object.entries(voteCounts)) {
+      if (count >= majority) {
+        shouldKick = true;
+        kickedUserId = targetId;
+        break;
+      }
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { kickVotes: newKickVotes } }
+    );
+
+    return { success: true, shouldKick, kickedUserId };
+  }
+
+  /**
+   * Удаляет игрока из игры
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока для удаления
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async removePlayerFromGame(gameId, userId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(player => player.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Удаляем игрока из массива
+    const updatedPlayers = game.players.filter(player => player.userId !== userId);
+
+    // Корректируем currentPlayerIndex если нужно
+    let newCurrentIndex = game.currentPlayerIndex;
+    if (playerIndex < game.currentPlayerIndex) {
+      newCurrentIndex = game.currentPlayerIndex - 1;
+    } else if (playerIndex === game.currentPlayerIndex) {
+      newCurrentIndex = game.currentPlayerIndex % updatedPlayers.length;
+    }
+
+    // Если остался 1 игрок, завершаем игру
+    if (updatedPlayers.length === 1) {
+      await gamesCollection.updateOne(
+        { gameId },
+        {
+          $set: {
+            players: updatedPlayers,
+            currentPlayerIndex: 0,
+            status: 'finished',
+            finishedAt: new Date(),
+            winner: updatedPlayers[0].userId
+          }
+        }
+      );
+    } else {
+      await gamesCollection.updateOne(
+        { gameId },
+        {
+          $set: {
+            players: updatedPlayers,
+            currentPlayerIndex: newCurrentIndex
+          }
+        }
+      );
+    }
 
     return { success: true };
   }

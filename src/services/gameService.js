@@ -108,6 +108,57 @@ class GameService {
   }
 
   /**
+   * Инициирует голосование за исключение игрока
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @param {number} messageId - ID сообщения голосования
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async initiateKickVote(userId, gameId, messageId) {
+    return await this.databaseService.initiateKickVote(userId, gameId, messageId);
+  }
+
+  /**
+   * Голосует за исключение игрока
+   * @param {string} userId - ID пользователя
+   * @param {string} gameId - ID игры
+   * @param {string} targetUserId - ID цели голосования
+   * @returns {Promise<{success: boolean, error?: string, shouldKick?: boolean, kickedUserId?: string}>} Результат операции
+   */
+  async voteToKickPlayer(userId, gameId, targetUserId) {
+    const voteResult = await this.databaseService.voteToKickPlayer(userId, gameId, targetUserId);
+
+    if (voteResult.success && voteResult.shouldKick && voteResult.kickedUserId) {
+      // Исключаем игрока
+      const removeResult = await this.databaseService.removePlayerFromGame(gameId, voteResult.kickedUserId);
+
+      if (removeResult.success) {
+        // Обновляем статистику проигрыша для исключенного игрока
+        await this.userStatsService.updateUserStats(voteResult.kickedUserId, { losses: (await this.userStatsService.getUserStats(voteResult.kickedUserId)).losses + 1 });
+
+        // Проверяем, завершилась ли игра (остался 1 игрок)
+        const game = await this.databaseService.getGame(gameId);
+        if (game && game.status === 'finished' && game.winner) {
+          // Обновляем статистику победы для оставшегося игрока
+          await this.userStatsService.updateUserStats(game.winner, { wins: (await this.userStatsService.getUserStats(game.winner)).wins + 1 });
+        }
+      }
+    }
+
+    return voteResult;
+  }
+
+  /**
+   * Удаляет игрока из игры
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока для удаления
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async removePlayerFromGame(gameId, userId) {
+    return await this.databaseService.removePlayerFromGame(gameId, userId);
+  }
+
+  /**
    * Устанавливает ID сообщения комнаты ожидания
    * @param {string} gameId - ID игры
    * @param {number} messageId - ID сообщения

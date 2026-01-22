@@ -236,6 +236,48 @@ async function handleEndGameVote(query, services) {
   }
 }
 
+/**
+ * Обрабатывает команду /votekick
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService }
+ */
+async function handleVoteKick(msg, services) {
+  const { gameService, messageService } = services;
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const activeGame = await gameService.getActiveGameByChatId(chatId);
+
+    if (!activeGame) {
+      await messageService.sendErrorMessage(chatId, 'Активная игра не найдена в этом чате.');
+      return;
+    }
+
+    if (activeGame.players.length < 3) {
+      await messageService.sendErrorMessage(chatId, 'Недостаточно игроков для голосования (минимум 3).');
+      return;
+    }
+
+    if (!activeGame.players.some(player => player.userId === userId)) {
+      await messageService.sendErrorMessage(chatId, 'Вы не участник этой игры.');
+      return;
+    }
+
+    // Инициировать голосование
+    const messageId = await messageService.sendKickVoteMessage(chatId, activeGame, {});
+    const result = await gameService.initiateKickVote(userId, activeGame.gameId, messageId);
+
+    if (!result.success) {
+      await messageService.sendErrorMessage(chatId, `Ошибка при создании голосования: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Error in handleVoteKick:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при создании голосования.');
+  }
+}
+
 module.exports = {
   handleStart,
   handleHelp,
@@ -244,5 +286,6 @@ module.exports = {
   handleEndGame,
   handleProfile,
   handleRules,
-  handleEndGameVote
+  handleEndGameVote,
+  handleVoteKick
 };

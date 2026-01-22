@@ -50,7 +50,8 @@ async function setBotCommands() {
     { command: 'help', description: 'Показать список всех доступных команд' },
     { command: 'rules', description: 'Показать правила игры' },
     { command: 'profile', description: 'Показать профиль игрока или статистику' },
-    { command: 'endgame', description: 'Начать голосование за окончание игры' }
+    { command: 'endgame', description: 'Начать голосование за окончание игры' },
+    { command: 'votekick', description: 'Начать голосование за исключение игрока' }
   ];
 
   try {
@@ -109,6 +110,15 @@ async function startBot() {
       return;
     }
     await handlers.handleEndGame(msg, services);
+  });
+
+  // Обработчик команды /votekick
+  bot.onText(/\/votekick/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /votekick ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
+    await handlers.handleVoteKick(msg, services);
   });
 
   // Обработчик callback_query от inline кнопок

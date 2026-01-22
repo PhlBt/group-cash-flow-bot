@@ -14,6 +14,7 @@ module.exports = {
   handleNewGame: commands.handleNewGame,
   handlePlay: commands.handlePlay,
   handleEndGame: commands.handleEndGame,
+  handleVoteKick: commands.handleVoteKick,
 
   // Callbacks
   handleCallbackQuery: callbacks.handleCallbackQuery,

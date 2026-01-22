@@ -508,6 +508,182 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+ * Обновляет сообщение комнаты ожидания
+ * @param {number} chatId - ID чата
+ * @param {number} messageId - ID сообщения для обновления
+ * @param {Object} game - Объект игры
+ */
+  async updateWaitingRoomMessage(chatId, messageId, game) {
+    const playersList = game.players.map(player => {
+      const status = player.dream ? '✅' : '❌';
+      return `${status} ${player.username}`;
+    }).join('\n');
+
+    const allDreamsSelected = game.players.every(player => player.dream);
+    const waitingText = allDreamsSelected
+      ? 'Все игроки выбрали мечту! Можно начинать игру.'
+      : 'Ожидание выбора мечты всеми игроками...';
+
+    const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
+
+    // Всегда показывать кнопку присоединения
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🎮 Присоединиться к игре', callback_data: 'play' }
+        ],
+        [
+          { text: '📋 Правила игры', callback_data: 'rules' },
+          { text: '❓ Помощь', callback_data: 'help' }
+        ]
+      ]
+    };
+
+    // Добавить кнопку "start_game" в зависимости от статуса выбора мечты
+    if (allDreamsSelected) {
+      keyboard.inline_keyboard.push([
+        { text: '🚀 Начать игру', callback_data: 'start_game' }
+      ]);
+    } else {
+      keyboard.inline_keyboard.push([
+        { text: '🚫 Нельзя начать (не все выбрали мечту)', callback_data: 'start_game_blocked' }
+      ]);
+    }
+
+    await this.editMessageText(chatId, messageId, message, {
+      reply_markup: keyboard
+    });
+  }
+
+  /**
+   * Отправляет сообщение о голосовании за исключение игрока
+   * @param {number} chatId - ID чата
+   * @param {Object} game - Объект игры
+   * @param {Object} kickVotes - Объект с голосами {userId: targetUserId}
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendKickVoteMessage(chatId, game, kickVotes) {
+    const totalPlayers = game.players.length;
+    const majority = Math.ceil(totalPlayers / 2);
+
+    let message = `🚫 Голосование за исключение игрока!\n\n`;
+
+    // Показываем список игроков с количеством голосов
+    game.players.forEach(player => {
+      const voteCount = Object.values(kickVotes).filter(targetId => targetId === player.userId).length;
+      message += `${player.username} - ${voteCount}/${majority}\n`;
+    });
+
+    message += `\nВыберите игрока, которого хотите исключить из игры:\n\n`;
+
+    // Создаем клавиатуру с игроками (убираем показ количества из кнопок)
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    game.players.forEach(player => {
+      keyboard.inline_keyboard.push([{
+        text: `🚫 ${player.username}`,
+        callback_data: `kick_player_${player.userId}`
+      }]);
+    });
+
+    // Кнопка отмены голосования
+    keyboard.inline_keyboard.push([{
+      text: '❌ Отмена голосования',
+      callback_data: 'cancel_kick_vote'
+    }]);
+
+    // Проверяем, достигнуто ли большинство за кого-то
+    const voteCounts = {};
+    Object.values(kickVotes).forEach(targetId => {
+      voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
+    });
+
+    let kickResult = null;
+    for (const [targetId, count] of Object.entries(voteCounts)) {
+      if (count >= majority) {
+        const targetPlayer = game.players.find(p => p.userId === targetId);
+        kickResult = targetPlayer ? targetPlayer.username : 'Неизвестный игрок';
+        break;
+      }
+    }
+
+    if (kickResult) {
+      message += `\n🎯 Достигнуто большинство! ${kickResult} будет исключен из игры.`;
+    }
+
+    const sentMessage = await this.sendMessage(chatId, message, {
+      reply_markup: keyboard
+    });
+
+    return sentMessage.message_id;
+  }
+
+  /**
+   * Обновляет сообщение о голосовании за исключение игрока
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения
+   * @param {Object} game - Объект игры
+   * @param {Object} kickVotes - Объект с голосами {userId: targetUserId}
+   */
+  async updateKickVoteMessage(chatId, messageId, game, kickVotes) {
+    const totalPlayers = game.players.length;
+    const majority = Math.ceil(totalPlayers / 2);
+
+    let message = `🚫 Голосование за исключение игрока!\n\n`;
+
+    // Показываем список игроков с количеством голосов
+    game.players.forEach(player => {
+      const voteCount = Object.values(kickVotes).filter(targetId => targetId === player.userId).length;
+      message += `${player.username} - ${voteCount}/${majority}\n`;
+    });
+
+    message += `\nВыберите игрока, которого хотите исключить из игры:\n\n`;
+
+    // Создаем клавиатуру с игроками (убираем показ количества из кнопок)
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    game.players.forEach(player => {
+      keyboard.inline_keyboard.push([{
+        text: `🚫 ${player.username}`,
+        callback_data: `kick_player_${player.userId}`
+      }]);
+    });
+
+    // Кнопка отмены голосования
+    keyboard.inline_keyboard.push([{
+      text: '❌ Отмена голосования',
+      callback_data: 'cancel_kick_vote'
+    }]);
+
+    // Проверяем, достигнуто ли большинство за кого-то
+    const voteCounts = {};
+    Object.values(kickVotes).forEach(targetId => {
+      voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
+    });
+
+    let kickResult = null;
+    for (const [targetId, count] of Object.entries(voteCounts)) {
+      if (count >= majority) {
+        const targetPlayer = game.players.find(p => p.userId === targetId);
+        kickResult = targetPlayer ? targetPlayer.username : 'Неизвестный игрок';
+        break;
+      }
+    }
+
+    if (kickResult) {
+      message += `\n🎯 Достигнуто большинство! ${kickResult} будет исключен из игры.`;
+    }
+
+    await this.editMessageText(chatId, messageId, message, {
+      reply_markup: keyboard
+    });
+  }
+
+  /**
    * Отправляет сообщение о завершении игры
    * @param {number} chatId - ID чата
    */
@@ -607,46 +783,61 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Обновляет сообщение комнаты ожидания
+   * Обновляет сообщение о голосовании за исключение игрока
    * @param {number} chatId - ID чата
-   * @param {number} messageId - ID сообщения для обновления
+   * @param {number} messageId - ID сообщения
    * @param {Object} game - Объект игры
+   * @param {Object} kickVotes - Объект с голосами {userId: targetUserId}
    */
-  async updateWaitingRoomMessage(chatId, messageId, game) {
-    const playersList = game.players.map(player => {
-      const status = player.dream ? '✅' : '❌';
-      return `${status} ${player.username}`;
-    }).join('\n');
+  async updateKickVoteMessage(chatId, messageId, game, kickVotes) {
+    const totalPlayers = game.players.length;
+    const majority = Math.ceil(totalPlayers / 2);
 
-    const allDreamsSelected = game.players.every(player => player.dream);
-    const waitingText = allDreamsSelected
-      ? 'Все игроки выбрали мечту! Можно начинать игру.'
-      : 'Ожидание выбора мечты всеми игроками...';
+    let message = `🚫 Голосование за исключение игрока!\n\n`;
 
-    const message = `🎮 Комната ожидания\n\nИгроки:\n${playersList}\n\n${waitingText}`;
+    // Показываем список игроков с количеством голосов
+    game.players.forEach(player => {
+      const voteCount = Object.values(kickVotes).filter(targetId => targetId === player.userId).length;
+      message += `${player.username} - ${voteCount}/${majority}\n`;
+    });
 
-    // Всегда показывать кнопку присоединения
+    message += `\nВыберите игрока, которого хотите исключить из игры:\n\n`;
+
+    // Создаем клавиатуру с игроками (убираем показ количества из кнопок)
     const keyboard = {
-      inline_keyboard: [
-        [
-          { text: '🎮 Присоединиться к игре', callback_data: 'play' }
-        ],
-        [
-          { text: '📋 Правила игры', callback_data: 'rules' },
-          { text: '❓ Помощь', callback_data: 'help' }
-        ]
-      ]
+      inline_keyboard: []
     };
 
-    // Добавить кнопку "start_game" в зависимости от статуса выбора мечты
-    if (allDreamsSelected) {
-      keyboard.inline_keyboard.push([
-        { text: '🚀 Начать игру', callback_data: 'start_game' }
-      ]);
-    } else {
-      keyboard.inline_keyboard.push([
-        { text: '🚫 Нельзя начать (не все выбрали мечту)', callback_data: 'start_game_blocked' }
-      ]);
+    game.players.forEach(player => {
+      keyboard.inline_keyboard.push([{
+        text: `🚫 ${player.username}`,
+        callback_data: `kick_player_${player.userId}`
+      }]);
+    });
+
+    // Кнопка отмены голосования
+    keyboard.inline_keyboard.push([{
+      text: '❌ Отмена голосования',
+      callback_data: 'cancel_kick_vote'
+    }]);
+
+    // Проверяем, достигнуто ли большинство за кого-то
+    const voteCounts = {};
+    Object.values(kickVotes).forEach(targetId => {
+      voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
+    });
+
+    let kickResult = null;
+    for (const [targetId, count] of Object.entries(voteCounts)) {
+      if (count >= majority) {
+        const targetPlayer = game.players.find(p => p.userId === targetId);
+        kickResult = targetPlayer ? targetPlayer.username : 'Неизвестный игрок';
+        break;
+      }
+    }
+
+    if (kickResult) {
+      message += `\n🎯 Достигнуто большинство! ${kickResult} будет исключен из игры.`;
     }
 
     await this.editMessageText(chatId, messageId, message, {
@@ -935,22 +1126,12 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Суммируем выплаты
     let totalPayday = 0;
-    let updatedFastTrackCash = player.fastTrackCash || 0;
+    let updatedCash = player.cash;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        // Для Fast Track используем newFastTrackCash из события
-        if (event.newFastTrackCash !== undefined) {
-          totalPayday += event.cashFlow;
-          updatedFastTrackCash = event.newFastTrackCash;
-        } else {
-          // Для обычных полей используем cashFlow
-          totalPayday += event.cashFlow;
-        }
+        totalPayday += event.cashFlow;
       }
-      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
-      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
-        updatedFastTrackCash += totalPayday;
-      }
+      updatedCash += totalPayday;
 
       // Показываем информацию о выплатах только если сумма не равна 0
       if (totalPayday !== 0) {
@@ -961,7 +1142,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    message += `💰 Баланс: ${formatNumber(updatedFastTrackCash)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -1127,7 +1308,7 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     message += `💼 Вы попали на поле "Сделки"\n\n`;
-    message += `💰 Баланс: ${formatNumber(updatedFastTrackCash)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;

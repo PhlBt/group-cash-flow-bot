@@ -443,6 +443,16 @@ async function handleCallbackQuery(query, services) {
         await commands.handleEndGameVote(query, services);
         break;
 
+      case 'kick_player':
+        // Обработать голос за исключение игрока
+        await handleKickPlayerVote(query, services);
+        break;
+
+      case 'cancel_kick_vote':
+        // Отменить голосование за исключение игрока
+        await handleCancelKickVote(query, services);
+        break;
+
       case 'small_deal':
         // Выбор мелкой сделки
         await handleDealType(query, 'small', services);
@@ -1543,6 +1553,123 @@ async function handleSkipDream(query, services) {
   }
 }
 
+/**
+ * Обрабатывает голос за исключение игрока
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleKickPlayerVote(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const data = query.data;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Извлечь targetUserId из callback_data (kick_player_{userId})
+    const targetUserId = data.replace('kick_player_', '');
+
+    // Проверить, что цель существует в игре
+    if (!game.players.some(player => player.userId === targetUserId)) {
+      await messageService.sendErrorMessage(chatId, 'Целевой игрок не найден в игре.');
+      return;
+    }
+
+    // Проверить, что пользователь - участник игры
+    if (!game.players.some(player => player.userId === userId)) {
+      await messageService.sendErrorMessage(chatId, 'Вы не участник этой игры.');
+      return;
+    }
+
+    // Голосовать
+    const voteResult = await gameService.voteToKickPlayer(userId, game.gameId, targetUserId);
+
+    if (!voteResult.success) {
+      await messageService.sendErrorMessage(chatId, `Ошибка голосования: ${voteResult.error}`);
+      return;
+    }
+
+    // Обновить сообщение голосования
+    const updatedGame = await gameService.getGame(game.gameId);
+    await messageService.updateKickVoteMessage(chatId, query.message.message_id, updatedGame, updatedGame.kickVotes);
+
+    // Проверить, достигнуто ли большинство
+    if (voteResult.shouldKick && voteResult.kickedUserId) {
+      const kickedPlayer = game.players.find(p => p.userId === voteResult.kickedUserId);
+
+      // Удалить сообщение голосования
+      if (updatedGame.kickMessageId) {
+        await messageService.deleteMessage(chatId, updatedGame.kickMessageId);
+      }
+
+      // Отправить сообщение об исключении
+      await messageService.sendErrorMessage(chatId, `🚫 ${kickedPlayer ? kickedPlayer.username : 'Игрок'} был исключен из игры!`);
+
+      // Проверить, завершилась ли игра (остался 1 игрок)
+      const finalGame = await gameService.getGame(game.gameId);
+      if (finalGame && finalGame.status === 'finished' && finalGame.winner) {
+        await messageService.sendErrorMessage(chatId, `🎉 ${finalGame.players.find(p => p.userId === finalGame.winner)?.username || 'Игрок'} победил!`);
+        await messageService.sendGameFinishedMessage(chatId);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in handleKickPlayerVote:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при голосовании.');
+  }
+}
+
+/**
+ * Обрабатывает отмену голосования за исключение игрока
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleCancelKickVote(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+
+  try {
+    // Найти активную игру в чате
+    const game = await gameService.getActiveGameByChatId(chatId);
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    // Очистить голосование (только если инициатор голосования)
+    if (game.kickVotes && Object.keys(game.kickVotes).length > 0) {
+      await gameService.databaseService.getDb().collection('games').updateOne(
+        { gameId: game.gameId },
+        {
+          $set: {
+            kickVotes: {},
+            kickMessageId: null
+          }
+        }
+      );
+
+      // Удалить сообщение голосования
+      await messageService.deleteMessage(chatId, query.message.message_id);
+
+      // Отправить сообщение об отмене
+      await messageService.sendErrorMessage(chatId, '❌ Голосование за исключение игрока отменено.');
+    } else {
+      await messageService.sendErrorMessage(chatId, 'Нет активного голосования для отмены.');
+    }
+
+  } catch (error) {
+    console.error('Error in handleCancelKickVote:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при отмене голосования.');
+  }
+}
+
 module.exports = {
   handleCallbackQuery,
   handleRollDice,
@@ -1560,5 +1687,7 @@ module.exports = {
   handleSelectDream,
   handleDreamPage,
   handleBuyDream,
-  handleSkipDream
+  handleSkipDream,
+  handleKickPlayerVote,
+  handleCancelKickVote
 };
