@@ -103,7 +103,8 @@ DatabaseService - это класс, отвечающий за все взаим
   usedMarketIds: Array, // Названия использованных market карточек
   marketCirculationPlayers: Array, // ID игроков для циркуляции market
   marketCirculationIndex: number, // Текущий индекс в циркуляции market
-  marketCirculationOriginalIndex: number // Оригинальный индекс циркуляции market
+  marketCirculationOriginalIndex: number, // Оригинальный индекс циркуляции market
+  currentFastTrack: Object // Текущее fastTrack событие (опционально)
 }
 ```
 
@@ -314,6 +315,15 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
 - **Функционал**:
   - Сбрасывает все поля циркуляции market в начальное состояние
+
+### setCurrentFastTrack(gameId, fastTrackEvent)
+- **Назначение**: Устанавливает текущее fastTrack событие
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `fastTrackEvent` (Object): Объект fastTrack события
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Сохраняет объект текущего fastTrack события в состоянии игры
 
 ### updatePlayerPosition(gameId, userId, newPosition, inFastTrack)
 - **Назначение**: Обновляет позицию игрока

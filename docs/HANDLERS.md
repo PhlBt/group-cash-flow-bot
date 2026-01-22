@@ -420,6 +420,48 @@ Handlers - модуль функций-обработчиков команд Tel
   - Отправляет сообщение о пропуске
   - Передает ход следующему игроку
 
+### fastTrack.js - Обработка полей скоростной дорожки
+
+#### handleFastTrack(gameId, userId, fieldData, services)
+- **Назначение**: Обрабатывает попадание игрока на поле fastTrack
+- **Параметры**:
+  - `gameId` (string): ID игры
+  - `userId` (string): ID игрока
+  - `fieldData` (Object): Данные поля fastTrack
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Сохраняет fastTrack событие в состоянии игры через gameService.setCurrentFastTrack()
+
+#### handlePayFastTrack(query, services)
+- **Назначение**: Обрабатывает оплату fastTrack события
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Получает сохраненное fastTrack событие
+  - Обрабатывает разные типы событий: расходы, инвестиции, получение наличных, благотворительность, рискованные события
+  - Выполняет соответствующие действия (оплата, покупка активов, получение денег, активация эффектов)
+  - Передает ход следующему игроку
+
+#### handleRollDiceFastTrack(query, services)
+- **Назначение**: Обрабатывает бросок кубика для fastTrack события
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Бросает кубик и проверяет успех
+  - При успехе применяет награду (наличные или пассивный доход)
+  - Передает ход следующему игроку
+
+#### handleSkipFastTrack(query, services)
+- **Назначение**: Обрабатывает пропуск fastTrack события
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Пропускает событие без действий
+  - Передает ход следующему игроку
+
 ### market.js - Обработка поля "Рынок"
 
 #### handleMarket(gameId, userId, services)

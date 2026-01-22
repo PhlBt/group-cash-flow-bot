@@ -378,6 +378,23 @@ MessageService - класс, отвечающий за формирование 
 - **Возвращает**: Object - { text, keyboard }
 - **Функционал**: Форматирует полную информацию о сделке и генерирует соответствующую клавиатуру
 
+### sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents, fastTrackEvent)
+- **Назначение**: Отправляет комбинированное сообщение с броском, перемещением, выплатами и fastTrack событием
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `player` (Object): Объект игрока
+  - `steps` (number): Количество шагов
+  - `newPosition` (number): Новая позиция
+  - `inFastTrack` (boolean): На Fast Track
+  - `paydayEvents` (Array): Массив событий выплат
+  - `fastTrackEvent` (Object): fastTrack событие
+- **Функционал**:
+  - Показывает результат броска кубика и перемещение
+  - Суммирует выплаты за поля PAYDAY
+  - Показывает информацию о fastTrack событии
+  - Отображает параметры события и текущий баланс
+  - Предоставляет клавиатуру generateFastTrackKeyboard
+
 ### sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents)
 - **Назначение**: Отправляет комбинированное сообщение с броском, перемещением, выплатами и полем "Безработица"
 - **Параметры**:
@@ -401,6 +418,18 @@ MessageService - класс, отвечающий за формирование 
 - **Возвращает**: Object - Клавиатура для Telegram
 - **Функционал**:
   - Создает кнопку "💰 Оплатить [сумма] ₽" с callback_data 'pay_dismissal'
+  - Возвращает объект inline_keyboard для использования в Telegram API
+
+### generateFastTrackKeyboard(fastTrackEvent, player)
+- **Назначение**: Генерирует клавиатуру для fastTrack события
+- **Параметры**:
+  - `fastTrackEvent` (Object): fastTrack событие
+  - `player` (Object): Объект игрока
+- **Возвращает**: Object - Клавиатура для Telegram
+- **Функционал**:
+  - Создает кнопки в зависимости от типа события: оплата, получение денег, благотворительность, бросок кубика
+  - Для рискованных событий добавляет кнопку броска кубика
+  - Всегда добавляет кнопку "Пропустить" для пропускаемых событий
   - Возвращает объект inline_keyboard для использования в Telegram API
 
 ### sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, inFastTrack, paydayEvents, marketCard)
