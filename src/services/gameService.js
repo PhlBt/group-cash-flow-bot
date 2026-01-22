@@ -242,6 +242,12 @@ class GameService {
 
     const { transitioned } = await this.checkAndTransitionToFastTrack(gameId, nextPlayer.userId)
 
+    // Если произошел переход на Fast Track, заново получаем данные игрока
+    if (transitioned) {
+      const updatedGame = await this.databaseService.getGame(gameId);
+      nextPlayer = updatedGame.players[nextIndex];
+    }
+
     // Обновляем индекс текущего игрока
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
