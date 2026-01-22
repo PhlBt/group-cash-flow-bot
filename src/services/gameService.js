@@ -2039,7 +2039,7 @@ class GameService {
     const isOtherDream = !!otherPlayerWithDream;
     const isUnclaimedDream = !isOwnDream && !isOtherDream;
 
-    let cost = dreamField.cost;
+    let cost = dreamField.data.cost;
     let victory = false;
 
     if (isOwnDream) {
@@ -2047,10 +2047,10 @@ class GameService {
       victory = true;
     } else if (isOtherDream) {
       // Мечта другого игрока - удвоенная стоимость
-      cost = dreamField.cost * 2;
+      cost = dreamField.data.cost * 2;
     } else {
       // Ничья мечта - обычная стоимость, ничего не происходит
-      cost = dreamField.cost;
+      cost = dreamField.data.cost;
     }
 
     // Проверяем хватает ли денег

@@ -448,14 +448,14 @@ function generateDreamKeyboard(dreamField, player, allPlayers) {
 
   if (isOwnDream) {
     buyText = '🎯 Купить мечту (ПОБЕДА!)';
-    costText = `Стоимость: ${formatNumber(dreamField.cost)} ₽`;
+    costText = `Стоимость: ${formatNumber(dreamField.data.cost)} ₽`;
   } else if (isOtherDream) {
-    const doubledCost = dreamField.cost * 2;
+    const doubledCost = dreamField.data.cost * 2;
     buyText = `Купить мечту (${otherPlayerWithDream.username})`;
     costText = `Стоимость: ${formatNumber(doubledCost)} ₽ (удвоена)`;
   } else {
     buyText = 'Купить мечту';
-    costText = `Стоимость: ${formatNumber(dreamField.cost)} ₽`;
+    costText = `Стоимость: ${formatNumber(dreamField.data.cost)} ₽`;
   }
 
   keyboard.inline_keyboard = [
