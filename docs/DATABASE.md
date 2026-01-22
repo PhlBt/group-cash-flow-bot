@@ -96,6 +96,8 @@ DatabaseService - это класс, отвечающий за все взаим
   finishedAt: Date, // Время завершения (опционально)
   endGameVotes: ["string"], // Массив ID пользователей, проголосовавших за окончание
   endGameMessageId: number, // ID сообщения голосования за окончание (опционально)
+  kickVotes: Object, // Объект голосов за исключение {userId: targetUserId}
+  kickMessageId: number, // ID сообщения голосования за исключение (опционально)
   waitingMessageId: number, // ID сообщения комнаты ожидания (опционально)
   usedBigDealIds: Array, // ID выданных крупных сделок
   usedSmallDealIds: Array, // ID выданных мелких сделок
@@ -227,6 +229,30 @@ DatabaseService - это класс, отвечающий за все взаим
 - **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
 - **Функционал**:
   - Меняет статус на 'finished', добавляет время завершения
+
+### initiateKickVote(userId, gameId, messageId)
+- **Назначение**: Инициирует голосование за исключение игрока
+- **Параметры**:
+  - `userId` (string): ID инициатора голосования
+  - `gameId` (string): ID игры
+  - `messageId` (number): ID сообщения голосования
+- **Возвращает**: Promise<{success: boolean, error?: string}> - результат операции
+- **Функционал**:
+  - Проверяет существование игры и статус
+  - Проверяет, что инициатор участник игры
+  - Инициализирует kickVotes как пустой объект и сохраняет messageId
+
+### voteToKick(userId, gameId, targetUserId)
+- **Назначение**: Голосует за исключение игрока
+- **Параметры**:
+  - `userId` (string): ID голосующего
+  - `gameId` (string): ID игры
+  - `targetUserId` (string): ID цели голосования
+- **Возвращает**: Promise<{success: boolean, error?: string, shouldKick?: boolean}> - результат операции
+- **Функционал**:
+  - Проверяет существование игры и статус
+  - Проверяет, что голосующий участник и не голосовал
+  - Добавляет голос в kickVotes, проверяет majority (>50% игроков)
 
 ### setWaitingMessageId(gameId, messageId)
 - **Назначение**: Устанавливает ID сообщения комнаты ожидания

@@ -117,13 +117,34 @@ Handlers - модуль функций-обработчиков команд Tel
 - **Назначение**: Обработка команды /endgame - окончание игры
 - **Параметры**:
   - `msg` (Object): Сообщение Telegram
-  - `services` (Object): Объект с сервисами { messageService, gameService }
+  - `services` (Object): Объект с сервисами { gameService, messageService }
 - **Функционал**:
   - Извлекает chatId, userId из сообщения
   - Находит активную игру пользователя
   - Если игроков меньше 3 - сразу завершает игру через gameService.finishGame() и messageService.sendGameFinishedMessage()
   - Если игроков 3 и больше - инициирует голосование: отправляет сообщение через messageService.sendEndGameVoteMessage(), сохраняет messageId через gameService.initiateEndGameVote()
   - Обрабатывает ошибки через messageService.sendEndGameErrorMessage()
+
+### handleRules(msg, services)
+- **Назначение**: Обработка команды /rules - показ правил игры
+- **Параметры**:
+  - `msg` (Object): Сообщение Telegram
+  - `services` (Object): Объект с сервисами { messageService }
+- **Функционал**:
+  - Извлекает chatId из сообщения
+  - Вызывает messageService.sendRulesMessage() для отправки правил игры
+
+### handleVoteKick(msg, services)
+- **Назначение**: Обработка команды /votekick - голосование за исключение игрока
+- **Параметры**:
+  - `msg` (Object): Сообщение Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Извлекает chatId, userId из сообщения
+  - Находит активную игру в чате
+  - Проверяет, что игроков минимум 3 и пользователь участник игры
+  - Инициирует голосование через messageService.sendKickVoteMessage() и gameService.initiateKickVote()
+  - Обрабатывает ошибки через messageService.sendErrorMessage()
 
 ### callbacks.js - Обработчики callback-запросов
 

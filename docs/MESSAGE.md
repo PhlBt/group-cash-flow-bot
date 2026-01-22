@@ -102,6 +102,24 @@ MessageService - класс, отвечающий за формирование 
   - `votedUsers` (Array): Массив ID проголосовавших
 - **Функционал**: Редактирует существующее сообщение голосования
 
+### sendKickVoteMessage(chatId, game, kickVotes)
+- **Назначение**: Отправляет сообщение голосования за исключение игрока
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `game` (Object): Объект игры
+  - `kickVotes` (Object): Объект голосов {userId: targetUserId}
+- **Возвращает**: Promise<number> - ID отправленного сообщения
+- **Функционал**: Создает сообщение с кнопками голосования за каждого игрока
+
+### updateKickVoteMessage(chatId, messageId, game, kickVotes)
+- **Назначение**: Обновляет сообщение голосования за исключение
+- **Параметры**:
+  - `chatId` (number): ID чата
+  - `messageId` (number): ID сообщения для обновления
+  - `game` (Object): Объект игры
+  - `kickVotes` (Object): Объект голосов {userId: targetUserId}
+- **Функционал**: Редактирует существующее сообщение голосования с обновленными голосами
+
 ### sendGameFinishedMessage(chatId, gameId)
 - **Назначение**: Сообщает о завершении игры
 - **Параметры**:
