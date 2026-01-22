@@ -73,7 +73,12 @@ async function handleDonateCharity(query, services) {
     // Отправить сообщение об успешном пожертвовании
     const donationAmount = formatNumber(donateResult.donationAmount);
     const remainingTurns = donateResult.turnsLeft;
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 На следующих ${remainingTurns} ходах можно бросать 1 или 2 кубика.`);
+
+    if (currentPlayer.isFastTrack) {
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 До конца игры можно бросать 1, 2 или 3 кубика.`);
+    } else {
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 На следующих ${remainingTurns} ходах можно бросать 1 или 2 кубика.`);
+    }
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);

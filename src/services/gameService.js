@@ -168,17 +168,17 @@ class GameService {
           const game = await this.databaseService.getGame(gameId);
           const player = game.players.find(p => p.userId === userId);
           const income = player.fastTrackIncome || 0;
-          const newCash = player.cash + income;
+          const newFastTrackCash = (player.fastTrackCash || 0) + income;
 
           await this.databaseService.getDb().collection('games').updateOne(
             { gameId },
-            { $set: { [`players.${game.players.indexOf(player)}.cash`]: newCash } }
+            { $set: { [`players.${game.players.indexOf(player)}.fastTrackCash`]: newFastTrackCash } }
           );
 
           paydayEvents.push({
             position,
             cashFlow: income,
-            newCash
+            newFastTrackCash
           });
         } else {
           // На Rat Race PAYDAY дает обычный денежный поток
@@ -300,7 +300,43 @@ class GameService {
    * @returns {Promise<{success: boolean, error?: string, turnsLeft?: number, effectEnded?: boolean}>} Результат операции
    */
   async decreaseCharityTurns(gameId, userId) {
-    return await this.databaseService.decreaseCharityTurns(gameId, userId);
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    const player = game.players[playerIndex];
+
+    if (!player.charityEffect || player.charityTurnsLeft <= 0) {
+      return { success: true, turnsLeft: player.charityTurnsLeft || 0, effectEnded: false };
+    }
+
+    const newTurnsLeft = player.charityTurnsLeft - 1;
+    const effectEnded = newTurnsLeft <= 0;
+
+    const updateData = {
+      [`players.${playerIndex}.charityTurnsLeft`]: newTurnsLeft
+    };
+
+    if (effectEnded) {
+      updateData[`players.${playerIndex}.charityEffect`] = false;
+    }
+
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: updateData }
+    );
+
+    return {
+      success: true,
+      turnsLeft: newTurnsLeft,
+      effectEnded
+    };
   }
 
   /**
@@ -333,7 +369,7 @@ class GameService {
     const newCash = player.cash - donationAmount;
 
     // Устанавливаем эффект благотворительности
-    const turnsLeft = 3;
+    const turnsLeft = player.inFastTrack ? -1 : 3;
 
     // Обновляем данные игрока
     await this.databaseService.getDb().collection('games').updateOne(
@@ -1797,13 +1833,21 @@ class GameService {
     }
 
     const player = game.players[playerIndex];
-    const newCash = player.cash + amount;
 
-    // Обновляем баланс
-    await this.databaseService.getDb().collection('games').updateOne(
-      { gameId },
-      { $set: { [`players.${playerIndex}.cash`]: newCash } }
-    );
+    // Для игроков на Fast Track обновляем fastTrackCash, иначе cash
+    if (player.inFastTrack) {
+      const newCash = (player.fastTrackCash || 0) + amount;
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        { $set: { [`players.${playerIndex}.fastTrackCash`]: newCash } }
+      );
+    } else {
+      const newCash = player.cash + amount;
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        { $set: { [`players.${playerIndex}.cash`]: newCash } }
+      );
+    }
 
     return { success: true };
   }
@@ -1827,19 +1871,32 @@ class GameService {
     }
 
     const player = game.players[playerIndex];
-    const newPassiveIncome = player.passiveIncome + amount;
-    const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
 
-    // Обновляем показатели
-    await this.databaseService.getDb().collection('games').updateOne(
-      { gameId },
-      {
-        $set: {
-          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
-          [`players.${playerIndex}.cashFlow`]: newCashFlow
+    if (player.inFastTrack) {
+      // Для Fast Track игроков увеличиваем fastTrackIncome
+      const newFastTrackIncome = player.fastTrackIncome + amount;
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        {
+          $set: {
+            [`players.${playerIndex}.fastTrackIncome`]: newFastTrackIncome,
+            [`players.${playerIndex}.cashFlow`]: newFastTrackIncome
+          }
         }
-      }
-    );
+      );
+    } else {
+      const newPassiveIncome = player.passiveIncome + amount;
+      const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        {
+          $set: {
+            [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
+            [`players.${playerIndex}.cashFlow`]: newCashFlow
+          }
+        }
+      );
+    }
 
     return { success: true };
   }
@@ -1861,15 +1918,25 @@ class GameService {
       return { success: false, error: 'player_not_found' };
     }
 
+    const player = game.players[playerIndex];
+
     // Устанавливаем эффект благотворительности
+    const updateData = {
+      [`players.${playerIndex}.charityEffect`]: true
+    };
+
+    // Устанавливаем лимит ходов в зависимости от режима
+    if (player.inFastTrack) {
+      // Для Fast Track эффект постоянный
+      updateData[`players.${playerIndex}.charityTurnsLeft`] = -1;
+    } else {
+      // Для Rat Race лимит 3 хода
+      updateData[`players.${playerIndex}.charityTurnsLeft`] = 3;
+    }
+
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
-      {
-        $set: {
-          [`players.${playerIndex}.charityEffect`]: true,
-          [`players.${playerIndex}.charityTurnsLeft`]: 3
-        }
-      }
+      { $set: updateData }
     );
 
     return { success: true };
@@ -1933,47 +2000,57 @@ class GameService {
 
     const player = game.players[playerIndex];
 
+    // Для Fast Track игроков используем fastTrackCash, иначе cash
+    const currentBalance = player.inFastTrack ? (player.fastTrackCash || 0) : player.cash;
+    const eventData = fastTrackEvent.data || fastTrackEvent;
+
     // Проверить хватает ли денег
-    if (player.cash < fastTrackEvent.cost) {
+    if (currentBalance < eventData.cost) {
       return { success: false, error: 'insufficient_funds' };
     }
 
     // Списать стоимость
-    const newCash = player.cash - fastTrackEvent.cost;
+    const newBalance = currentBalance - eventData.cost;
 
     let diceResult = null;
     let reward = null;
     let addAsset = false;
 
-    if (fastTrackEvent.dice) {
+    if (eventData.dice) {
       // Бросить кубик
       diceResult = this.rollDice(1);
 
-      if (diceResult >= fastTrackEvent.dice) {
+      if (diceResult >= eventData.dice) {
         // Успех - применить награду и добавить актив
-        if (fastTrackEvent.cash) {
-          reward = { type: 'cash', amount: fastTrackEvent.cash };
-        } else if (fastTrackEvent.passiveIncome) {
-          reward = { type: 'passiveIncome', amount: fastTrackEvent.passiveIncome };
+        if (eventData.cash) {
+          reward = { type: 'cash', amount: eventData.cash };
+        } else if (eventData.passiveIncome) {
+          reward = { type: 'passiveIncome', amount: eventData.passiveIncome };
         }
         addAsset = true;
       }
       // Если неудача - ничего не получаем, актив не добавляется
     } else {
       // Без кубика - всегда получаем passiveIncome и актив
-      reward = { type: 'passiveIncome', amount: fastTrackEvent.passiveIncome };
+      reward = { type: 'passiveIncome', amount: eventData.passiveIncome };
       addAsset = true;
     }
 
     // Применить награду
-    let updatedCash = newCash;
+    let updatedBalance = newBalance;
     let newPassiveIncome = player.passiveIncome;
+    let newFastTrackIncome = player.fastTrackIncome || 0;
 
     if (reward) {
       if (reward.type === 'cash') {
-        updatedCash += reward.amount;
+        updatedBalance += reward.amount;
       } else if (reward.type === 'passiveIncome') {
-        newPassiveIncome += reward.amount;
+        if (player.inFastTrack) {
+          // Для Fast Track игроков увеличиваем fastTrackIncome
+          newFastTrackIncome += reward.amount;
+        } else {
+          newPassiveIncome += reward.amount;
+        }
       }
     }
 
@@ -1982,8 +2059,8 @@ class GameService {
       const asset = {
         id: `fastTrack_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: fastTrackEvent.title,
-        cost: fastTrackEvent.cost,
-        cashFlow: fastTrackEvent.passiveIncome || 0,
+        cost: eventData.cost,
+        cashFlow: eventData.passiveIncome || 0,
         type: 'fast_track_asset',
         description: fastTrackEvent.description
       };
@@ -1992,17 +2069,22 @@ class GameService {
     }
 
     // Обновить данные игрока
-    const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+    const updateData = {};
+
+    if (player.inFastTrack) {
+      updateData[`players.${playerIndex}.fastTrackCash`] = updatedBalance;
+      updateData[`players.${playerIndex}.fastTrackIncome`] = newFastTrackIncome;
+      updateData[`players.${playerIndex}.cashFlow`] = newFastTrackIncome;
+    } else {
+      const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
+      updateData[`players.${playerIndex}.passiveIncome`] = newPassiveIncome;
+      updateData[`players.${playerIndex}.cashFlow`] = newCashFlow;
+      updateData[`players.${playerIndex}.cash`] = updatedBalance;
+    }
 
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
-      {
-        $set: {
-          [`players.${playerIndex}.cash`]: updatedCash,
-          [`players.${playerIndex}.passiveIncome`]: newPassiveIncome,
-          [`players.${playerIndex}.cashFlow`]: newCashFlow
-        }
-      }
+      { $set: updateData }
     );
 
     return {

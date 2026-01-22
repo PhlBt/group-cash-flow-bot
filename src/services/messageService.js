@@ -851,12 +851,13 @@ CashFlow - настольная игра о финансовом планиро�
     if (player.bankruptcyState) {
       message += `🚨 Вы в состоянии банкротства!\nПродайте активы и оплатите долги, чтобы восстановить положительный денежный поток.`;
       keyboard = bankruptcyKeyboard;
-    } else if (player.charityEffect && player.charityTurnsLeft > 0) {
+    } else if (player.charityEffect) {
       message += `Выберите действие:`;
-      keyboard = charityKeyboard;
-    } else if (player.charityEffect && player.inFastTrack) {
-      message += `Выберите действие:`;
-      keyboard = fastTrackCharityKeyboard;
+      if (player.inFastTrack) {
+        keyboard = fastTrackCharityKeyboard;
+      } else {
+        keyboard = charityKeyboard;
+      }
     } else {
       message += `Выберите действие:`;
       keyboard = gameKeyboard;
@@ -934,20 +935,33 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Суммируем выплаты
     let totalPayday = 0;
-    let updatedCash = player.cash;
+    let updatedFastTrackCash = player.fastTrackCash || 0;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        totalPayday += event.cashFlow;
+        // Для Fast Track используем newFastTrackCash из события
+        if (event.newFastTrackCash !== undefined) {
+          totalPayday += event.cashFlow;
+          updatedFastTrackCash = event.newFastTrackCash;
+        } else {
+          // Для обычных полей используем cashFlow
+          totalPayday += event.cashFlow;
+        }
       }
-      updatedCash += totalPayday;
+      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
+      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
+        updatedFastTrackCash += totalPayday;
+      }
 
-      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
-      const absPayday = Math.abs(totalPayday);
+      // Показываем информацию о выплатах только если сумма не равна 0
+      if (totalPayday !== 0) {
+        const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+        const absPayday = Math.abs(totalPayday);
 
-      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+        message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+      }
     }
 
-    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(updatedFastTrackCash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -958,7 +972,10 @@ CashFlow - настольная игра о финансовом планиро�
       await this.sendMessage(chatId, message);
     } else {
       message += `Выберите действие:`;
-      const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? charityKeyboard : gameKeyboard;
+      let keyboard = gameKeyboard;
+      if (player.charityEffect) {
+        keyboard = player.inFastTrack ? fastTrackCharityKeyboard : charityKeyboard;
+      }
       await this.sendMessage(chatId, message, {
         reply_markup: keyboard
       });
@@ -985,14 +1002,27 @@ CashFlow - настольная игра о финансовом планиро�
     let updatedFastTrackCash = player.fastTrackCash || 0;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        totalPayday += event.cashFlow;
+        // Для Fast Track используем newFastTrackCash из события
+        if (event.newFastTrackCash !== undefined) {
+          totalPayday += event.cashFlow;
+          updatedFastTrackCash = event.newFastTrackCash;
+        } else {
+          // Для обычных полей используем cashFlow
+          totalPayday += event.cashFlow;
+        }
       }
-      updatedFastTrackCash += totalPayday;
+      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
+      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
+        updatedFastTrackCash += totalPayday;
+      }
 
-      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
-      const absPayday = Math.abs(totalPayday);
+      // Показываем информацию о выплатах только если сумма не равна 0
+      if (totalPayday !== 0) {
+        const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+        const absPayday = Math.abs(totalPayday);
 
-      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+        message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+      }
     }
 
     // Fast Track финансы
@@ -1017,7 +1047,10 @@ CashFlow - настольная игра о финансовом планиро�
       await this.sendMessage(chatId, message);
     } else {
       message += `Выберите действие:`;
-      const keyboard = (player.charityEffect && player.charityTurnsLeft > 0) ? require('../utils/keyboards').charityKeyboard : require('../utils/keyboards').gameKeyboard;
+      let keyboard = gameKeyboard;
+      if (player.charityEffect) {
+        keyboard = player.inFastTrack ? fastTrackCharityKeyboard : charityKeyboard;
+      }
       await this.sendMessage(chatId, message, {
         reply_markup: keyboard
       });
@@ -1067,21 +1100,34 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Суммируем выплаты
     let totalPayday = 0;
-    let updatedCash = player.cash;
+    let updatedFastTrackCash = player.fastTrackCash || 0;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        totalPayday += event.cashFlow;
+        // Для Fast Track используем newFastTrackCash из события
+        if (event.newFastTrackCash !== undefined) {
+          totalPayday += event.cashFlow;
+          updatedFastTrackCash = event.newFastTrackCash;
+        } else {
+          // Для обычных полей используем cashFlow
+          totalPayday += event.cashFlow;
+        }
       }
-      updatedCash += totalPayday;
+      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
+      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
+        updatedFastTrackCash += totalPayday;
+      }
 
-      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
-      const absPayday = Math.abs(totalPayday);
+      // Показываем информацию о выплатах только если сумма не равна 0
+      if (totalPayday !== 0) {
+        const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+        const absPayday = Math.abs(totalPayday);
 
-      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+        message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+      }
     }
 
     message += `💼 Вы попали на поле "Сделки"\n\n`;
-    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(updatedFastTrackCash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -1112,7 +1158,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     message += `💰 Ваш доход: ${formatNumber(income)} ₽/месяц\n`;
     message += `💸 Пожертвование: ${formatNumber(donationAmount)} ₽\n\n`;
-    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
+    message += `💰 Баланс: ${formatNumber(player.fastTrackCash)} ₽\n\n`;
     message += `Что вы хотите сделать?`;
 
     const { charityChoiceKeyboard } = require('../utils/keyboards');
@@ -1146,17 +1192,30 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Суммируем выплаты
     let totalPayday = 0;
-    let updatedCash = player.cash;
+    let updatedFastTrackCash = player.fastTrackCash || 0;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        totalPayday += event.cashFlow;
+        // Для Fast Track используем newFastTrackCash из события
+        if (event.newFastTrackCash !== undefined) {
+          totalPayday += event.cashFlow;
+          updatedFastTrackCash = event.newFastTrackCash;
+        } else {
+          // Для обычных полей используем cashFlow
+          totalPayday += event.cashFlow;
+        }
       }
-      updatedCash += totalPayday;
+      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
+      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
+        updatedFastTrackCash += totalPayday;
+      }
 
-      const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
-      const absPayday = Math.abs(totalPayday);
+      // Показываем информацию о выплатах только если сумма не равна 0
+      if (totalPayday !== 0) {
+        const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
+        const absPayday = Math.abs(totalPayday);
 
-      message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+        message += `💰 День выплат!\n${action}: ${formatNumber(absPayday)} ₽\n\n`;
+      }
     }
 
     message += `🎭 Вы попали на поле "Всякая всячина"\n\n`;
@@ -1375,12 +1434,22 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Суммируем выплаты
     let totalPayday = 0;
-    let updatedCash = player.cash;
+    let updatedFastTrackCash = player.fastTrackCash || 0;
     if (paydayEvents && paydayEvents.length > 0) {
       for (const event of paydayEvents) {
-        totalPayday += event.cashFlow;
+        // Для Fast Track используем newFastTrackCash из события
+        if (event.newFastTrackCash !== undefined) {
+          totalPayday += event.cashFlow;
+          updatedFastTrackCash = event.newFastTrackCash;
+        } else {
+          // Для обычных полей используем cashFlow
+          totalPayday += event.cashFlow;
+        }
       }
-      updatedCash += totalPayday;
+      // Если нет специального newFastTrackCash, добавляем сумму к текущему балансу
+      if (paydayEvents.every(event => event.newFastTrackCash === undefined)) {
+        updatedFastTrackCash += totalPayday;
+      }
 
       const action = totalPayday >= 0 ? 'Получено' : 'Уплачено';
       const absPayday = Math.abs(totalPayday);
@@ -1448,7 +1517,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    message += `\n💰 Баланс: ${formatNumber(player.fastTrackCash)} ₽\n`;
+    message += `\n💰 Капитал: ${formatNumber(updatedFastTrackCash)} ₽\n`;
 
     if (!player.inFastTrack) {
       message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;

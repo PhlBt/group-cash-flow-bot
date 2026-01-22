@@ -58,8 +58,8 @@ function createFastTrackFields(FIELD_TYPES) {
     // Генерируем короткий уникальный ID для поля
     const generateFieldId = (type, index) => {
       const typePrefix = {
-        [FIELD_TYPES.PAYDAY]: 'pay',
-        [FIELD_TYPES.CHARITY]: 'c',
+        [FIELD_TYPES.FPAYDAY]: 'pay',
+        [FIELD_TYPES.FCHARITY]: 'c',
         [FIELD_TYPES.EXPENSES]: 'e',
         [FIELD_TYPES.INVESTING]: 'i',
         [FIELD_TYPES.DREAM]: 'd'

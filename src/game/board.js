@@ -3,11 +3,14 @@ const FIELD_TYPES = {
   DEAL: 'deal',                    // Сделка
   MARKET: 'market',                // Рынок
   PAYDAY: 'payday',                // День выплат
+  FPAYDAY: 'fpayday',                // День выплат
   CHARITY: 'charity',              // Благотворительность
+  FCHARITY: 'fcharity',              // Благотворительность
   MISCELLANEOUS: 'miscellaneous',  // Всякая всячина
   CHILD: 'child',                  // Ребенок
   DISMISSAL: 'dismissal',          // Увольнение
   INVESTING: 'investing',          // Инвестиция
+  EXPENSES: 'expenses',            // Расходы
   EXPENSES: 'expenses',            // Расходы
   DREAM: 'dream',                  // Мечта
   LAWSUIT: 'lawsuit',              // Судебный иск

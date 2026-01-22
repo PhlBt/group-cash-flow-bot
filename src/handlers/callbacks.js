@@ -206,8 +206,8 @@ async function handleRollDice(query, diceCount, services) {
       }
 
       // Для поля MARKET не передаем ход автоматически - ждем действий игроков
-    } else if (moveResult.fieldType === FIELD_TYPES.INVESTING || moveResult.fieldType === FIELD_TYPES.EXPENSES || moveResult.fieldType === FIELD_TYPES.DREAM) {
-      // Игрок попал на поле "Инвестиция" или "Расходы" - обработать fastTrack событие
+    } else if (moveResult.fieldType === FIELD_TYPES.INVESTING || moveResult.fieldType === FIELD_TYPES.EXPENSES || moveResult.fieldType === FIELD_TYPES.DREAM || moveResult.fieldType === FIELD_TYPES.PAYDAY) {
+      // Игрок попал на поле "Инвестиция", "Расходы", "Мечта" или "День выплат" - обработать fastTrack событие
       const { handleFastTrack } = require('./fastTrack');
       const { FAST_TRACK_FIELDS } = require('../game/board');
       const fieldData = FAST_TRACK_FIELDS[moveResult.newPosition % FAST_TRACK_FIELDS.length];
@@ -232,7 +232,17 @@ async function handleRollDice(query, diceCount, services) {
         gameService
       );
 
-      // Для поля INVESTING не передаем ход автоматически - ждем действий игрока
+      // Для поля PAYDAY передаем ход автоматически - никаких действий не требуется
+      if (moveResult.fieldType === FIELD_TYPES.PAYDAY) {
+        const nextTurnResult = await gameService.nextTurn(game.gameId);
+        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+          if (nextTurnResult.transitioned) {
+            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          }
+          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        }
+      }
+      // Для полей INVESTING, EXPENSES, DREAM не передаем ход автоматически - ждем действий игрока
     } else {
       // Обычное поле - отправить стандартное сообщение и передать ход
       if (moveResult.inFastTrack) {
@@ -420,6 +430,11 @@ async function handleCallbackQuery(query, services) {
       case 'roll_dice_2':
         // Бросок 2 кубиков (режим благотворительности)
         await handleRollDice(query, 2, services);
+        break;
+
+      case 'roll_dice_3':
+        // Бросок 3 кубиков (режим благотворительности на Fast Track)
+        await handleRollDice(query, 3, services);
         break;
 
       case 'end_game_vote':
