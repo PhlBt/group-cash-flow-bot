@@ -1367,7 +1367,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} fastTrackEvent - fastTrack событие
    * @param {Object} game - Объект игры для проверки занятости полей
    */
-  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent, game) {
+  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent, game, gameService) {
     const trackName = '🚀 Скоростная дорожка';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1467,7 +1467,7 @@ CashFlow - настольная игра о финансовом планиро�
       const { generateDreamKeyboard } = require('../utils/keyboards');
       keyboard = generateDreamKeyboard(fastTrackEvent, player, game.players);
     } else {
-      keyboard = this.generateFastTrackKeyboard(fastTrackEvent, player, { gameId: game.gameId, gameService: game.gameService });
+      keyboard = this.generateFastTrackKeyboard(fastTrackEvent, player, game, gameService);
     }
 
     await this.sendMessage(chatId, message, {
@@ -1480,10 +1480,11 @@ CashFlow - настольная игра о финансовом планиро�
    * Генерирует клавиатуру для fastTrack события
    * @param {Object} fastTrackEvent - fastTrack событие
    * @param {Object} player - Объект игрока
-   * @param {Object} game - Объект игры (для проверки занятости поля)
+   * @param {Object} game - Объект игры
+   * @param {Object} gameService - Сервис игры
    * @returns {Object} Клавиатура
    */
-  generateFastTrackKeyboard(fastTrackEvent, player, game) {
+  generateFastTrackKeyboard(fastTrackEvent, player, game, gameService) {
     const keyboard = {
       inline_keyboard: []
     };
@@ -1517,7 +1518,7 @@ CashFlow - настольная игра о финансовом планиро�
 
       case FIELD_TYPES.INVESTING:
         // Инвестиции - проверяем занятость поля
-        const occupationCheck = game.gameService.isFastTrackFieldOccupied(game.gameId, player.userId, fastTrackEvent);
+        const occupationCheck = gameService.isFastTrackFieldOccupied(game.gameId, player.userId, fastTrackEvent);
         if (occupationCheck.success && occupationCheck.occupied) {
           // Поле занято - только кнопка пропуска
           keyboard.inline_keyboard.push([{

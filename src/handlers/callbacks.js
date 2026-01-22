@@ -228,7 +228,8 @@ async function handleRollDice(query, diceCount, services) {
         moveResult.newPosition,
         moveResult.paydayEvents || [],
         fieldData,
-        game
+        game,
+        gameService
       );
 
       // Для поля INVESTING не передаем ход автоматически - ждем действий игрока
