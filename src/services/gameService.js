@@ -268,6 +268,31 @@ class GameService {
       nextPlayer = updatedGame.players[nextIndex];
     }
 
+    // Проверяем автоматическую победу на Fast Track
+    const victoryCheck = await this.checkFastTrackVictory(gameId, nextPlayer.userId);
+    if (victoryCheck.success && victoryCheck.victory) {
+      // Игрок победил автоматически - завершаем игру
+      await this.finishGameWithVictory(gameId, nextPlayer.userId, victoryCheck.reason);
+
+      // Отправляем сообщение о победе (если есть messageService)
+      if (this.messageService) {
+        await this.messageService.sendErrorMessage(
+          game.chatId,
+          `🎉 ${nextPlayer.username} достиг своей цели и ПОБЕДИЛ автоматически на быстром круге!\n💰 Месячный доход: ${nextPlayer.fastTrackIncome} ₽\n🎯 Стоимость мечты: ${nextPlayer.dreamCost} ₽`
+        );
+        await this.messageService.sendGameFinishedMessage(game.chatId);
+      }
+
+      return {
+        success: true,
+        transitioned,
+        nextPlayer,
+        victory: true,
+        reason: victoryCheck.reason,
+        gameFinished: true
+      };
+    }
+
     // Обновляем индекс текущего игрока
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
@@ -2157,40 +2182,97 @@ class GameService {
   }
 
   /**
-   * Завершает игру победой игрока
+   * Проверяет автоматическую победу на Fast Track
    * @param {string} gameId - ID игры
-   * @param {string} winnerUserId - ID победившего игрока
-   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, victory?: boolean, reason?: string, error?: string}>} Результат операции
    */
-  async finishGameWithVictory(gameId, winnerUserId) {
+  async checkFastTrackVictory(gameId, userId) {
     const game = await this.databaseService.getGame(gameId);
     if (!game) {
       return { success: false, error: 'not_found' };
     }
 
-    // Обновляем статус игры на 'finished'
-    await this.databaseService.getDb().collection('games').updateOne(
-      { gameId },
-      {
-        $set: {
-          status: 'finished',
-          winner: winnerUserId,
-          finishedAt: new Date()
-        }
-      }
-    );
+    const player = game.players.find(p => p.userId === userId);
+    if (!player) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Проверяем только для игроков на Fast Track с выбранной мечтой
+    if (!player.inFastTrack || !player.dreamCost) {
+      return { success: true, victory: false };
+    }
+
+    // Проверяем условие победы: fastTrackIncome >= dreamCost
+    if (player.fastTrackIncome >= player.dreamCost) {
+      return {
+        success: true,
+        victory: true,
+        reason: 'automatic_fast_track_victory'
+      };
+    }
+
+    return { success: true, victory: false };
+  }
+
+  /**
+   * Обрабатывает победу игрока (выход из игры)
+   * @param {string} gameId - ID игры
+   * @param {string} winnerUserId - ID победившего игрока
+   * @param {string} victoryReason - Причина победы ('dream_purchase' или 'automatic_fast_track_victory')
+   * @returns {Promise<{success: boolean, error?: string, gameFinished?: boolean}>} Результат операции
+   */
+  async finishGameWithVictory(gameId, winnerUserId, victoryReason = 'dream_purchase') {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    // Удаляем победившего игрока из игры
+    const updatedPlayers = game.players.filter(p => p.userId !== winnerUserId);
 
     // Обновляем статистику победителя
     await this.userStatsService.updateUserStats(winnerUserId, { wins: (await this.userStatsService.getUserStats(winnerUserId)).wins + 1 });
 
-    // Обновляем статистику проигравших
-    for (const player of game.players) {
-      if (player.userId !== winnerUserId) {
-        await this.userStatsService.updateUserStats(player.userId, { losses: (await this.userStatsService.getUserStats(player.userId)).losses + 1 });
-      }
-    }
+    // Проверяем, остались ли игроки в игре
+    if (updatedPlayers.length === 0) {
+      // Все игроки победили - завершаем игру
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        {
+          $set: {
+            status: 'finished',
+            winner: winnerUserId,
+            finishedAt: new Date(),
+            players: updatedPlayers
+          }
+        }
+      );
 
-    return { success: true };
+      // Обновляем статистику проигравших (хотя в этом случае все победили)
+      for (const player of game.players) {
+        if (player.userId !== winnerUserId) {
+          await this.userStatsService.updateUserStats(player.userId, { wins: (await this.userStatsService.getUserStats(player.userId)).wins + 1 });
+        }
+      }
+
+      return { success: true, gameFinished: true };
+    } else {
+      // Есть еще игроки - продолжаем игру, удаляя победившего
+      const newCurrentIndex = game.currentPlayerIndex % updatedPlayers.length;
+
+      await this.databaseService.getDb().collection('games').updateOne(
+        { gameId },
+        {
+          $set: {
+            players: updatedPlayers,
+            currentPlayerIndex: newCurrentIndex
+          }
+        }
+      );
+
+      return { success: true, gameFinished: false };
+    }
   }
 }
 

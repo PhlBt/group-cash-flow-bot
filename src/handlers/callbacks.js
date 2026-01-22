@@ -39,9 +39,9 @@ async function handleRollDice(query, diceCount, services) {
       // Отправить сообщение о пропуске хода
       await messageService.sendErrorMessage(chatId, `Игрок ${currentPlayer.username} пропускает ход!`);
 
-      // Передать ход следующему игроку
+      // Передать ход следующему игроку только если игра не завершена
       const nextTurnResult = await gameService.nextTurn(game.gameId);
-      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
@@ -235,7 +235,7 @@ async function handleRollDice(query, diceCount, services) {
       // Для поля PAYDAY передаем ход автоматически - никаких действий не требуется
       if (moveResult.fieldType === FIELD_TYPES.PAYDAY) {
         const nextTurnResult = await gameService.nextTurn(game.gameId);
-        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+        if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
           if (nextTurnResult.transitioned) {
             await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
           }
@@ -271,9 +271,9 @@ async function handleRollDice(query, diceCount, services) {
 
       // TODO: Обработать другие события на поле (финансовые изменения, эффекты)
 
-      // Передать ход следующему игроку
+      // Передать ход следующему игроку только если игра не завершена
       const nextTurnResult = await gameService.nextTurn(game.gameId);
-      if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+      if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
@@ -1171,9 +1171,9 @@ async function handlePayDismissal(query, services) {
     // Отправить сообщение об успешной оплате
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице и пропускает 2 хода!`);
 
-    // Передать ход следующему игроку
+    // Передать ход следующему игроку только если игра не завершена
     const nextTurnResult = await gameService.nextTurn(game.gameId);
-    if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+    if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
@@ -1461,12 +1461,21 @@ async function handleBuyDream(query, services) {
 
     // Проверить, победил ли игрок
     if (buyResult.victory) {
-      // Игрок победил - завершить игру
-      await gameService.finishGameWithVictory(game.gameId, userId);
+      // Игрок победил - обработать победу
+      const victoryResult = await gameService.finishGameWithVictory(game.gameId, userId, 'dream_purchase');
 
       // Отправить сообщение о победе
-      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} купил свою мечту и ПОБЕДИЛ в игре!`);
-      await messageService.sendGameFinishedMessage(chatId);
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} купил свою мечту и ПОБЕДИЛ!`);
+
+      if (victoryResult.gameFinished) {
+        // Игра полностью завершена (все игроки победили)
+        await messageService.sendGameFinishedMessage(chatId);
+        return;
+      } else {
+        // Игрок вышел из игры, но игра продолжается для остальных
+        // Не передаем ход, так как победивший игрок уже удален из массива
+        return;
+      }
     } else {
       // Просто купил мечту другого игрока или ничью
       const costText = buyResult.cost === dreamField.cost ? `${formatNumber(buyResult.cost)} ₽` : `${formatNumber(buyResult.cost)} ₽ (удвоено)`;
