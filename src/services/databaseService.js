@@ -103,8 +103,7 @@ class DatabaseService {
       dreamCost: 0,
       charityEffect: false,
       charityTurnsLeft: 0,
-      bankruptcyState: false,
-      skippedTurns: 0
+      bankruptcyState: false
     };
 
     await gamesCollection.insertOne({
@@ -130,7 +129,8 @@ class DatabaseService {
       usedMarketIds: [],
       marketCirculationPlayers: [],
       marketCirculationIndex: 0,
-      marketCirculationOriginalIndex: 0
+      marketCirculationOriginalIndex: 0,
+      skippedTurnsList: []
     });
 
     return gameId;
@@ -207,8 +207,7 @@ class DatabaseService {
       dreamCost: 0,
       charityEffect: false,
       charityTurnsLeft: 0,
-      bankruptcyState: false,
-      skippedTurns: 0
+      bankruptcyState: false
     };
 
     await gamesCollection.updateOne(
@@ -1384,6 +1383,136 @@ class DatabaseService {
           [`players.${playerIndex}.dreamCost`]: dream.cost
         }
       }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Добавляет запись о пропуске ходов для игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {string} username - Имя игрока
+   * @param {number} turnsCount - Количество ходов для пропуска
+   * @param {string} reason - Причина пропуска (опционально)
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async addSkippedTurn(gameId, userId, username, turnsCount, reason = '') {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const skippedTurnEntry = {
+      userId,
+      username,
+      turnsToSkip: turnsCount,
+      reason
+    };
+
+    const newSkippedTurnsList = [...(game.skippedTurnsList || []), skippedTurnEntry];
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { skippedTurnsList: newSkippedTurnsList } }
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Получает запись о пропуске ходов для игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, skippedTurn?: Object}>} Результат операции
+   */
+  async getSkippedTurn(gameId, userId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const skippedTurn = (game.skippedTurnsList || []).find(entry => entry.userId === userId);
+
+    return {
+      success: true,
+      skippedTurn
+    };
+  }
+
+  /**
+   * Уменьшает счетчик пропуска ходов для игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string, turnsLeft?: number, effectEnded?: boolean}>} Результат операции
+   */
+  async decreaseSkippedTurn(gameId, userId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const skippedTurnsList = game.skippedTurnsList || [];
+    const entryIndex = skippedTurnsList.findIndex(entry => entry.userId === userId);
+
+    if (entryIndex === -1) {
+      return { success: true, turnsLeft: 0, effectEnded: false };
+    }
+
+    const entry = skippedTurnsList[entryIndex];
+    const newTurnsToSkip = entry.turnsToSkip - 1;
+    const effectEnded = newTurnsToSkip <= 0;
+
+    let newSkippedTurnsList;
+    if (effectEnded) {
+      // Удаляем запись если пропуск окончен
+      newSkippedTurnsList = skippedTurnsList.filter(entry => entry.userId !== userId);
+    } else {
+      // Обновляем счетчик
+      newSkippedTurnsList = [...skippedTurnsList];
+      newSkippedTurnsList[entryIndex] = {
+        ...entry,
+        turnsToSkip: newTurnsToSkip
+      };
+    }
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { skippedTurnsList: newSkippedTurnsList } }
+    );
+
+    return {
+      success: true,
+      turnsLeft: Math.max(0, newTurnsToSkip),
+      effectEnded
+    };
+  }
+
+  /**
+   * Удаляет запись о пропуске ходов для игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async removeSkippedTurn(gameId, userId) {
+    const gamesCollection = this.getCollection('games');
+    const game = await gamesCollection.findOne({ gameId });
+
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const newSkippedTurnsList = (game.skippedTurnsList || []).filter(entry => entry.userId !== userId);
+
+    await gamesCollection.updateOne(
+      { gameId },
+      { $set: { skippedTurnsList: newSkippedTurnsList } }
     );
 
     return { success: true };

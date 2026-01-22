@@ -684,6 +684,17 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
+   * Отправляет уведомление о пропуске хода игроком
+   * @param {number} chatId - ID чата
+   * @param {Object} player - Объект игрока
+   * @param {number} remainingTurns - Сколько ходов осталось пропустить
+   */
+  async sendSkipTurnNotification(chatId, player, remainingTurns) {
+    const message = `⏭️ ${player.username} пропускает ход! Осталось пропустить: ${remainingTurns}`;
+    await this.sendMessage(chatId, message);
+  }
+
+  /**
    * Отправляет сообщение о завершении игры
    * @param {number} chatId - ID чата
    */

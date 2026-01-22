@@ -35,7 +35,8 @@ async function handleRollDice(query, diceCount, services) {
     }
 
     // Проверить, нужно ли пропустить ход
-    if (currentPlayer.skippedTurns > 0) {
+    const skippedResult = await gameService.databaseService.getSkippedTurn(game.gameId, currentPlayer.userId);
+    if (skippedResult.success && skippedResult.skippedTurn) {
       // Отправить сообщение о пропуске хода
       await messageService.sendErrorMessage(chatId, `Игрок ${currentPlayer.username} пропускает ход!`);
 
@@ -1169,11 +1170,13 @@ async function handlePayDismissal(query, services) {
       { gameId: game.gameId },
       {
         $set: {
-          [`players.${playerIndex}.cash`]: newCash,
-          [`players.${playerIndex}.skippedTurns`]: 2
+          [`players.${playerIndex}.cash`]: newCash
         }
       }
     );
+
+    // Добавить пропуск ходов
+    await gameService.databaseService.addSkippedTurn(game.gameId, userId, currentPlayer.username, 2, 'dismissal');
 
     // Удалить кнопки с сообщения
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
@@ -1235,16 +1238,8 @@ async function handlePayDismissalCreditCard(query, services) {
 
     await gameService.addLiability(game.gameId, userId, liability);
 
-    // Установить skippedTurns
-    const playerIndex = game.players.findIndex(p => p.userId === userId);
-    await gameService.databaseService.getDb().collection('games').updateOne(
-      { gameId: game.gameId },
-      {
-        $set: {
-          [`players.${playerIndex}.skippedTurns`]: 2
-        }
-      }
-    );
+    // Добавить пропуск ходов
+    await gameService.databaseService.addSkippedTurn(game.gameId, userId, currentPlayer.username, 2, 'dismissal');
 
     // Удалить кнопки с сообщения
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
