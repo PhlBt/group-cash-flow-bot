@@ -1,5 +1,6 @@
 const { formatNumber } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
+const ErrorStateManager = require('../utils/errorStateManager');
 
 // Импорт функций из других модулей
 const { handleDealType, handleBuyDeal, handleSkipDeal, handleBuyDealWithCreditCard, handleBuyMortgageDownPaymentWithCreditCard, handleChangeQuantity, handleSellStocks, handlePayExpenses } = require('./deals');
@@ -703,6 +704,11 @@ async function handleCallbackQuery(query, services) {
       case 'skip_dream':
         // Пропуск мечты
         await handleSkipDream(query, services);
+        break;
+
+      case 'report_error':
+        // Сообщить об ошибке
+        await handleReportError(query, services);
         break;
 
       default:
@@ -1658,6 +1664,36 @@ async function handleKickPlayerVote(query, services) {
   } catch (error) {
     console.error('Error in handleKickPlayerVote:', error);
     await messageService.sendErrorMessage(chatId, 'Произошла ошибка при голосовании.');
+  }
+}
+
+/**
+ * Обрабатывает сообщение об ошибке
+ * @param {Object} query - Callback query от Telegram
+ * @param {Object} services - Объект с сервисами
+ */
+async function handleReportError(query, services) {
+  const { gameService, messageService } = services;
+  const chatId = query.message.chat.id;
+  const userId = query.from.id;
+  const username = query.from.first_name || query.from.username || 'игрок';
+
+  try {
+    // Установить состояние ожидания описания ошибки с ID сообщения с кнопкой
+    ErrorStateManager.setWaiting(userId, query.message.message_id, chatId);
+
+    // Отправить запрос на описание ошибки с ForceReply
+    const messageId = await messageService.sendErrorReportRequest(chatId, query.message.message_id);
+
+    // Обновить messageId в ErrorStateManager на ID сообщения с запросом описания
+    ErrorStateManager.updateMessageId(userId, messageId);
+
+    // Сохранить ID сообщения запроса для будущих действий
+    console.log(`User ${userId} is waiting to report error. Request message ID: ${messageId}`);
+
+  } catch (error) {
+    console.error('Error in handleReportError:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при обработке запроса.');
   }
 }
 

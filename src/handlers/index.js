@@ -3,8 +3,7 @@ const commands = require('./commands');
 const callbacks = require('./callbacks');
 const deals = require('./deals');
 const profile = require('./profile');
-const charity = require('./charity');
-const fastTrack = require('./fastTrack');
+const error = require('./error');
 
   // Экспорт всех функций для совместимости с main.js
 module.exports = {
@@ -36,5 +35,8 @@ module.exports = {
   handleProfile: profile.handleProfile,
   handleStats: profile.handleStats,
   handleAssets: profile.handleAssets,
-  handleCredits: profile.handleCredits
+  handleCredits: profile.handleCredits,
+
+  // Error
+  handleErrorMessage: error.handleErrorMessage
 };

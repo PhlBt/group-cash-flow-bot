@@ -1519,6 +1519,71 @@ class DatabaseService {
   }
 
   /**
+   * Создает отчет об ошибке с полными данными пользователя
+   * @param {string} userId - ID пользователя
+   * @param {string} username - Имя пользователя
+   * @param {string} description - Описание ошибки
+   * @param {string} chatId - ID чата
+   * @param {string} messageId - ID сообщения
+   * @param {Object} userData - Полные данные пользователя из Telegram
+   * @param {Object} chatData - Данные чата
+   * @param {Object} messageData - Данные сообщения
+   * @returns {Promise<number>} ID созданного отчета
+   */
+  async createErrorReport(userId, username, description, chatId, messageId, userData, chatData, messageData) {
+    try {
+      const db = this.getDb();
+      const errorsCollection = db.collection('errors');
+
+      // Получаем последний errorId
+      const lastError = await errorsCollection.findOne({}, { sort: { errorId: -1 } });
+      const newErrorId = lastError ? lastError.errorId + 1 : 1;
+
+      const errorReport = {
+        errorId: newErrorId,
+        userId: userId,
+        username: username,
+        description: description,
+        chatId: chatId,
+        messageId: messageId,
+        timestamp: new Date(),
+        status: 'pending', // pending, resolved, rejected
+        
+        // Данные пользователя из Telegram
+        user: {
+          id: userData.id,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          username: userData.username,
+          language_code: userData.language_code,
+          is_bot: userData.is_bot
+        },
+        
+        // Данные чата
+        chat: {
+          id: chatData.id,
+          type: chatData.type,
+          title: chatData.title,
+          username: chatData.username
+        },
+        
+        // Данные сообщения
+        message: {
+          message_id: messageData.message_id,
+          date: messageData.date,
+          text: messageData.text
+        }
+      };
+
+      await errorsCollection.insertOne(errorReport);
+      return newErrorId;
+    } catch (error) {
+      console.error('Error creating error report:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Закрывает подключение к базе данных
    * @returns {Promise<void>}
    */

@@ -519,6 +519,9 @@ const rulesBackKeyboard = {
 const developerKeyboard = {
   inline_keyboard: [
     [
+      { text: '🚨 Сообщить об ошибке', callback_data: 'report_error' }
+    ],
+    [
       { text: '😍 Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]

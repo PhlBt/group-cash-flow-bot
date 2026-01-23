@@ -46,13 +46,13 @@ async function connectToMongoDB() {
 // Установка команд для бота
 async function setBotCommands() {
   const commands = [
-    { command: 'start', description: 'Запуск бота и приветствие пользователя' },
-    { command: 'help', description: 'Показать список всех доступных команд' },
-    { command: 'rules', description: 'Показать правила игры' },
-    { command: 'profile', description: 'Показать профиль игрока или статистику' },
-    { command: 'leave', description: 'Выйти из активной игры в чате' },
-    { command: 'endgame', description: 'Начать голосование за окончание игры' },
-    { command: 'votekick', description: 'Начать голосование за исключение игрока' }
+    { command: 'start', description: 'Запуск бота' },
+    { command: 'help', description: 'Список всех команд' },
+    { command: 'rules', description: 'Правила игры' },
+    { command: 'profile', description: 'Профиль игрока' },
+    { command: 'leave', description: 'Выйти из игры' },
+    { command: 'votekick', description: 'Начать голосование за исключение игрока' },
+    { command: 'endgame', description: 'Начать голосование за окончание игры' }
   ];
 
   try {
@@ -67,6 +67,10 @@ async function setBotCommands() {
 async function startBot() {
   await connectToMongoDB();
   await setBotCommands();
+
+  // Устанавливаем экземпляр бота в ErrorStateManager
+  const ErrorStateManager = require('./utils/errorStateManager');
+  ErrorStateManager.setBotInstance(bot);
 
   // Обработчик команды /start
   bot.onText(/\/start/, async (msg) => {
@@ -138,6 +142,28 @@ async function startBot() {
       return;
     }
     await handlers.handleCallbackQuery(query, services);
+  });
+
+  // Обработчик текстовых сообщений (для перехвата описания ошибки)
+  bot.on('message', async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Message ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
+
+    // Проверяем, является ли сообщение текстом и есть ли reply_to_message
+    if (msg.text && msg.reply_to_message) {
+      // Проверяем, ожидает ли пользователь ввода описания ошибки
+      if (ErrorStateManager.isWaiting(msg.from.id)) {
+        // Проверяем, что это ответ на наше сообщение о запросе ошибки
+        const waitingState = ErrorStateManager.getWaitingState(msg.from.id);
+        if (waitingState && waitingState.messageId === msg.reply_to_message.message_id) {
+          // Обрабатываем описание ошибки
+          await handlers.handleErrorMessage(msg, services);
+          return;
+        }
+      }
+    }
   });
 
   console.log('Bot is running...');

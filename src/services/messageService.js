@@ -43,21 +43,24 @@ class MessageService {
    * @param {number} chatId - ID чата
    */
   async sendHelpMessage(chatId) {
-    const helpText = `
-*Команды бота CashFlow:*
+    const helpText = `🎮 Добро пожаловать в CashFlow!
 
+CashFlow - настольная игра о финансовом планировании и управлении личными финансами.
+
+*ОСНОВНЫЕ КОМАНДЫ:*
 /start - Начать игру
 /help - Показать эту справку
 /rules - Показать правила игры
-/newgame - Создать новую игру
-/play - Начать игру
+
+*ИГРОВЫЕ КОМАНДЫ:*
+/profile - Показать профиль игрока
+/leave - Выйти из игры
+
+*УПРАВЛЕНИЕ ИГРОЙ:*
 /endgame - Начать голосование за окончание игры
+/votekick - Начать голосование за исключение игрока`;
 
-*О игре:*
-CashFlow - настольная игра о финансовом планировании.
-    `;
-
-    await this.sendMessage(chatId, helpText.trim(), { parse_mode: 'Markdown', reply_markup: developerKeyboard });
+    await this.sendMessage(chatId, helpText, { parse_mode: 'Markdown', reply_markup: developerKeyboard });
   }
 
   /**
@@ -214,6 +217,15 @@ CashFlow - настольная игра о финансовом планиро�
   async sendGameCreationErrorMessage(chatId) {
     const message = 'Ошибка при создании игры. Попробуйте еще раз.';
     await this.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет сообщение об ошибке
+   * @param {number} chatId - ID чата
+   * @param {string} errorText - Текст ошибки
+   */
+  async sendErrorMessage(chatId, errorText) {
+    await this.sendMessage(chatId, errorText);
   }
 
   /**
@@ -455,10 +467,10 @@ CashFlow - настольная игра о финансовом планиро�
       info += `${UserStatsService.formatUserStats(userStats)}\n`;
     }
 
-    if (!player.inFastTrack) info += '\n'
 
     // Если передан игрок, добавляем информацию об игре
     if (player) {
+      if (!player.inFastTrack) info += '\n'
       info += `👤 ${player.username}\n`;
 
       if (!player.inFastTrack) {
@@ -802,6 +814,25 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     await this.sendMessage(chatId, message);
+  }
+
+  /**
+   * Отправляет запрос на описание ошибки
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для ответа
+   * @returns {Promise<number>} ID отправленного сообщения
+   */
+  async sendErrorReportRequest(chatId) {
+    const message = `🚨 *Сообщить об ошибке*\n\nПожалуйста, опишите возникшую проблему или ошибку в ответ на это сообщение.\n\n_Вы можете описать:\n• Ошибки в работе бота\n• Проблемы с командами\n• Некорректное поведение игры\n• Предложения по улучшению_\n\n_Описание должно быть не менее 10 символов._`;
+
+    const sentMessage = await this.sendMessage(chatId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        force_reply: true
+      }
+    });
+
+    return sentMessage.message_id;
   }
 
   /**
