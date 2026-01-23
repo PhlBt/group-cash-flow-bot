@@ -50,6 +50,7 @@ async function setBotCommands() {
     { command: 'help', description: 'Показать список всех доступных команд' },
     { command: 'rules', description: 'Показать правила игры' },
     { command: 'profile', description: 'Показать профиль игрока или статистику' },
+    { command: 'leave', description: 'Выйти из активной игры в чате' },
     { command: 'endgame', description: 'Начать голосование за окончание игры' },
     { command: 'votekick', description: 'Начать голосование за исключение игрока' }
   ];
@@ -101,6 +102,15 @@ async function startBot() {
       return;
     }
     await handlers.handleProfile(msg, services);
+  });
+
+  // Обработчик команды /leave
+  bot.onText(/\/leave/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /leave ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
+    await handlers.handleLeave(msg, services);
   });
 
   // Обработчик команды /endgame

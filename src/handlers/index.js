@@ -6,7 +6,7 @@ const profile = require('./profile');
 const charity = require('./charity');
 const fastTrack = require('./fastTrack');
 
-// Экспорт всех функций для совместимости с main.js
+  // Экспорт всех функций для совместимости с main.js
 module.exports = {
   // Команды
   handleStart: commands.handleStart,
@@ -14,6 +14,7 @@ module.exports = {
   handleNewGame: commands.handleNewGame,
   handlePlay: commands.handlePlay,
   handleEndGame: commands.handleEndGame,
+  handleLeave: commands.handleLeave,
   handleRules: commands.handleRules,
   handleVoteKick: commands.handleVoteKick,
 

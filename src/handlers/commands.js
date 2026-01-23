@@ -237,6 +237,49 @@ async function handleEndGameVote(query, services) {
 }
 
 /**
+ * Обрабатывает команду /leave
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { gameService, messageService }
+ */
+async function handleLeave(msg, services) {
+  const { gameService, messageService } = services;
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const username = msg.from.first_name || msg.from.username || 'игрок';
+
+  try {
+    // Найти активную игру пользователя в чате
+    const userGames = await gameService.getUserGames(userId);
+    const game = userGames.find(game => game.status !== 'finished' && game.chatId === chatId);
+
+    if (!game) {
+      await messageService.sendErrorMessage(chatId, 'Вы не участвуете в активной игре в этом чате.');
+      return;
+    }
+
+    // Удалить игрока из игры
+    const result = await gameService.removePlayerFromGame(game.gameId, userId);
+
+    if (!result.success) {
+      await messageService.sendErrorMessage(chatId, `Ошибка при выходе из игры: ${result.error}`);
+      return;
+    }
+
+    // Отправить подтверждение выхода
+    await messageService.sendErrorMessage(chatId, `👋 ${username} вышел из игры.`);
+
+    // Проверить, завершилась ли игра
+    const updatedGame = await gameService.getGame(game.gameId);
+    if (updatedGame && updatedGame.status === 'finished') {
+      await messageService.sendGameFinishedMessage(chatId);
+    }
+  } catch (error) {
+    console.error('Error in handleLeave:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выходе из игры.');
+  }
+}
+
+/**
  * Обрабатывает команду /votekick
  * @param {Object} msg - Сообщение Telegram
  * @param {Object} services - Объект с сервисами { gameService, messageService }
@@ -287,5 +330,6 @@ module.exports = {
   handleProfile,
   handleRules,
   handleEndGameVote,
+  handleLeave,
   handleVoteKick
 };

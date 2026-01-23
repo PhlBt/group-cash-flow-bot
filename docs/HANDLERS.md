@@ -125,6 +125,18 @@ Handlers - модуль функций-обработчиков команд Tel
   - Если игроков 3 и больше - инициирует голосование: отправляет сообщение через messageService.sendEndGameVoteMessage(), сохраняет messageId через gameService.initiateEndGameVote()
   - Обрабатывает ошибки через messageService.sendEndGameErrorMessage()
 
+### handleLeave(msg, services)
+- **Назначение**: Обработка команды /leave - выход игрока из активной игры
+- **Параметры**:
+  - `msg` (Object): Сообщение Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Извлекает chatId и userId из сообщения
+  - Находит активную игру пользователя в чате
+  - Удаляет игрока из игры через gameService.removePlayerFromGame()
+  - Отправляет подтверждение выхода в чат
+  - Проверяет, завершилась ли игра после выхода
+
 ### handleRules(msg, services)
 - **Назначение**: Обработка команды /rules - показ правил игры
 - **Параметры**:

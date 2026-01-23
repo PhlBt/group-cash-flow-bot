@@ -506,8 +506,8 @@ class DatabaseService {
       newCurrentIndex = game.currentPlayerIndex % updatedPlayers.length;
     }
 
-    // Если остался 1 игрок, завершаем игру
-    if (updatedPlayers.length === 1) {
+    // Если остался 1 игрок или меньше, завершаем игру
+    if (updatedPlayers.length <= 1) {
       await gamesCollection.updateOne(
         { gameId },
         {
@@ -516,7 +516,7 @@ class DatabaseService {
             currentPlayerIndex: 0,
             status: 'finished',
             finishedAt: new Date(),
-            winner: updatedPlayers[0].userId
+            winner: updatedPlayers.length === 1 ? updatedPlayers[0].userId : null
           }
         }
       );
