@@ -164,7 +164,12 @@ async function handleRules(msg, services) {
   const { messageService } = services;
   const chatId = msg.chat.id;
 
-  await messageService.sendRulesMessage(chatId);
+  // Сохраняем ID сообщения для будущих редактирований
+  const messageId = await messageService.sendRulesMessage(chatId);
+
+  // Сохраняем messageId в глобальном хранилище или контексте чата
+  // Для простоты будем передавать messageId через callback data
+  // В реальном приложении лучше использовать базу данных или in-memory store
 }
 
 /**

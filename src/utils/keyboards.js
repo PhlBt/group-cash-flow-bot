@@ -471,6 +471,49 @@ function generateDreamKeyboard(dreamField, player, allPlayers) {
 }
 
 /**
+ * Клавиатура для главного сообщения правил
+ */
+const rulesMainKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '🏁 Типы полей', callback_data: 'rules_types' }
+    ],
+    [
+      { text: '💎 Финансовая система', callback_data: 'rules_finance' }
+    ],
+    [
+      { text: '🚀 Специальные механики', callback_data: 'rules_mechanics' }
+    ],
+    [
+      { text: '🏆 Победа и поражение', callback_data: 'rules_victory' }
+    ],
+    [
+      { text: '💡 Советы и стратегии', callback_data: 'rules_tips' }
+    ],
+    [
+      { text: '🎮 Команды и управление', callback_data: 'rules_commands' }
+    ],
+    [
+      { text: '❓ Часто задаваемые вопросы', callback_data: 'rules_faq' }
+    ],
+    [
+      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+    ]
+  ]
+};
+
+/**
+ * Клавиатура для разделов правил (с кнопкой назад)
+ */
+const rulesBackKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '⬅️ Вернуться назад', callback_data: 'rules_back' }
+    ]
+  ]
+};
+
+/**
  * Клавиатура для команд /rules и /help
  */
 const developerKeyboard = {
@@ -499,5 +542,7 @@ module.exports = {
   profileKeyboard,
   gameFinishedKeyboard,
   gameLostKeyboard,
+  rulesMainKeyboard,
+  rulesBackKeyboard,
   developerKeyboard
 };

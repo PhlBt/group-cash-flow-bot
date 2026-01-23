@@ -410,7 +410,48 @@ async function handleCallbackQuery(query, services) {
 
       case 'rules':
         // Показать правила
-        await messageService.sendRulesMessage(chatId);
+        const messageId = await messageService.sendRulesMessage(chatId);
+        // Сохранить messageId для будущих редактирований (в реальном приложении лучше использовать базу данных)
+        break;
+
+      case 'rules_types':
+        // Показать раздел "Типы полей"
+        await messageService.editRulesToTypes(chatId, query.message.message_id);
+        break;
+
+      case 'rules_finance':
+        // Показать раздел "Финансовая система"
+        await messageService.editRulesToFinance(chatId, query.message.message_id);
+        break;
+
+      case 'rules_mechanics':
+        // Показать раздел "Специальные механики"
+        await messageService.editRulesToMechanics(chatId, query.message.message_id);
+        break;
+
+      case 'rules_victory':
+        // Показать раздел "Победа и поражение"
+        await messageService.editRulesToVictory(chatId, query.message.message_id);
+        break;
+
+      case 'rules_tips':
+        // Показать раздел "Советы и стратегии"
+        await messageService.editRulesToTips(chatId, query.message.message_id);
+        break;
+
+      case 'rules_commands':
+        // Показать раздел "Команды и управление"
+        await messageService.editRulesToCommands(chatId, query.message.message_id);
+        break;
+
+      case 'rules_faq':
+        // Показать раздел "Часто задаваемые вопросы"
+        await messageService.editRulesToFAQ(chatId, query.message.message_id);
+        break;
+
+      case 'rules_back':
+        // Вернуться к главному сообщению правил
+        await messageService.editRulesToMain(chatId, query.message.message_id);
         break;
 
       case 'help':

@@ -1,6 +1,7 @@
 const { formatNumber, RateLimiter } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, bankruptcyKeyboard, charityKeyboard, fastTrackCharityKeyboard, dealTypeKeyboard, generateDealKeyboard, generateDreamKeyboard, creditCardKeyboard, profileKeyboard, gameFinishedKeyboard, gameLostKeyboard, developerKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, bankruptcyKeyboard, charityKeyboard, fastTrackCharityKeyboard, dealTypeKeyboard, generateDealKeyboard, generateDreamKeyboard, creditCardKeyboard, profileKeyboard, gameFinishedKeyboard, gameLostKeyboard, rulesMainKeyboard, rulesBackKeyboard, developerKeyboard } = require('../utils/keyboards');
 const { FIELD_TYPES } = require('../game/board');
+const RulesService = require('./rulesService');
 
 class MessageService {
   constructor(bot) {
@@ -60,80 +61,140 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет сообщение с правилами игры
+   * Отправляет главное сообщение с правилами игры
    * @param {number} chatId - ID чата
+   * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendRulesMessage(chatId) {
-    const rulesText = `
-*🎯 ПРАВИЛА ИГРЫ CASHFLOW*
+    const rulesService = new RulesService();
+    const mainContent = rulesService.getMainContent();
 
-*Цель игры:*
-Выйти из "крысиных бегов" и достичь финансовой свободы! Это происходит, когда ваш пассивный доход превышает ежемесячные расходы.
+    const sentMessage = await this.sendMessage(chatId, mainContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesMainKeyboard
+    });
 
-*🎮 ПОДГОТОВКА К ИГРЕ*
+    return sentMessage.message_id;
+  }
 
-1. Нажмите "🎮 Играть!" для создания новой игры
-2. Все игроки выбирают свою "мечту" (финансовую цель)
-3. Игра начинается с равными начальными условиями
+  /**
+   * Редактирует сообщение с правилами на раздел "Типы полей"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToTypes(chatId, messageId) {
+    const rulesService = new RulesService();
+    const typesContent = rulesService.getTypesSection();
 
-*📍 ПОЛЯ ДОСКИ*
+    await this.editMessageText(chatId, messageId, typesContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-Игра проходит по круговой доске с разными типами полей:
+  /**
+   * Редактирует сообщение с правилами на раздел "Финансовая система"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToFinance(chatId, messageId) {
+    const rulesService = new RulesService();
+    const financeContent = rulesService.getFinanceSection();
 
-• *💰 День выплат* - получаете зарплату + пассивный доход - расходы
-• *💼 Сделка* - инвестиционные возможности (мелкие/крупные сделки)
-• *📈 Рынок* - продажа активов по рыночным ценам
-• *❤️ Благотворительность* - пожертвуйте 10% дохода за бонус на 3 хода
-• *👶 Ребенок* - расходы на детей увеличиваются
-• *🏭 Безработица* - оплатите расходы или пропустите 2 хода
+    await this.editMessageText(chatId, messageId, financeContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-*💹 ФИНАНСОВАЯ МЕХАНИКА*
+  /**
+   * Редактирует сообщение с правилами на раздел "Специальные механики"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToMechanics(chatId, messageId) {
+    const rulesService = new RulesService();
+    const mechanicsContent = rulesService.getMechanicsSection();
 
-• *Зарплата* - фиксированный доход от профессии
-• *Кредиты* - берутся автоматически при покупке дорогих активов
-• *Денежный поток* = Зарплата + Пассивный доход - Расходы
-• *Банкротство* - когда денег недостаточно, продаются активы для погашения долгов
+    await this.editMessageText(chatId, messageId, mechanicsContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-*🚀 СКОРОСТНАЯ ДОРОЖКА*
+  /**
+   * Редактирует сообщение с правилами на раздел "Победа и поражение"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToVictory(chatId, messageId) {
+    const rulesService = new RulesService();
+    const victoryContent = rulesService.getVictorySection();
 
-Когда пассивный доход > расходов, вы переходите на Fast Track:
-• Другие правила игры
-• Более выгодные сделки
-• Путь к окончательной финансовой свободе
+    await this.editMessageText(chatId, messageId, victoryContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-*⚠️ БАНКРОТСТВО*
+  /**
+   * Редактирует сообщение с правилами на раздел "Советы и стратегии"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToTips(chatId, messageId) {
+    const rulesService = new RulesService();
+    const tipsContent = rulesService.getTipsSection();
 
-Если после дня выплат денег недостаточно:
-1. Продаются активы за половину стоимости
-2. Оплачиваются кредиты
-3. Пропускаются 3 хода для восстановления
-4. Цель - снова достичь положительного денежного потока
+    await this.editMessageText(chatId, messageId, tipsContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-*🎲 СТРАТЕГИЯ ПОБЕДЫ*
+  /**
+   * Редактирует сообщение с правилами на раздел "Команды и управление"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToCommands(chatId, messageId) {
+    const rulesService = new RulesService();
+    const commandsContent = rulesService.getCommandsSection();
 
-• Покупайте активы с хорошим соотношением цена/доход
-• Балансируйте между риском и стабильностью
-• Следите за денежным потоком
-• Используйте благотворительность стратегически
-• Не берите слишком много кредитов
+    await this.editMessageText(chatId, messageId, commandsContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-*🏁 ЗАВЕРШЕНИЕ ИГРЫ*
+  /**
+   * Редактирует сообщение с правилами на раздел "Часто задаваемые вопросы"
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToFAQ(chatId, messageId) {
+    const rulesService = new RulesService();
+    const faqContent = rulesService.getFAQSection();
 
-• Любой игрок может начать голосование за окончание
-• Требуется большинство голосов (>50%)
-• При ничьей игра продолжается
-• Побеждает игрок, первым достигший финансовой свободы
+    await this.editMessageText(chatId, messageId, faqContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesBackKeyboard
+    });
+  }
 
-*📋 КОМАНДЫ БОТА*
-/start - Запуск бота
-/help - Справка по командам
-/profile - Просмотр профиля и статистики
-/endgame - Начать голосование за окончание игры
+  /**
+   * Возвращает сообщение с правилами к главному экрану
+   * @param {number} chatId - ID чата
+   * @param {number} messageId - ID сообщения для редактирования
+   */
+  async editRulesToMain(chatId, messageId) {
+    const rulesService = new RulesService();
+    const mainContent = rulesService.getMainContent();
 
-Удачи в достижении финансовой свободы! 💰
-    `;
-
-    await this.sendMessage(chatId, rulesText.trim(), { parse_mode: 'Markdown', reply_markup: developerKeyboard });
+    await this.editMessageText(chatId, messageId, mainContent, {
+      parse_mode: 'MarkdownV2',
+      reply_markup: rulesMainKeyboard
+    });
   }
 
   /**
