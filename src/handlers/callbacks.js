@@ -708,9 +708,9 @@ async function handleCallbackQuery(query, services) {
       default:
         // Проверяем market callback
         if (data.startsWith('sell_market_asset_')) {
-          const assetIndex = parseInt(data.split('_')[3], 10);
+          const assetId = data.split('_').slice(3).join('_'); // Извлекаем assetId (может содержать '_')
           const { handleSellMarketAsset } = require('./market');
-          await handleSellMarketAsset(query, assetIndex, services);
+          await handleSellMarketAsset(query, assetId, services);
         }
         // Проверяем, является ли callback_data выбором пользователя для предложения сделки
         else if (data.startsWith('select_user_')) {
@@ -719,8 +719,8 @@ async function handleCallbackQuery(query, services) {
         }
         // Обработчики банкротства
         else if (data.startsWith('sell_asset_')) {
-          const assetIndex = parseInt(data.split('_')[2], 10);
-          await handleSellAsset(query, assetIndex, services);
+          const assetId = data.split('_').slice(2).join('_'); // Извлекаем assetId (может содержать '_')
+          await handleSellAsset(query, assetId, services);
         }
         else if (data.startsWith('pay_liability_')) {
           const liabilityIndex = parseInt(data.split('_')[2], 10);
@@ -928,10 +928,10 @@ async function handleCancelOffer(query, services) {
 /**
  * Обрабатывает продажу актива в банкротстве
  * @param {Object} query - Callback query от Telegram
- * @param {number} assetIndex - Индекс актива
+ * @param {string} assetId - ID актива
  * @param {Object} services - Объект с сервисами
  */
-async function handleSellAsset(query, assetIndex, services) {
+async function handleSellAsset(query, assetId, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
   const userId = query.from.id;
@@ -952,7 +952,7 @@ async function handleSellAsset(query, assetIndex, services) {
     }
 
     // Продать актив
-    const sellResult = await gameService.sellAssetWithBankruptcy(game.gameId, userId, assetIndex);
+    const sellResult = await gameService.sellAssetWithBankruptcy(game.gameId, userId, assetId);
     if (!sellResult.success) {
       await messageService.sendErrorMessage(chatId, 'Ошибка продажи актива: ' + sellResult.error);
       return;

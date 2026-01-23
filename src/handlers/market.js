@@ -4,6 +4,7 @@
 
 const { markets } = require('../game/cards/markets');
 const { applyInflation } = require('../utils');
+const { formatNumber } = require('../utils');
 
 /**
  * Обрабатывает попадание на поле Market
@@ -239,10 +240,10 @@ async function handleSkipMarket(query, services) {
 /**
  * Обрабатывает продажу актива по market цене
  * @param {Object} query - Callback query от Telegram
- * @param {number} assetIndex - Индекс актива в списке подходящих
+ * @param {string} assetId - ID актива для продажи
  * @param {Object} services - Объект с сервисами
  */
-async function handleSellMarketAsset(query, assetIndex, services) {
+async function handleSellMarketAsset(query, assetId, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
   const userId = query.from.id;
@@ -267,18 +268,19 @@ async function handleSellMarketAsset(query, assetIndex, services) {
       return;
     }
 
-    // Найти подходящие активы игрока
-    const relatedDeals = marketCard.relatedDeals || [];
-    const eligibleAssets = currentPlayer.assets.filter(asset =>
-      relatedDeals.includes(asset.id || asset.title)
-    );
-
-    if (assetIndex >= eligibleAssets.length) {
+    // Найти актив по assetId
+    const assetToSell = currentPlayer.assets.find(asset => asset.assetId === assetId);
+    if (!assetToSell) {
       await messageService.sendErrorMessage(chatId, 'Актив не найден.');
       return;
     }
 
-    const assetToSell = eligibleAssets[assetIndex];
+    // Проверить, что актив подходит для продажи по этой market карточке
+    const relatedDeals = marketCard.relatedDeals || [];
+    if (!relatedDeals.includes(assetToSell.id || assetToSell.title)) {
+      await messageService.sendErrorMessage(chatId, 'Этот актив нельзя продать по этой market карточке.');
+      return;
+    }
 
     // Рассчитать цену продажи
     const sellPrice = calculateMarketSellPrice(marketCard, assetToSell);
@@ -286,15 +288,86 @@ async function handleSellMarketAsset(query, assetIndex, services) {
     // Провести продажу
     await sellMarketAsset(game.gameId, userId, assetToSell, sellPrice, services);
 
-    // Удалить кнопки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
-
-    // Перейти к следующему игроку в циркуляции
-    await circulateMarketToNextPlayer(game.gameId, chatId, services);
+    // Обновить сообщение и кнопки с карточкой маркета
+    await updateMarketMessageAfterSale(chatId, query.message.message_id, game, currentPlayer, services);
 
   } catch (error) {
     console.error('Error in handleSellMarketAsset:', error);
     await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже актива.');
+  }
+}
+
+/**
+ * Обновляет сообщение и кнопки с карточкой маркета после продажи актива
+ * @param {number} chatId - ID чата
+ * @param {number} messageId - ID сообщения для обновления
+ * @param {Object} game - Объект игры
+ * @param {Object} currentPlayer - Объект текущего игрока
+ * @param {Object} services - Объект с сервисами
+ */
+async function updateMarketMessageAfterSale(chatId, messageId, game, currentPlayer, services) {
+  const { messageService } = services;
+
+  const marketCard = game.currentMarket;
+  if (!marketCard) {
+    return;
+  }
+
+  // Проверить, остались ли у игрока другие подходящие активы
+  const relatedDeals = marketCard.relatedDeals || [];
+  const remainingEligibleAssets = currentPlayer.assets ? currentPlayer.assets.filter(asset =>
+    relatedDeals.includes(asset.id || asset.title)
+  ) : [];
+
+  if (remainingEligibleAssets.length > 0) {
+    // У игрока остались активы для продажи - обновить существующее сообщение
+    let message = `📈 **Рынок**\n\n`;
+    message += `💼 ${marketCard.title}\n\n`;
+    message += `📝 ${marketCard.description}\n\n`;
+
+    // Показать оставшиеся активы игрока
+    message += `🏠 Ваши активы:\n\n`;
+    remainingEligibleAssets.forEach((asset, index) => {
+      const sellPrice = calculateMarketSellPrice(marketCard, asset);
+      message += `${index + 1}. ${asset.title}\n`;
+      message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽\n`;
+      message += `   💵 Доход: ${formatNumber(asset.cashFlow || 0)} ₽/мес\n\n`;
+    });
+
+    message += `💰 Баланс: ${formatNumber(currentPlayer.cash)} ₽\n`;
+    message += `📈 Пассивный доход: ${formatNumber(currentPlayer.passiveIncome)} ₽/мес\n`;
+    message += `📉 Общие расходы: ${formatNumber(currentPlayer.totalExpenses)} ₽/мес\n`;
+    message += `💹 Денежный поток: ${formatNumber(currentPlayer.cashFlow)} ₽/мес\n\n`;
+    message += `Что вы хотите сделать?`;
+
+    // Сгенерировать новую клавиатуру
+    const keyboard = {
+      inline_keyboard: []
+    };
+
+    // Кнопки продажи для оставшихся активов
+    remainingEligibleAssets.forEach((asset) => {
+      const sellPrice = calculateMarketSellPrice(marketCard, asset);
+      keyboard.inline_keyboard.push([{
+        text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
+        callback_data: `sell_market_asset_${asset.assetId}`
+      }]);
+    });
+
+    // Всегда добавить кнопку "Пропустить"
+    keyboard.inline_keyboard.push([{
+      text: 'Пропустить',
+      callback_data: 'skip_market'
+    }]);
+
+    // Обновить сообщение
+    await messageService.editMessageText(chatId, messageId, message, {
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+  } else {
+    // У игрока не осталось подходящих активов - перейти к следующему игроку
+    await circulateMarketToNextPlayer(game.gameId, chatId, services);
   }
 }
 

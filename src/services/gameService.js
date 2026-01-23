@@ -650,6 +650,7 @@ class GameService {
     const totalIncome = incomePerUnit * quantity;
 
     const asset = {
+      assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       id: deal.id,
       title: deal.title,
       cost: deal.cost,
@@ -727,6 +728,7 @@ class GameService {
     const totalIncome = incomePerUnit * quantity;
 
     const asset = {
+      assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       id: deal.id,
       title: deal.title,
       cost: totalCost,
@@ -803,6 +805,7 @@ class GameService {
     const totalIncome = incomePerUnit * quantity;
 
     const asset = {
+      assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       id: deal.id,
       title: deal.title,
       cost: totalCost,
@@ -871,6 +874,7 @@ class GameService {
 
     // Добавляем актив
     const asset = {
+      assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       id: deal.id,
       title: deal.title,
       cost: deal.cost,
@@ -930,6 +934,7 @@ class GameService {
 
       // Добавляем актив
       const asset = {
+        assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
         cost: deal.cost,
@@ -972,6 +977,7 @@ class GameService {
 
       // Добавляем актив
       const asset = {
+        assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
         cost: deal.cost,
@@ -1041,6 +1047,7 @@ class GameService {
 
       // Добавляем актив
       const asset = {
+        assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
         cost: deal.cost,
@@ -1065,6 +1072,7 @@ class GameService {
     if (!deal.expenses) {
       // Добавляем актив
       const asset = {
+        assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
         cost: deal.cost,
@@ -1496,10 +1504,10 @@ class GameService {
    * Продает актив за половину стоимости в банкротстве
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
-   * @param {number} assetIndex - Индекс актива в массиве
+   * @param {string} assetId - ID актива для продажи
    * @returns {Promise<{success: boolean, error?: string}>} Результат операции
    */
-  async sellAssetWithBankruptcy(gameId, userId, assetIndex) {
+  async sellAssetWithBankruptcy(gameId, userId, assetId) {
     const game = await this.databaseService.getGame(gameId);
     if (!game) {
       return { success: false, error: 'not_found' };
@@ -1515,11 +1523,11 @@ class GameService {
       return { success: false, error: 'not_in_bankruptcy' };
     }
 
-    if (!player.assets || assetIndex >= player.assets.length) {
+    // Найти актив по assetId
+    const asset = player.assets.find(a => a.assetId === assetId);
+    if (!asset) {
       return { success: false, error: 'asset_not_found' };
     }
-
-    const asset = player.assets[assetIndex];
     const quantity = asset.quantity || 1;
     const sellPrice = Math.floor((asset.cost * quantity) / 2); // Продажа за половину стоимости
     const cashFlowReduction = asset.cashFlow || 0;
@@ -1535,7 +1543,7 @@ class GameService {
     }
 
     // Удаляем актив из массива
-    const updatedAssets = player.assets.filter((_, index) => index !== assetIndex);
+    const updatedAssets = player.assets.filter(a => a.assetId !== assetId);
 
     // Вычитаем стоимость закрытых кредитов из дохода от продажи
     let netIncome = sellPrice;
@@ -1879,6 +1887,7 @@ class GameService {
 
     // Добавляем актив
     const asset = {
+      assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       id: `fastTrack_${Date.now()}`,
       title: fastTrackEvent.title,
       cost: fastTrackEvent.cost,
@@ -2135,6 +2144,7 @@ class GameService {
     // Добавить актив только если нужно
     if (addAsset) {
       const asset = {
+        assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: `fastTrack_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: fastTrackEvent.title,
         cost: eventData.cost,

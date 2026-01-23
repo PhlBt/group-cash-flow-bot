@@ -16,7 +16,7 @@ const welcomeKeyboard = {
       { text: '❓ Помощь', callback_data: 'help' }
     ],
     [
-      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+      { text: '😍 Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]
 };
@@ -409,7 +409,7 @@ const profileKeyboard = {
 const gameFinishedKeyboard = {
   inline_keyboard: [
     [
-      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+      { text: '😍 Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]
 };
@@ -420,7 +420,7 @@ const gameFinishedKeyboard = {
 const gameLostKeyboard = {
   inline_keyboard: [
     [
-      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+      { text: '😍 Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]
 };
@@ -497,7 +497,7 @@ const rulesMainKeyboard = {
       { text: '❓ Часто задаваемые вопросы', callback_data: 'rules_faq' }
     ],
     [
-      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+      { text: '😍 Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]
 };
@@ -519,7 +519,7 @@ const rulesBackKeyboard = {
 const developerKeyboard = {
   inline_keyboard: [
     [
-      { text: 'Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
+      { text: '😍 Отблагодарить разработчика', url: 'https://pay.cloudtips.ru/p/fb264aa5' }
     ]
   ]
 };

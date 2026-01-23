@@ -2255,12 +2255,11 @@ CashFlow - настольная игра о финансовом планиро�
       // Кнопки активов (только в банкротстве)
       if (player.bankruptcyState) {
         pageAssets.forEach((asset, index) => {
-          const globalIndex = startIndex + index;
           const quantity = asset.quantity || 1;
           const sellPrice = Math.floor((asset.cost * quantity) / 2);
           keyboard.inline_keyboard.push([{
             text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
-            callback_data: `sell_asset_${globalIndex}`
+            callback_data: `sell_asset_${asset.assetId}`
           }]);
         });
       }
@@ -2470,7 +2469,7 @@ CashFlow - настольная игра о финансовом планиро�
         // Добавить кнопку продажи
         keyboard.inline_keyboard.push([{
           text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
-          callback_data: `sell_market_asset_${index}`
+          callback_data: `sell_market_asset_${asset.assetId}`
         }]);
       });
 
@@ -2517,11 +2516,11 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Кнопки продажи для подходящих активов (только если карта не имеет passiveIncome)
     if (!marketCard.passiveIncome && eligibleAssets.length > 0) {
-      eligibleAssets.forEach((asset, index) => {
+      eligibleAssets.forEach((asset) => {
         const sellPrice = calculateMarketSellPrice(marketCard, asset);
         keyboard.inline_keyboard.push([{
           text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
-          callback_data: `sell_market_asset_${index}`
+          callback_data: `sell_market_asset_${asset.id}`
         }]);
       });
     }
