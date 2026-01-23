@@ -2551,7 +2551,7 @@ CashFlow - настольная игра о финансовом планиро�
         const sellPrice = calculateMarketSellPrice(marketCard, asset);
         keyboard.inline_keyboard.push([{
           text: `💸 Продать "${asset.title}" за ${formatNumber(sellPrice)} ₽`,
-          callback_data: `sell_market_asset_${asset.id}`
+          callback_data: `sell_market_asset_${asset.assetId}`
         }]);
       });
     }

@@ -268,6 +268,9 @@ async function handleSellMarketAsset(query, assetId, services) {
       return;
     }
 
+    console.log('asset', assetId)
+    console.log('assets', currentPlayer.assets)
+
     // Найти актив по assetId
     const assetToSell = currentPlayer.assets.find(asset => asset.assetId === assetId);
     if (!assetToSell) {
