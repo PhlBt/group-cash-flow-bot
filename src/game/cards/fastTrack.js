@@ -66,7 +66,7 @@ function createFastTrackFields(FIELD_TYPES) {
       }[type] || 'u';
 
       // Для PAYDAY всегда один и тот же ID
-      if (type === FIELD_TYPES.PAYDAY) {
+      if (type === FIELD_TYPES.FPAYDAY) {
         return 'pay';
       }
 
@@ -74,8 +74,8 @@ function createFastTrackFields(FIELD_TYPES) {
       return `${typePrefix}${index}`;
     };
 
-    const fieldId = generateFieldId(item.cashFlow ? FIELD_TYPES.PAYDAY :
-                                   item.charity ? FIELD_TYPES.CHARITY :
+    const fieldId = generateFieldId(item.cashFlow ? FIELD_TYPES.FPAYDAY :
+                                   item.charity ? FIELD_TYPES.FCHARITY :
                                    item.expenseBalanceMultiply !== undefined ? FIELD_TYPES.EXPENSES :
                                    (item.cost !== undefined && item.passiveIncome !== undefined) ? FIELD_TYPES.INVESTING :
                                    (item.cost !== undefined && item.dice !== undefined) ? FIELD_TYPES.INVESTING :
@@ -85,7 +85,7 @@ function createFastTrackFields(FIELD_TYPES) {
     if (item.cashFlow) {
       return {
         id: fieldId,
-        type: FIELD_TYPES.PAYDAY,
+        type: FIELD_TYPES.FPAYDAY,
         name: 'День выплаты',
         title: 'День выплаты',
         description: 'Получите доход от ваших активов и зарплаты.'
@@ -95,7 +95,7 @@ function createFastTrackFields(FIELD_TYPES) {
     if (item.charity) {
       return {
         id: fieldId,
-        type: FIELD_TYPES.CHARITY,
+        type: FIELD_TYPES.FCHARITY,
         name: item.title,
         title: item.title,
         description: item.description,

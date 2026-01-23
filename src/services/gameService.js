@@ -212,35 +212,33 @@ class GameService {
       const position = (currentPosition + i) % trackSize;
       const field = currentTrack[position];
 
-      if (field.type === FIELD_TYPES.PAYDAY) {
-        // Обрабатываем PAYDAY
-        if (inFastTrack) {
-          // На Fast Track PAYDAY дает fastTrackIncome
-          const game = await this.databaseService.getGame(gameId);
-          const player = game.players.find(p => p.userId === userId);
-          const income = player.fastTrackIncome || 0;
-          const newFastTrackCash = (player.fastTrackCash || 0) + income;
+      // Обрабатываем PAYDAY
+      if (field.type === FIELD_TYPES.FPAYDAY) {
+        // На Fast Track PAYDAY дает fastTrackIncome
+        const game = await this.databaseService.getGame(gameId);
+        const player = game.players.find(p => p.userId === userId);
+        const income = player.fastTrackIncome || 0;
+        const newFastTrackCash = (player.fastTrackCash || 0) + income;
 
-          await this.databaseService.getDb().collection('games').updateOne(
-            { gameId },
-            { $set: { [`players.${game.players.indexOf(player)}.fastTrackCash`]: newFastTrackCash } }
-          );
+        await this.databaseService.getDb().collection('games').updateOne(
+          { gameId },
+          { $set: { [`players.${game.players.indexOf(player)}.fastTrackCash`]: newFastTrackCash } }
+        );
 
+        paydayEvents.push({
+          position,
+          cashFlow: income,
+          newFastTrackCash
+        });
+      } else if (field.type === FIELD_TYPES.PAYDAY) {
+        // На Rat Race PAYDAY дает обычный денежный поток
+        const paydayResult = await this.processPayday(gameId, userId);
+        if (paydayResult.success) {
           paydayEvents.push({
             position,
-            cashFlow: income,
-            newFastTrackCash
+            cashFlow: paydayResult.cashFlow,
+            newCash: paydayResult.newCash
           });
-        } else {
-          // На Rat Race PAYDAY дает обычный денежный поток
-          const paydayResult = await this.processPayday(gameId, userId);
-          if (paydayResult.success) {
-            paydayEvents.push({
-              position,
-              cashFlow: paydayResult.cashFlow,
-              newCash: paydayResult.newCash
-            });
-          }
         }
       }
     }

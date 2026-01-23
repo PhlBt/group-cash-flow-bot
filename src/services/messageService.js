@@ -1296,7 +1296,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Для поля PAYDAY не отправляем клавиатуру и не добавляем текст "Выберите действие:"
     const { FIELD_TYPES } = require('../game/board');
-    if (fieldType === FIELD_TYPES.PAYDAY) {
+    if (fieldType === FIELD_TYPES.FPAYDAY) {
       await this.sendMessage(chatId, message);
     } else {
       message += `Выберите действие:`;
@@ -1322,7 +1322,9 @@ CashFlow - настольная игра о финансовом планиро�
       case FIELD_TYPES.DEAL: return 'Сделка';
       case FIELD_TYPES.MARKET: return 'Рынок';
       case FIELD_TYPES.PAYDAY: return 'День выплат';
+      case FIELD_TYPES.FPAYDAY: return 'День выплат';
       case FIELD_TYPES.CHARITY: return 'Благотворительность';
+      case FIELD_TYPES.FCHARITY: return 'Благотворительность';
       case FIELD_TYPES.MISCELLANEOUS: return 'Всякая всячина';
       case FIELD_TYPES.CHILD: return 'Ребенок';
       case FIELD_TYPES.DISMISSAL: return 'Увольнение';
@@ -1714,10 +1716,13 @@ CashFlow - настольная игра о финансовом планиро�
       case FIELD_TYPES.CHARITY:
         fieldTypeLabel = 'Благотворительность:';
         break;
+      case FIELD_TYPES.FCHARITY:
+        fieldTypeLabel = 'Благотворительность:';
+        break;
       case FIELD_TYPES.DREAM:
         fieldTypeLabel = 'Мечта:';
         break;
-      case FIELD_TYPES.PAYDAY:
+      case FIELD_TYPES.FPAYDAY:
         fieldTypeLabel = 'День выплат:';
         break;
       default:
@@ -1806,7 +1811,7 @@ CashFlow - настольная игра о финансовом планиро�
     // Используем switch по типу поля для лучшей читаемости
     switch (fastTrackEvent.type) {
 
-      case FIELD_TYPES.CHARITY:
+      case FIELD_TYPES.FCHARITY:
         // Благотворительность - оплата за эффект
         if (eventData.cost) {
           keyboard.inline_keyboard.push([{

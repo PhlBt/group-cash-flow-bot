@@ -207,7 +207,7 @@ async function handleRollDice(query, diceCount, services) {
       }
 
       // Для поля MARKET не передаем ход автоматически - ждем действий игроков
-    } else if (moveResult.fieldType === FIELD_TYPES.INVESTING || moveResult.fieldType === FIELD_TYPES.EXPENSES || moveResult.fieldType === FIELD_TYPES.DREAM || moveResult.fieldType === FIELD_TYPES.PAYDAY) {
+    } else if (moveResult.fieldType === FIELD_TYPES.INVESTING || moveResult.fieldType === FIELD_TYPES.EXPENSES || moveResult.fieldType === FIELD_TYPES.DREAM || moveResult.fieldType === FIELD_TYPES.FPAYDAY) {
       // Игрок попал на поле "Инвестиция", "Расходы", "Мечта" или "День выплат" - обработать fastTrack событие
       const { handleFastTrack } = require('./fastTrack');
       const { FAST_TRACK_FIELDS } = require('../game/board');
@@ -234,7 +234,7 @@ async function handleRollDice(query, diceCount, services) {
       );
 
       // Для поля PAYDAY передаем ход автоматически - никаких действий не требуется
-      if (moveResult.fieldType === FIELD_TYPES.PAYDAY) {
+      if (moveResult.fieldType === FIELD_TYPES.FPAYDAY) {
         const nextTurnResult = await gameService.nextTurn(game.gameId);
         if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
           if (nextTurnResult.transitioned) {
