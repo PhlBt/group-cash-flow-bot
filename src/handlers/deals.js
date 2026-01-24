@@ -30,12 +30,6 @@ async function handleDealType(query, dealType, services) {
     // Удалить кнопки с сообщения выбора типа сделки
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
-    // Убрать текст "Выберите тип сделки:" из сообщения
-    const newText = query.message.text.replace('\nВыберите тип сделки:', '');
-    if (newText !== query.message.text) {
-      await messageService.editMessageText(chatId, query.message.message_id, newText);
-    }
-
     // Сгенерировать сделку
     const { smallDeals } = require('../game/cards/smallDeals');
     const { bigDeals } = require('../game/cards/bigDeals');
