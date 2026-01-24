@@ -1530,8 +1530,8 @@ async function handleBuyDream(query, services) {
       }
     } else {
       // Просто купил мечту другого игрока или ничью
-      const costText = buyResult.cost === dreamField.cost ? `${formatNumber(buyResult.cost)} ₽` : `${formatNumber(buyResult.cost)} ₽ (удвоено)`;
-      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил мечту за ${costText}`);
+      // const costText = buyResult.cost === dreamField.cost ? `${formatNumber(buyResult.cost)} ₽` : `${formatNumber(buyResult.cost)} ₽ (удвоено)`;
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил мечту за ${formatNumber(buyResult.cost)}`);
 
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);

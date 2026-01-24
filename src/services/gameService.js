@@ -330,7 +330,7 @@ class GameService {
       // Отправляем сообщение о победе (если есть messageService)
       await this.messageService.sendErrorMessage(
         game.chatId,
-        `🎉 ${nextPlayer.username} достиг своей цели и ПОБЕДИЛ автоматически на быстром круге!\n💰 Месячный доход: ${nextPlayer.fastTrackIncome} ₽\n🎯 Стоимость мечты: ${nextPlayer.dreamCost} ₽`
+        `🎉 ${nextPlayer.username} достиг своей цели и победил на быстром круге!`
       );
       await this.messageService.sendGameFinishedMessage(game.chatId);
 
