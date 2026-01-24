@@ -1130,7 +1130,7 @@ CashFlow - настольная игра о финансовом планиро�
       if (dreamCost > 0) {
         const progressPercent = ((player.fastTrackIncome / dreamCost) * 100).toFixed(1);
         const remaining = Math.max(0, dreamCost - player.fastTrackIncome);
-        message += `📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n\n`;
+        message += `\n📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n\n`;
       } else {
         message += `\n`;
       }
@@ -1324,7 +1324,7 @@ CashFlow - настольная игра о финансовом планиро�
     if (dreamCost > 0) {
       const progressPercent = ((player.fastTrackIncome / dreamCost) * 100).toFixed(1);
       const remaining = Math.max(0, dreamCost - player.fastTrackIncome);
-      message += `📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n\n`;
+      message += `\n📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n\n`;
     } else {
       message += `\n`;
     }
