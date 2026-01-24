@@ -16,7 +16,7 @@ const { handlePayFastTrack, handleRollDiceFastTrack, handleInvestFastTrack, hand
  * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
  */
 async function handleRollDice(query, diceCount, services) {
-  const { gameService, messageService, bot } = services;
+  const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
   const userId = query.from.id;
 
@@ -49,17 +49,14 @@ async function handleRollDice(query, diceCount, services) {
         }
         await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
+
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+
       return;
     }
 
     // Удалить кнопки с сообщения о броске кубика
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
-
-    // Убрать текст "Выберите действие:" из сообщения
-    const newText = query.message.text.replace('\nВыберите действие:', '');
-    if (newText !== query.message.text) {
-      await messageService.editMessageText(chatId, query.message.message_id, newText);
-    }
 
     // Проверить, что кубик еще не брошен в этом ходу
     if (game.diceRolledThisTurn) {

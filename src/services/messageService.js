@@ -696,69 +696,6 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Обновляет сообщение о голосовании за исключение игрока
-   * @param {number} chatId - ID чата
-   * @param {number} messageId - ID сообщения
-   * @param {Object} game - Объект игры
-   * @param {Object} kickVotes - Объект с голосами {userId: targetUserId}
-   */
-  async updateKickVoteMessage(chatId, messageId, game, kickVotes) {
-    const totalPlayers = game.players.length;
-    const majority = Math.ceil(totalPlayers / 2);
-
-    let message = `🚫 Голосование за исключение игрока!\n\n`;
-
-    // Показываем список игроков с количеством голосов
-    game.players.forEach(player => {
-      const voteCount = Object.values(kickVotes).filter(targetId => targetId === player.userId).length;
-      message += `${player.username} - ${voteCount}/${majority}\n`;
-    });
-
-    message += `\nВыберите игрока, которого хотите исключить из игры:\n\n`;
-
-    // Создаем клавиатуру с игроками (убираем показ количества из кнопок)
-    const keyboard = {
-      inline_keyboard: []
-    };
-
-    game.players.forEach(player => {
-      keyboard.inline_keyboard.push([{
-        text: `🚫 ${player.username}`,
-        callback_data: `kick_player_${player.userId}`
-      }]);
-    });
-
-    // Кнопка отмены голосования
-    keyboard.inline_keyboard.push([{
-      text: '❌ Отмена голосования',
-      callback_data: 'cancel_kick_vote'
-    }]);
-
-    // Проверяем, достигнуто ли большинство за кого-то
-    const voteCounts = {};
-    Object.values(kickVotes).forEach(targetId => {
-      voteCounts[targetId] = (voteCounts[targetId] || 0) + 1;
-    });
-
-    let kickResult = null;
-    for (const [targetId, count] of Object.entries(voteCounts)) {
-      if (count >= majority) {
-        const targetPlayer = game.players.find(p => p.userId === targetId);
-        kickResult = targetPlayer ? targetPlayer.username : 'Неизвестный игрок';
-        break;
-      }
-    }
-
-    if (kickResult) {
-      message += `\n🎯 Достигнуто большинство! ${kickResult} будет исключен из игры.`;
-    }
-
-    await this.editMessageText(chatId, messageId, message, {
-      reply_markup: keyboard
-    });
-  }
-
-  /**
    * Отправляет сообщение о завершении игры
    * @param {number} chatId - ID чата
    */
@@ -2072,7 +2009,7 @@ CashFlow - настольная игра о финансовом планиро�
     } else {
       // Кнопка пропуска (только если нельзя оплатить)
       keyboard.inline_keyboard.push([{
-        text: 'Пропустить',
+        text: '⏭️ Пропустить',
         callback_data: 'skip_miscellaneous'
       }]);
     }
@@ -2471,7 +2408,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     const keyboard = {
       inline_keyboard: [[{
-        text: 'Пропустить',
+        text: '⏭️ Пропустить',
         callback_data: 'skip_market'
       }]]
     };
@@ -2537,7 +2474,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Всегда добавить кнопку "Пропустить"
     keyboard.inline_keyboard.push([{
-      text: 'Пропустить',
+      text: '⏭️ Пропустить',
       callback_data: 'skip_market'
     }]);
 
@@ -2577,7 +2514,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Всегда добавить кнопку "Пропустить"
     keyboard.inline_keyboard.push([{
-      text: 'Пропустить',
+      text: '⏭️ Пропустить',
       callback_data: 'skip_market'
     }]);
 

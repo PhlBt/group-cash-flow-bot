@@ -358,7 +358,7 @@ async function updateMarketMessageAfterSale(chatId, messageId, game, services) {
 
     // Всегда добавить кнопку "Пропустить"
     keyboard.inline_keyboard.push([{
-      text: 'Пропустить',
+      text: '⏭️ Пропустить',
       callback_data: 'skip_market'
     }]);
 
