@@ -424,7 +424,8 @@ CashFlow - настольная игра о финансовом планиро�
       info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
       info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
       info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
-      info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
+      info += `\n\n🤤 Мечта: ${player.dream.title}`;
+      info += `\n🎯 Цель: ${formatNumber(player.dreamCost || 0)} ₽`;
     } else {
       if (player.cashFlow > 0) {
         info += `\n\n✅ Положительный денежный поток!`;
@@ -509,7 +510,8 @@ CashFlow - настольная игра о финансовом планиро�
         info += `\n\n🚀 СКОРОСТНАЯ ДОРОЖКА:`;
         info += `\n💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽`;
         info += `\n💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес`;
-        info += `\n🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽`;
+        info += `\n\n🤤 Мечта: ${player.dream.title}`;
+        info += `\n🎯 Цель: ${formatNumber(player.dreamCost || 0)} ₽`;
       } else {
         if (player.cashFlow > 0) {
           info += `\n\n✅ Положительный денежный поток!`;
@@ -1059,7 +1061,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     let message = `🎯 ${player.username}, выбери свою мечту!\n\n`;
     message += `💼 Ваша профессия: ${player.profession}\n\n`;
-    message += `Выберите одну из следующих мечтаний:\n\n`;
+    message += `Выберите свою мечту:\n\n`;
 
     const keyboard = {
       inline_keyboard: []
@@ -1120,7 +1122,8 @@ CashFlow - настольная игра о финансовом планиро�
       message += `🚀 СКОРОСТНАЯ ДОРОЖКА:\n`;
       message += `💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽\n`;
       message += `💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес\n`;
-      message += `🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽\n`;
+      message += `\n\n🤤 Мечта: ${player.dream.title}`;
+      message += `\n🎯 Цель: ${formatNumber(player.dreamCost || 0)} ₽`;
 
       // Прогресс к цели
       const dreamCost = player.dreamCost || 0;
@@ -1313,7 +1316,8 @@ CashFlow - настольная игра о финансовом планиро�
     message += `🚀 СКОРОСТНАЯ ДОРОЖКА:\n`;
     message += `💰 Капитал: ${formatNumber(updatedFastTrackCash)} ₽\n`;
     message += `💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес\n`;
-    message += `🎯 Цель (мечта): ${formatNumber(player.dreamCost || 0)} ₽/мес\n`;
+    message += `\n\n🤤 Мечта: ${player.dream.title}`;
+    message += `\n🎯 Цель: ${formatNumber(player.dreamCost || 0)} ₽`;
 
     // Прогресс к цели
     const dreamCost = player.dreamCost || 0;
