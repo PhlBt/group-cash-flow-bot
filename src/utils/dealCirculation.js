@@ -78,10 +78,7 @@ async function processDealAction(gameId, userId, chatId, action, services) {
     throw new Error('Сейчас не ваш ход!');
   }
 
-  if (action === 'sell') {
-    // Для продажи - завершить циркуляцию
-    await endDealCirculation(game.gameId, chatId, services);
-  } else if (action === 'buy' || action === 'skip') {
+  if (action === 'buy' || action === 'skip') {
     // Для покупки или пропуска - перейти к следующему игроку
     await circulateToNextPlayer(game.gameId, chatId, services);
   } else {
@@ -238,10 +235,7 @@ async function processCanSellStocksAction(gameId, userId, chatId, action, servic
   const originalPlayerIndex = game.dealCirculationOriginalIndex;
   const isOriginalPlayer = game.currentPlayerIndex === originalPlayerIndex;
 
-  if (action === 'sell') {
-    // Для продажи - завершить циркуляцию
-    await endDealCirculation(game.gameId, chatId, services);
-  } else if (action === 'buy') {
+  if (action === 'buy') {
     if (!isOriginalPlayer) {
       throw new Error('Только оригинальный игрок может покупать акции');
     }

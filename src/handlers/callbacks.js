@@ -295,14 +295,11 @@ async function handleRollDice(query, diceCount, services) {
  * @param {Object} services - Объект с сервисами { gameService, messageService, bot }
  */
 async function handleCallbackQuery(query, services) {
-  const { gameService, messageService, bot } = services;
+  const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
   const userId = query.from.id;
   const username = query.from.first_name || query.from.username || 'игрок';
   const data = query.data;
-
-  // Подтверждаем получение callback
-  await bot.answerCallbackQuery(query.id);
 
   try {
     switch (data) {
@@ -399,7 +396,7 @@ async function handleCallbackQuery(query, services) {
             // Начать игру - отправить ход первому игроку
             const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
             if (firstPlayer) {
-              await messageService.sendPlayerTurnMessage(chatId, firstPlayer, await gameService.getGame(game.gameId));
+              await messageService.sendPlayerTurnMessage(chatId, firstPlayer);
             }
           } else {
             await messageService.sendPlayErrorMessage(chatId, startResult.error);
@@ -1382,6 +1379,12 @@ async function handleSelectDream(query, dreamTitle, services) {
     const game = await gameService.getActiveGameByChatId(chatId);
     if (!game) {
       await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      return;
+    }
+
+    const playerDreamSelect = game.players.find(player => player.dreamMessageId === query.message.message_id)
+    if (userId !== playerDreamSelect.userId) {
+      await messageService.sendErrorMessage(chatId, 'Это сообщение не предназначено для вас.');
       return;
     }
 

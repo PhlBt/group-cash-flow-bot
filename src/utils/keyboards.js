@@ -182,6 +182,8 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
   const isInCanSellStocksCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.canSellStocks;
   // Определяем, является ли текущий игрок оригинальным в циркуляции canSellStocks
   const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
+  // Проверяем, находится ли игра в циркуляции anyCanBuySell
+  const isInAnyCanBuySellCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.anyCanBuySell;
 
   // Проверяем состояние предложения сделки
   const offerState = game.offerState;
@@ -204,7 +206,7 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
   // Если unlimitedStocks, показываем клавиатуру с количеством
   if (deal.unlimitedStocks) {
     // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки изменения количества
-    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation) {
+    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation || isInAnyCanBuySellCirculation) {
       keyboard.inline_keyboard = [
         [
           { text: '➖ 1', callback_data: 'decrease_quantity_1' },
@@ -222,7 +224,7 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
     }
 
     // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки покупки
-    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation) {
+    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation || isInAnyCanBuySellCirculation) {
       keyboard.inline_keyboard.push([
         { text: '💰 Купить', callback_data: 'buy_deal' }
       ]);

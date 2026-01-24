@@ -1023,6 +1023,12 @@ CashFlow - настольная игра о финансовом планиро�
         parse_mode: 'Markdown',
         reply_markup: content.keyboard
       });
+
+      // Сохраняем ID сообщения выбора мечты для игрока
+      if (sentMessage && sentMessage.message_id && this.gameService) {
+        await this.gameService.saveDreamMessageId(gameId, player.userId, sentMessage.message_id);
+      }
+
       return sentMessage.message_id;
     }
   }
@@ -2092,8 +2098,9 @@ CashFlow - настольная игра о финансовом планиро�
       // Проверяем, находится ли игра в циркуляции canSellStocks и является ли игрок оригинальным
       const isInCanSellStocksCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.canSellStocks;
       const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
+      const isInAnyCanBuySellCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.anyCanBuySell;
 
-      if (deal.unlimitedStocks && (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation)) {
+      if (deal.unlimitedStocks && (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation || isInAnyCanBuySellCirculation)) {
         message += `🔢 Количество: ${quantity}\n`;
         message += `💰 Общая стоимость: ${formatNumber(deal.cost * quantity)} ₽\n`;
       }

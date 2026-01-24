@@ -2259,6 +2259,33 @@ class GameService {
   }
 
   /**
+   * Сохраняет ID сообщения выбора мечты для игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @param {number} messageId - ID сообщения
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async saveDreamMessageId(gameId, userId, messageId) {
+    const game = await this.databaseService.getGame(gameId);
+    if (!game) {
+      return { success: false, error: 'not_found' };
+    }
+
+    const playerIndex = game.players.findIndex(p => p.userId === userId);
+    if (playerIndex === -1) {
+      return { success: false, error: 'player_not_found' };
+    }
+
+    // Сохраняем ID сообщения выбора мечты для игрока
+    await this.databaseService.getDb().collection('games').updateOne(
+      { gameId },
+      { $set: { [`players.${playerIndex}.dreamMessageId`]: messageId } }
+    );
+
+    return { success: true };
+  }
+
+  /**
    * Обрабатывает победу игрока (выход из игры)
    * @param {string} gameId - ID игры
    * @param {string} winnerUserId - ID победившего игрока
