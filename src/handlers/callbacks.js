@@ -1577,9 +1577,6 @@ async function handleSkipDream(query, services) {
     // Удалить кнопки с сообщения
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
-    // Отправить сообщение о пропуске
-    await messageService.sendErrorMessage(chatId, `⏭️ ${currentPlayer.username} пропустил мечту`);
-
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {

@@ -268,9 +268,6 @@ async function handleSellMarketAsset(query, assetId, services) {
       return;
     }
 
-    console.log('asset', assetId)
-    console.log('assets', currentPlayer.assets)
-
     // Найти актив по assetId
     const assetToSell = currentPlayer.assets.find(asset => asset.assetId === assetId);
     if (!assetToSell) {
@@ -292,7 +289,7 @@ async function handleSellMarketAsset(query, assetId, services) {
     await sellMarketAsset(game.gameId, userId, assetToSell, sellPrice, services);
 
     // Обновить сообщение и кнопки с карточкой маркета
-    await updateMarketMessageAfterSale(chatId, query.message.message_id, game, currentPlayer, services);
+    await updateMarketMessageAfterSale(chatId, query.message.message_id, game, services);
 
   } catch (error) {
     console.error('Error in handleSellMarketAsset:', error);
@@ -308,8 +305,10 @@ async function handleSellMarketAsset(query, assetId, services) {
  * @param {Object} currentPlayer - Объект текущего игрока
  * @param {Object} services - Объект с сервисами
  */
-async function updateMarketMessageAfterSale(chatId, messageId, game, currentPlayer, services) {
-  const { messageService } = services;
+async function updateMarketMessageAfterSale(chatId, messageId, game, services) {
+  const { gameService, messageService } = services;
+
+  const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
 
   const marketCard = game.currentMarket;
   if (!marketCard) {
@@ -370,6 +369,7 @@ async function updateMarketMessageAfterSale(chatId, messageId, game, currentPlay
     });
   } else {
     // У игрока не осталось подходящих активов - перейти к следующему игроку
+    await messageService.removeMessageKeyboard(chatId, messageId);
     await circulateMarketToNextPlayer(game.gameId, chatId, services);
   }
 }
@@ -415,7 +415,7 @@ async function sellMarketAsset(gameId, userId, asset, sellPrice, services) {
   const player = game.players[playerIndex];
 
   // Удалить актив из массива
-  const updatedAssets = player.assets.filter(a => a !== asset);
+  const updatedAssets = player.assets.filter(a => a.assetId !== asset.assetId);
 
   // Найти и закрыть связанный кредит
   let netSellPrice = sellPrice;

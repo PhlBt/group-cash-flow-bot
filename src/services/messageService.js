@@ -1603,8 +1603,12 @@ CashFlow - настольная игра о финансовом планиро�
     }
 
     message += `👶 Рождение ребенка!\n\n`;
-    message += `📝 У вас родился ребенок!\n`;
-    message += `💸 Ваши расходы увеличились на ${formatNumber(player.kidCost)} ₽\n\n`;
+    if (player.childrenCount < 3) {
+      message += `📝 У вас родился ребенок!\n`;
+      message += `💸 Ваши расходы увеличились на ${formatNumber(player.kidCost)} ₽\n\n`;
+    } else {
+      message += `📝 У вас уже максимальное количество детей!\n`;
+    }
     message += `👨‍👩‍👧‍👦 Детей: ${player.childrenCount}\n`;
     message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
