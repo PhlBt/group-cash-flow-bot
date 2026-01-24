@@ -305,78 +305,78 @@ async function handleCallbackQuery(query, services) {
     switch (data) {
       case 'play':
 
-    // Проверить наличие активной игры для чата
-    const existingGame = await gameService.getActiveGameByChatId(chatId);
-    if (existingGame) {
-      // Присоединиться к существующей игре
-      const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
-      if (joinResult.success) {
-        // Удалить кнопки с сообщения
-        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+        // Проверить наличие активной игры для чата
+        const existingGame = await gameService.getActiveGameByChatId(chatId);
+        if (existingGame) {
+          // Присоединиться к существующей игре
+          const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
+          if (joinResult.success) {
+            // Удалить кнопки с сообщения
+            await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
-        // Получить список уже выбранных мечтаний
-        const selectedDreams = existingGame.players
-          .filter(p => p.dream && p.userId !== joinResult.player.userId)
-          .map(p => p.dream.id);
+            // Получить список уже выбранных мечтаний
+            const selectedDreams = existingGame.players
+              .filter(p => p.dream && p.userId !== joinResult.player.userId)
+              .map(p => p.dream.id);
 
-        // Отправить выбор мечты новому игроку
-        const messageId = await messageService.sendDreamSelectionMessage(chatId, joinResult.player, 0, null, selectedDreams);
-        // Сохранить ID сообщения мечты для игрока
-        const playerIndex = existingGame.players.length; // Индекс нового игрока
-        await gameService.databaseService.getDb().collection('games').updateOne(
-          { gameId: existingGame.gameId },
-          {
-            $set: {
-              [`players.${playerIndex}.dreamMessageId`]: messageId
+            // Отправить выбор мечты новому игроку
+            const messageId = await messageService.sendDreamSelectionMessage(chatId, joinResult.player, 0, null, selectedDreams);
+            // Сохранить ID сообщения мечты для игрока
+            const playerIndex = existingGame.players.length; // Индекс нового игрока
+            await gameService.databaseService.getDb().collection('games').updateOne(
+              { gameId: existingGame.gameId },
+              {
+                $set: {
+                  [`players.${playerIndex}.dreamMessageId`]: messageId
+                }
+              }
+            );
+
+            // Отправить карточку игрока
+            await messageService.sendPlayerCard(chatId, joinResult.player);
+
+            // Удалить старое сообщение комнаты ожидания и отправить новое
+            const updatedGame = await gameService.getGame(existingGame.gameId);
+            if (existingGame.waitingMessageId) {
+              await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
             }
+            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+            await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
+          } else {
+            await messageService.sendJoinErrorMessage(chatId, joinResult.error);
           }
-        );
+        } else {
+          // Удалить кнопки с сообщения
+          await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
-        // Отправить карточку игрока
-        await messageService.sendPlayerCard(chatId, joinResult.player);
+          // Создать новую игру для чата
+          const gameId = await gameService.createGame(chatId, userId, username);
 
-        // Удалить старое сообщение комнаты ожидания и отправить новое
-        const updatedGame = await gameService.getGame(existingGame.gameId);
-        if (existingGame.waitingMessageId) {
-          await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
+          // Отправить выбор мечты создателю
+          const game = await gameService.getGame(gameId);
+          const player = game.players.find(p => p.userId === userId);
+          if (player) {
+            const messageId = await messageService.sendDreamSelectionMessage(chatId, player, 0, null, []);
+            // Сохранить ID сообщения мечты для создателя
+            await gameService.databaseService.getDb().collection('games').updateOne(
+              { gameId },
+              {
+                $set: {
+                  [`players.0.dreamMessageId`]: messageId
+                }
+              }
+            );
+          }
+
+          // Отправить карточку игрока создателю
+          if (player) {
+            await messageService.sendPlayerCard(chatId, player);
+          }
+
+          // Отправить сообщение комнаты ожидания
+          const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
+          await gameService.setWaitingMessageId(gameId, messageId);
         }
-        const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
-        await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
-      } else {
-        await messageService.sendJoinErrorMessage(chatId, joinResult.error);
-      }
-    } else {
-      // Удалить кнопки с сообщения
-      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
-
-      // Создать новую игру для чата
-      const gameId = await gameService.createGame(chatId, userId, username);
-
-      // Отправить выбор мечты создателю
-      const game = await gameService.getGame(gameId);
-      const player = game.players.find(p => p.userId === userId);
-      if (player) {
-        const messageId = await messageService.sendDreamSelectionMessage(chatId, player, 0, null, []);
-        // Сохранить ID сообщения мечты для создателя
-        await gameService.databaseService.getDb().collection('games').updateOne(
-          { gameId },
-          {
-            $set: {
-              [`players.0.dreamMessageId`]: messageId
-            }
-          }
-        );
-      }
-
-      // Отправить карточку игрока создателю
-      if (player) {
-        await messageService.sendPlayerCard(chatId, player);
-      }
-
-      // Отправить сообщение комнаты ожидания
-      const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
-      await gameService.setWaitingMessageId(gameId, messageId);
-    }
         break;
 
       case 'start_game':
@@ -1528,8 +1528,14 @@ async function handleBuyDream(query, services) {
         return;
       } else {
         // Игрок вышел из игры, но игра продолжается для остальных
-        // Не передаем ход, так как победивший игрок уже удален из массива
-        return;
+        // Передать ход следующему игроку
+        const nextTurnResult = await gameService.nextTurn(game.gameId);
+        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+          if (nextTurnResult.transitioned) {
+            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          }
+          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        }
       }
     } else {
       // Просто купил мечту другого игрока или ничью
@@ -1652,13 +1658,6 @@ async function handleKickPlayerVote(query, services) {
 
       // Отправить сообщение об исключении
       await messageService.sendErrorMessage(chatId, `🚫 ${kickedPlayer ? kickedPlayer.username : 'Игрок'} был исключен из игры!`);
-
-      // Проверить, завершилась ли игра (остался 1 игрок)
-      const finalGame = await gameService.getGame(game.gameId);
-      if (finalGame && finalGame.status === 'finished' && finalGame.winner) {
-        await messageService.sendErrorMessage(chatId, `🎉 ${finalGame.players.find(p => p.userId === finalGame.winner)?.username || 'Игрок'} победил!`);
-        await messageService.sendGameFinishedMessage(chatId);
-      }
     }
 
   } catch (error) {

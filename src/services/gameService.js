@@ -293,8 +293,6 @@ class GameService {
     let nextIndex = (currentIndex + 1) % game.players.length;
     let nextPlayer = game.players[nextIndex];
 
-
-
     const { transitioned } = await this.checkAndTransitionToFastTrack(gameId, nextPlayer.userId)
 
     // Если произошел переход на Fast Track, заново получаем данные игрока
@@ -314,7 +312,6 @@ class GameService {
         game.chatId,
         `🎉 ${nextPlayer.username} достиг своей цели и победил на быстром круге!`
       );
-      await this.messageService.sendGameFinishedMessage(game.chatId);
 
       return {
         success: true,
@@ -2292,7 +2289,7 @@ class GameService {
    * @param {string} victoryReason - Причина победы ('dream_purchase' или 'automatic_fast_track_victory')
    * @returns {Promise<{success: boolean, error?: string, gameFinished?: boolean}>} Результат операции
    */
-  async finishGameWithVictory(gameId, winnerUserId, victoryReason = 'dream_purchase') {
+  async finishGameWithVictory(gameId, winnerUserId) {
     const game = await this.databaseService.getGame(gameId);
     if (!game) {
       return { success: false, error: 'not_found' };
@@ -2319,13 +2316,7 @@ class GameService {
         }
       );
 
-      // Обновляем статистику проигравших (хотя в этом случае все победили)
-      for (const player of game.players) {
-        if (player.userId !== winnerUserId) {
-          await this.userStatsService.updateUserStats(player.userId, { wins: (await this.userStatsService.getUserStats(player.userId)).wins + 1 });
-        }
-      }
-
+      await this.messageService.sendGameFinishedMessage(game.chatId);
       return { success: true, gameFinished: true };
     } else {
       // Есть еще игроки - продолжаем игру, удаляя победившего
