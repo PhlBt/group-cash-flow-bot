@@ -480,7 +480,8 @@ const bigDeals = [
     "mortgage": 9000000,
     "downPayment": 1500000,
     "passiveIncome": 72000,
-    "canSellToOthers": true
+    "canSellToOthers": true,
+    "apartments": 12
   },
   {
     "id": "big_deal_38",
