@@ -174,7 +174,7 @@ async function endDealCirculation(gameId, chatId, services) {
 
   // Отправить сообщение о ходе следующего игрока
   const nextPlayer = game.players[nextPlayerIndex];
-  await messageService.sendPlayerTurnMessage(chatId, nextPlayer);
+  await messageService.sendPlayerTurnMessage(chatId, nextPlayer, await gameService.getGame(game.gameId));
 }
 
 /**

@@ -542,7 +542,7 @@ async function endMarketEvent(gameId, chatId, services) {
     if (nextTurnResult.transitioned) {
       await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
     }
-    await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+    await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
   }
 }
 

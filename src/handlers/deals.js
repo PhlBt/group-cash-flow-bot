@@ -240,7 +240,7 @@ async function handleBuyDeal(query, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     }
 
@@ -337,7 +337,7 @@ async function handleSkipDeal(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -435,7 +435,7 @@ async function handleBuyDealWithCreditCard(query, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     }
 
@@ -569,7 +569,7 @@ async function handleSellStocks(query, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     }
 
@@ -644,7 +644,7 @@ async function handlePayExpenses(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -723,7 +723,7 @@ async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     }
 

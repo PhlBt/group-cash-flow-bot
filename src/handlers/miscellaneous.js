@@ -143,7 +143,7 @@ async function handlePayMiscellaneous(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -209,7 +209,7 @@ async function handlePayMiscellaneousCreditCard(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -255,7 +255,7 @@ async function handleSkipMiscellaneous(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {

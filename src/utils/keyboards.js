@@ -66,6 +66,21 @@ const gameKeyboard = {
 };
 
 /**
+ * Основная игровая клавиатура (обычный режим)
+ */
+const gameSkipKeyboard = {
+  inline_keyboard: [
+    [
+      { text: '⏭️ Пропустить', callback_data: 'roll_dice' }
+    ],
+    [
+      { text: '👤 Профиль', callback_data: 'profile' },
+      { text: '📊 Статистика', callback_data: 'stats' }
+    ]
+  ]
+};
+
+/**
  * Клавиатура состояния банкротства
  */
 const bankruptcyKeyboard = {
@@ -532,6 +547,7 @@ module.exports = {
   endGameVoteKeyboard,
   waitingRoomKeyboard,
   gameKeyboard,
+  gameSkipKeyboard,
   bankruptcyKeyboard,
   charityKeyboard,
   fastTrackCharityKeyboard,

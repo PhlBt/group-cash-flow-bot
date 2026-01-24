@@ -1,5 +1,5 @@
 const { formatNumber, RateLimiter } = require('../utils');
-const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, bankruptcyKeyboard, charityKeyboard, fastTrackCharityKeyboard, dealTypeKeyboard, generateDealKeyboard, generateDreamKeyboard, creditCardKeyboard, profileKeyboard, gameFinishedKeyboard, gameLostKeyboard, rulesMainKeyboard, rulesBackKeyboard, developerKeyboard } = require('../utils/keyboards');
+const { welcomeKeyboard, endGameVoteKeyboard, waitingRoomKeyboard, gameKeyboard, gameSkipKeyboard, bankruptcyKeyboard, charityKeyboard, fastTrackCharityKeyboard, dealTypeKeyboard, generateDealKeyboard, generateDreamKeyboard, creditCardKeyboard, profileKeyboard, gameFinishedKeyboard, gameLostKeyboard, rulesMainKeyboard, rulesBackKeyboard, developerKeyboard } = require('../utils/keyboards');
 const { FIELD_TYPES } = require('../game/board');
 const RulesService = require('./rulesService');
 
@@ -759,17 +759,6 @@ CashFlow - настольная игра о финансовом планиро�
   }
 
   /**
-   * Отправляет уведомление о пропуске хода игроком
-   * @param {number} chatId - ID чата
-   * @param {Object} player - Объект игрока
-   * @param {number} remainingTurns - Сколько ходов осталось пропустить
-   */
-  async sendSkipTurnNotification(chatId, player, remainingTurns) {
-    const message = `⏭️ ${player.username} пропускает ход! Осталось пропустить: ${remainingTurns}`;
-    await this.sendMessage(chatId, message);
-  }
-
-  /**
    * Отправляет сообщение о завершении игры
    * @param {number} chatId - ID чата
    */
@@ -1110,12 +1099,29 @@ CashFlow - настольная игра о финансовом планиро�
    * Отправляет сообщение с ходом игрока
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
+   * @param {Object} game - Объект игры (опционально, для проверки пропуска ходов)
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendPlayerTurnMessage(chatId, player) {
+  async sendPlayerTurnMessage(chatId, player, game = null) {
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
+    let playerSkipTurn = { needed: false }
     let message = `🎯 Ваш ход, ${player.profession} ${player.username}!\n\n`;
+
+    // Проверяем, есть ли у игрока пропуск ходов
+    if (game) {
+      game.skippedTurnsList.forEach(skippedItem => {
+        if (player.userId === skippedItem.userId) {
+          playerSkipTurn = {
+            needed: true,
+            ...skippedItem
+          }
+        }
+      })
+      if (playerSkipTurn.needed) {
+        message += `⚠️ Пропуск хода! Осталось: ${playerSkipTurn.turnsToSkip}\n\n`;
+      }
+    }
 
     if (player.inFastTrack) {
       // Fast Track финансы
@@ -1157,7 +1163,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     } else {
       message += `Выберите действие:`;
-      keyboard = gameKeyboard;
+      keyboard = playerSkipTurn.needed ? gameSkipKeyboard : gameKeyboard;
     }
 
     const sentMessage = await this.sendMessage(chatId, message, {

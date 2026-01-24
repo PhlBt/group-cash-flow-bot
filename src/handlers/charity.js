@@ -86,7 +86,7 @@ async function handleDonateCharity(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -129,7 +129,7 @@ async function handleSkipCharity(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {

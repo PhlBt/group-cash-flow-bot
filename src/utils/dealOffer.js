@@ -225,7 +225,7 @@ async function passTurnAfterOffer(game, offeringUserId, services) {
   );
 
   // Отправить сообщение о ходе
-  await messageService.sendPlayerTurnMessage(game.chatId, nextPlayer);
+  await messageService.sendPlayerTurnMessage(game.chatId, nextPlayer, await gameService.getGame(game.gameId));
 }
 
 module.exports = {

@@ -38,8 +38,8 @@ async function handleRollDice(query, diceCount, services) {
     // Проверить, нужно ли пропустить ход
     const skippedResult = await gameService.databaseService.getSkippedTurn(game.gameId, currentPlayer.userId);
     if (skippedResult.success && skippedResult.skippedTurn) {
-      // Отправить сообщение о пропуске хода
-      await messageService.sendErrorMessage(chatId, `Игрок ${currentPlayer.username} пропускает ход!`);
+      // Уменьшить счетчик пропущенных ходов
+      await gameService.databaseService.decreaseSkippedTurn(game.gameId, currentPlayer.userId);
 
       // Передать ход следующему игроку только если игра не завершена
       const nextTurnResult = await gameService.nextTurn(game.gameId);
@@ -47,7 +47,7 @@ async function handleRollDice(query, diceCount, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
       return;
     }
@@ -85,7 +85,7 @@ async function handleRollDice(query, diceCount, services) {
     const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
     if (updatedPlayer && updatedPlayer.bankruptcyState) {
       // Игрок стал банкротом - сразу показать интерфейс банкротства и не передавать ход
-      await messageService.sendPlayerTurnMessage(chatId, updatedPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, updatedPlayer, await gameService.getGame(game.gameId));
       return;
     }
 
@@ -181,7 +181,7 @@ async function handleRollDice(query, diceCount, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     } else if (moveResult.fieldType === FIELD_TYPES.MARKET) {
       // Игрок попал на поле "Рынок" - отправить комбинированное сообщение
@@ -241,7 +241,7 @@ async function handleRollDice(query, diceCount, services) {
           if (nextTurnResult.transitioned) {
             await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
           }
-          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
         }
       }
       // Для полей INVESTING, EXPENSES, DREAM не передаем ход автоматически - ждем действий игрока
@@ -279,7 +279,7 @@ async function handleRollDice(query, diceCount, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     }
 
@@ -399,7 +399,7 @@ async function handleCallbackQuery(query, services) {
             // Начать игру - отправить ход первому игроку
             const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
             if (firstPlayer) {
-              await messageService.sendPlayerTurnMessage(chatId, firstPlayer);
+              await messageService.sendPlayerTurnMessage(chatId, firstPlayer, await gameService.getGame(game.gameId));
             }
           } else {
             await messageService.sendPlayErrorMessage(chatId, startResult.error);
@@ -977,7 +977,7 @@ async function handleSellAsset(query, assetId, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     } else {
       // Продолжить банкротство - обновить сообщение активов
@@ -1049,7 +1049,7 @@ async function handlePayLiability(query, liabilityIndex, services) {
               if (nextTurnResult.transitioned) {
                 await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
               }
-              await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+              await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
             }
             return;
           } else {
@@ -1082,7 +1082,7 @@ async function handlePayLiability(query, liabilityIndex, services) {
           if (nextTurnResult.transitioned) {
             await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
           }
-          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
         }
         return;
       }
@@ -1229,7 +1229,7 @@ async function handlePayDismissal(query, services) {
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице и пропускает 2 хода!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице!`);
 
     // Передать ход следующему игроку только если игра не завершена
     const nextTurnResult = await gameService.nextTurn(game.gameId);
@@ -1237,7 +1237,7 @@ async function handlePayDismissal(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -1292,7 +1292,7 @@ async function handlePayDismissalCreditCard(query, services) {
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице кредиткой и пропускает 2 хода!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице кредиткой!`);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
@@ -1300,7 +1300,7 @@ async function handlePayDismissalCreditCard(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -1357,7 +1357,7 @@ async function handleCharityFastTrack(query, services, diceCount) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -1539,7 +1539,7 @@ async function handleBuyDream(query, services) {
         if (nextTurnResult.transitioned) {
           await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
       }
     }
 
@@ -1583,7 +1583,7 @@ async function handleSkipDream(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {

@@ -293,25 +293,7 @@ class GameService {
     let nextIndex = (currentIndex + 1) % game.players.length;
     let nextPlayer = game.players[nextIndex];
 
-    // Проверяем, нужно ли пропустить ход текущего игрока
-    const currentPlayer = game.players[currentIndex];
-    if (currentPlayer) {
-      const skippedResult = await this.databaseService.getSkippedTurn(gameId, currentPlayer.userId);
-      if (skippedResult.success && skippedResult.skippedTurn) {
-        // Уменьшаем счетчик пропущенных ходов
-        const decreaseResult = await this.databaseService.decreaseSkippedTurn(gameId, currentPlayer.userId);
 
-        // Отправляем уведомление о пропуске хода
-        if (this.messageService && decreaseResult.success) {
-          await this.messageService.sendSkipTurnNotification(game.chatId, currentPlayer, decreaseResult.turnsLeft);
-        }
-
-        // Если еще остались ходы для пропуска, передаем ход следующему
-        if (decreaseResult.success && decreaseResult.turnsLeft > 0) {
-          return await this.nextTurn(gameId); // Рекурсивно передаем ход дальше
-        }
-      }
-    }
 
     const { transitioned } = await this.checkAndTransitionToFastTrack(gameId, nextPlayer.userId)
 

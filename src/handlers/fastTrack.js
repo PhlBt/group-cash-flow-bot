@@ -142,7 +142,7 @@ async function handlePayFastTrack(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -217,7 +217,7 @@ async function handleRollDiceFastTrack(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -310,7 +310,7 @@ async function handleInvestFastTrack(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
@@ -353,7 +353,7 @@ async function handleSkipFastTrack(query, services) {
       if (nextTurnResult.transitioned) {
         await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
     }
 
   } catch (error) {
