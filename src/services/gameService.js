@@ -328,13 +328,11 @@ class GameService {
       await this.finishGameWithVictory(gameId, nextPlayer.userId, victoryCheck.reason);
 
       // Отправляем сообщение о победе (если есть messageService)
-      if (this.messageService) {
-        await this.messageService.sendErrorMessage(
-          game.chatId,
-          `🎉 ${nextPlayer.username} достиг своей цели и ПОБЕДИЛ автоматически на быстром круге!\n💰 Месячный доход: ${nextPlayer.fastTrackIncome} ₽\n🎯 Стоимость мечты: ${nextPlayer.dreamCost} ₽`
-        );
-        await this.messageService.sendGameFinishedMessage(game.chatId);
-      }
+      await this.messageService.sendErrorMessage(
+        game.chatId,
+        `🎉 ${nextPlayer.username} достиг своей цели и ПОБЕДИЛ автоматически на быстром круге!\n💰 Месячный доход: ${nextPlayer.fastTrackIncome} ₽\n🎯 Стоимость мечты: ${nextPlayer.dreamCost} ₽`
+      );
+      await this.messageService.sendGameFinishedMessage(game.chatId);
 
       return {
         success: true,

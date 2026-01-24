@@ -1777,15 +1777,13 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Добавляем информацию об оплате для полей с cost
     if (fastTrackEvent.data && fastTrackEvent.data.cost) {
-      message += `💰 Требуется оплата: ${formatNumber(fastTrackEvent.data.cost)} ₽\n\n`;
+      message += `💰 Требуется оплата: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
     }
 
     // Показать параметры события
     if (fastTrackEvent.data && fastTrackEvent.data.cost && fastTrackEvent.data.passiveIncome) {
       message += `💰 Стоимость: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
       message += `💵 Пассивный доход: ${formatNumber(fastTrackEvent.data.passiveIncome)} ₽/мес\n`;
-    } else if (fastTrackEvent.data && fastTrackEvent.data.cost) {
-      message += `💰 Стоимость: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
     } else if (fastTrackEvent.data && fastTrackEvent.data.expenseBalanceMultiply) {
       const playerBalance = player.fastTrackCash || 0;
       const amount = Math.floor(playerBalance * fastTrackEvent.data.expenseBalanceMultiply);
