@@ -261,7 +261,7 @@ const bigDeals = [
     "roi": "66% КОИ, можете в будущем продать за 45.0 млн ₽ - 81.0 млн ₽",
     "cost": 36000000,
     "mortgage": 30000000,
-    "downPayment": 600000,
+    "downPayment": 6000000,
     "passiveIncome": 330000,
     "canSellToOthers": true,
     "apartments": 60
