@@ -1721,8 +1721,8 @@ CashFlow - настольная игра о финансовом планиро�
       message += `💼 ${fieldTypeLabel ? fieldTypeLabel + ' ' : ''}${fastTrackEvent.title}\n\n`;
     }
 
-    if (fastTrackEvent.data.dice) {
-      message += `Шанс на получение дохода! Вам должно выпасть ${fastTrackEvent.data.dice} или больше!`
+    if (fastTrackEvent.data &&  fastTrackEvent.data.dice) {
+      message += `Шанс на получение дохода! Вам должно выпасть ${fastTrackEvent.data.dice} или больше!\n\n`
     }
 
     // Проверяем наличие description перед добавлением
