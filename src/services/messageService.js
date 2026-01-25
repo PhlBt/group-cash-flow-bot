@@ -1717,7 +1717,9 @@ CashFlow - настольная игра о финансовом планиро�
         fieldTypeLabel = '';
     }
 
-    message += `💼 ${fieldTypeLabel ? fieldTypeLabel + ' ' : ''}${fastTrackEvent.title}\n\n`;
+    if (fastTrackEvent.type !== FIELD_TYPES.FPAYDAY) {
+      message += `💼 ${fieldTypeLabel ? fieldTypeLabel + ' ' : ''}${fastTrackEvent.title}\n\n`;
+    }
 
     // Проверяем наличие description перед добавлением
     if (fastTrackEvent.description) {
@@ -1761,8 +1763,10 @@ CashFlow - настольная игра о финансовом планиро�
       message += `\n`;
     }
 
-    message += `Что вы хотите сделать?`;
-
+    if (fastTrackEvent.type !== FIELD_TYPES.FPAYDAY) {
+      message += `Что вы хотите сделать?`;
+    }
+    
     // Генерируем клавиатуру для fastTrack события
     let keyboard;
     if (fastTrackEvent.type === FIELD_TYPES.DREAM) {
