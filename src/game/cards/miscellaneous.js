@@ -58,7 +58,7 @@ const miscellaneous = [
     "hasKids": true
   },
   {
-    "description": "Купите новую у дочку.",
+    "description": "Купите новую удочку.",
     "cost": 3000
   },
   {
