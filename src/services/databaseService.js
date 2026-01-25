@@ -440,7 +440,7 @@ class DatabaseService {
     }
 
     if (userId === targetUserId) {
-      return { success: false, error: 'cannot_vote_self' };
+      return { success: false, error: 'Нельзя голосовать за себя' };
     }
 
     if (game.kickVotes[userId]) {
@@ -463,7 +463,7 @@ class DatabaseService {
     for (const [targetId, count] of Object.entries(voteCounts)) {
       if (count >= majority) {
         shouldKick = true;
-        kickedUserId = targetId;
+        kickedUserId = parseInt(targetId);
         break;
       }
     }

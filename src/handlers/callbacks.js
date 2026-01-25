@@ -724,7 +724,6 @@ async function handleCallbackQuery(query, services) {
         }
         // Проверяем, является ли callback_data голосованием за исключение игрока
         else if (data.startsWith('kick_player_')) {
-          const targetUserId = data.split('_')[2];
           await handleKickPlayerVote(query, services);
         }
         // Проверяем, является ли callback_data выбором пользователя для предложения сделки
@@ -1638,7 +1637,7 @@ async function handleKickPlayerVote(query, services) {
     }
 
     // Извлечь targetUserId из callback_data (kick_player_{userId})
-    const targetUserId = data.replace('kick_player_', '');
+    const targetUserId = parseInt(data.replace('kick_player_', ''));
 
     // Проверить, что цель существует в игре
     if (!game.players.some(player => player.userId === targetUserId)) {
