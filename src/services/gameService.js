@@ -2320,17 +2320,60 @@ class GameService {
       return { success: true, gameFinished: true };
     } else {
       // Есть еще игроки - продолжаем игру, удаляя победившего
-      const newCurrentIndex = game.currentPlayerIndex % updatedPlayers.length;
+      // Рассчитываем индекс следующего игрока после удаленного
+      const winnerIndex = game.players.findIndex(p => p.userId === winnerUserId);
+      let newCurrentIndex;
+      
+      if (winnerIndex === game.currentPlayerIndex) {
+        // Если победил текущий игрок, передаем ход следующему
+        newCurrentIndex = game.currentPlayerIndex % updatedPlayers.length;
+      } else if (winnerIndex < game.currentPlayerIndex) {
+        // Если победил предыдущий игрок, сдвигаем индекс на 1 назад
+        newCurrentIndex = (game.currentPlayerIndex - 1) % updatedPlayers.length;
+      } else {
+        // Если победил следующий игрок, индекс остается прежним
+        newCurrentIndex = game.currentPlayerIndex % updatedPlayers.length;
+      }
 
       await this.databaseService.getDb().collection('games').updateOne(
         { gameId },
         {
           $set: {
             players: updatedPlayers,
-            currentPlayerIndex: newCurrentIndex
+            currentPlayerIndex: newCurrentIndex,
+            diceRolledThisTurn: false // Сбрасываем флаг броска кубика для нового игрока
           }
         }
       );
+
+      // Автоматически передаем ход следующему игроку
+      const nextPlayer = updatedPlayers[newCurrentIndex];
+      if (nextPlayer) {
+        // Проверяем, нужно ли перейти на Fast Track для нового игрока
+        const { transitioned } = await this.checkAndTransitionToFastTrack(gameId, nextPlayer.userId);
+
+        // Если произошел переход на Fast Track, заново получаем данные игрока
+        let finalNextPlayer = nextPlayer;
+        if (transitioned) {
+          const updatedGame = await this.databaseService.getGame(gameId);
+          finalNextPlayer = updatedGame.players[newCurrentIndex];
+        }
+
+        // Проверяем автоматическую победу для нового игрока
+        const victoryCheck = await this.checkFastTrackVictory(gameId, finalNextPlayer.userId);
+        if (victoryCheck.success && victoryCheck.victory) {
+          // Новый игрок также победил автоматически - завершаем игру
+          await this.finishGameWithVictory(gameId, finalNextPlayer.userId, victoryCheck.reason);
+          
+          // Отправляем сообщение о победе
+          await this.messageService.sendErrorMessage(
+            game.chatId,
+            `🎉 ${finalNextPlayer.username} достиг своей цели и победил на быстром круге!`
+          );
+
+          return { success: true, gameFinished: true };
+        }
+      }
 
       return { success: true, gameFinished: false };
     }

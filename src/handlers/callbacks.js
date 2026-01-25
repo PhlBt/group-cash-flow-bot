@@ -1525,18 +1525,11 @@ async function handleBuyDream(query, services) {
         return;
       } else {
         // Игрок вышел из игры, но игра продолжается для остальных
-        // Передать ход следующему игроку
-        const nextTurnResult = await gameService.nextTurn(game.gameId);
-        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-          if (nextTurnResult.transitioned) {
-            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-          }
-          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
-        }
+        // finishGameWithVictory уже автоматически передала ход следующему игроку
+        // Ничего дополнительно делать не нужно
       }
     } else {
       // Просто купил мечту другого игрока или ничью
-      // const costText = buyResult.cost === dreamField.cost ? `${formatNumber(buyResult.cost)} ₽` : `${formatNumber(buyResult.cost)} ₽ (удвоено)`;
       await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил мечту за ${formatNumber(buyResult.cost)}`);
 
       // Передать ход следующему игроку
