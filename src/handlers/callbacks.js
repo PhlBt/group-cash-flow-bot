@@ -722,6 +722,11 @@ async function handleCallbackQuery(query, services) {
           const { handleSellMarketAsset } = require('./market');
           await handleSellMarketAsset(query, assetId, services);
         }
+        // Проверяем, является ли callback_data голосованием за исключение игрока
+        else if (data.startsWith('kick_player_')) {
+          const targetUserId = data.split('_')[2];
+          await handleKickPlayerVote(query, services);
+        }
         // Проверяем, является ли callback_data выбором пользователя для предложения сделки
         else if (data.startsWith('select_user_')) {
           const targetUserId = parseInt(data.split('_')[2], 10);
