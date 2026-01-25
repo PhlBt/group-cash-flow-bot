@@ -2157,11 +2157,14 @@ CashFlow - настольная игра о финансовом планиро�
     // Генерируем клавиатуру в зависимости от типа
     let keyboard;
     if (type === 'mortgage_down_payment') {
-      // Для первоначального взноса ипотеки - специальная кнопка
+      // Для первоначального взноса ипотеки - специальная кнопка с кнопкой пропуска
       keyboard = {
         inline_keyboard: [
           [
             { text: '💳 Оплатить первоначальный взнос кредиткой', callback_data: 'buy_mortgage_down_payment_credit_card' }
+          ],
+          [
+            { text: '⏭️ Пропустить', callback_data: 'skip_deal' }
           ]
         ]
       };
