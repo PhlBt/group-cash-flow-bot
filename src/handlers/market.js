@@ -13,7 +13,7 @@ const { formatNumber } = require('../utils');
  * @param {Object} services - Объект с сервисами { gameService, messageService }
  */
 async function handleMarket(gameId, services) {
-  const { gameService } = services;
+  const { gameService, messageService } = services;
 
   const game = await gameService.getGame(gameId);
   if (!game) {
@@ -29,13 +29,33 @@ async function handleMarket(gameId, services) {
   // Применить автоматические эффекты (если есть)
   if (marketCard.passiveIncome || marketCard.creditMultiple || marketCard.inflation) {
     await applyAutomaticMarketEffects(gameId, marketCard, services);
+
+    // Для автоматических карточек (без relatedDeals) сразу завершаем событие
+    if (!marketCard.relatedDeals || marketCard.relatedDeals.length === 0) {
+      await endMarketEvent(gameId, game.chatId, services);
+      return null;
+    }
   }
 
   // Запустить циркуляцию для эффектов продажи (если есть игроки с активами)
-  await initializeMarketCirculation(gameId, marketCard, services);
+  const eligiblePlayers = await initializeMarketCirculation(gameId, marketCard, services);
 
-  // Вернуть карточку для отображения в комбинированном сообщении
-  return marketCard;
+  // Если есть игроки с подходящими активами, начать циркуляцию
+  if (eligiblePlayers.length > 0) {
+    const gameAfterInit = await gameService.getGame(gameId);
+    const currentPlayer = await gameService.getCurrentPlayer(gameId);
+
+    // Показать карточку первому игроку в циркуляции
+    const customTitle = `*${currentPlayer.username}*, вы попали на поле "Рынок"`;
+    await messageService.sendMarketCardWithSellOptions(game.chatId, marketCard, currentPlayer, gameAfterInit, customTitle);
+
+    // Вернуть null, чтобы сигнализировать, что циркуляция началась
+    return null;
+  } else {
+    // Если нет игроков с подходящими активами, завершить событие
+    await endMarketEvent(gameId, game.chatId, services);
+    return null;
+  }
 }
 
 /**
