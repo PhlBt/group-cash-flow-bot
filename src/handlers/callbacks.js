@@ -1541,8 +1541,14 @@ async function handleBuyDream(query, services) {
         return;
       } else {
         // Игрок вышел из игры, но игра продолжается для остальных
-        // finishGameWithVictory уже автоматически передала ход следующему игроку
-        // Ничего дополнительно делать не нужно
+        // Получить текущую игру и следующего игрока
+        const updatedGame = await gameService.getGame(game.gameId);
+        const nextPlayer = await gameService.getCurrentPlayer(game.gameId);
+
+        if (nextPlayer) {
+          // Отправить сообщение о ходе следующему игроку
+          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame);
+        }
       }
     } else {
       // Просто купил мечту другого игрока или ничью
