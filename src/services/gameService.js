@@ -349,6 +349,16 @@ class GameService {
   }
 
   /**
+   * Удаляет эффект благотворительности у игрока
+   * @param {string} gameId - ID игры
+   * @param {string} userId - ID игрока
+   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   */
+  async removeCharityEffect(gameId, userId) {
+    return await this.databaseService.setCharityEffect(gameId, userId, false, 0);
+  }
+
+  /**
    * Уменьшает счетчик ходов благотворительности
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока

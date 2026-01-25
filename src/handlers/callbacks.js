@@ -1219,6 +1219,9 @@ async function handlePayDismissal(query, services) {
     // Добавить пропуск ходов
     await gameService.databaseService.addSkippedTurn(game.gameId, userId, currentPlayer.username, 2, 'dismissal');
 
+    // Удалить эффект благотворительности при безработице
+    await gameService.removeCharityEffect(game.gameId, userId);
+
     // Удалить кнопки с сообщения
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
 
@@ -1281,6 +1284,9 @@ async function handlePayDismissalCreditCard(query, services) {
 
     // Добавить пропуск ходов
     await gameService.databaseService.addSkippedTurn(game.gameId, userId, currentPlayer.username, 2, 'dismissal');
+
+    // Удалить эффект благотворительности при безработице
+    await gameService.removeCharityEffect(game.gameId, userId);
 
     // Удалить кнопки с сообщения
     await messageService.removeMessageKeyboard(chatId, query.message.message_id);
