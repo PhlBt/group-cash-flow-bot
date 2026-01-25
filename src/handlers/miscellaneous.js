@@ -119,12 +119,12 @@ async function handlePayMiscellaneous(query, services) {
       payResult = await gameService.payMiscellaneousExpenses(game.gameId, userId, miscCard);
     }
 
-    if (!payResult.success) {
+      if (!payResult.success) {
       if (payResult.error === 'insufficient_funds') {
         // Удалить кнопки с сообщения карточки miscellaneous
         await messageService.removeMessageKeyboard(chatId, query.message.message_id);
         // Отправить предложение оплаты кредиткой
-        await messageService.sendCreditCardOfferMessage(chatId, miscCard, currentPlayer, 'miscellaneous');
+        await messageService.sendCreditCardOfferMessage(chatId, miscCard, currentPlayer, 'miscellaneous', 1);
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при оплате miscellaneous.');
       }

@@ -986,9 +986,10 @@ class GameService {
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
    * @param {Object} deal - Объект сделки
+   * @param {number} quantity - Количество для unlimitedStocks (по умолчанию 1)
    * @returns {Promise<{success: boolean, error?: string}>} Результат операции
    */
-  async buyDealWithCreditCard(gameId, userId, deal) {
+  async buyDealWithCreditCard(gameId, userId, deal, quantity = 1) {
     const game = await this.databaseService.getGame(gameId);
     if (!game) {
       return { success: false, error: 'not_found' };
@@ -1001,9 +1002,11 @@ class GameService {
 
     // Специальная логика для big deals с mortgage: создаем ипотеку + кредит на down payment
     if (deal.type === 'big' && deal.mortgage !== undefined) {
-      // Рассчитываем платежи
-      const monthlyMortgagePayment = Math.floor(deal.cost * (0.01 + game.creditMultiple)); // 0.01% от стоимости
-      const monthlyCreditPayment = Math.floor(deal.downPayment * (0.02 + game.creditMultiple)); // 2% от первоначального взноса
+      // Рассчитываем платежи с учетом количества
+      const totalCost = deal.cost * quantity;
+      const totalDownPayment = deal.downPayment * quantity;
+      const monthlyMortgagePayment = Math.floor(totalCost * (0.01 + game.creditMultiple)); // 0.01% от стоимости
+      const monthlyCreditPayment = Math.floor(totalDownPayment * (0.02 + game.creditMultiple)); // 2% от первоначального взноса
 
       // Генерируем уникальный ID для связи актив-кредит
       const assetLiabilityId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -1011,9 +1014,9 @@ class GameService {
       // Добавляем ипотеку
       const mortgageLiability = {
         title: deal.title,
-        cost: deal.cost,
-        downPayment: deal.downPayment,
-        loanAmount: deal.mortgage,
+        cost: totalCost,
+        downPayment: totalDownPayment,
+        loanAmount: deal.mortgage * quantity,
         monthlyPayment: monthlyMortgagePayment,
         type: 'big_deal_loan',
         assetLiabilityId: assetLiabilityId
@@ -1024,8 +1027,8 @@ class GameService {
       // Добавляем кредит на первоначальный взнос
       const creditLiability = {
         title: `Кредитная карта - Первоначальный взнос за ${deal.title}`,
-        cost: deal.downPayment,
-        loanAmount: deal.downPayment,
+        cost: totalDownPayment,
+        loanAmount: totalDownPayment,
         monthlyPayment: monthlyCreditPayment,
         type: 'credit_card_loan'
       };
@@ -1037,13 +1040,14 @@ class GameService {
         assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
-        cost: deal.cost,
-        cashFlow: deal.passiveIncome,
+        cost: totalCost,
+        cashFlow: deal.passiveIncome * quantity,
         type: 'big_deal',
         description: deal.description,
         isRealEstate: deal.isRealEstate || false,
         apartments: deal.apartments,
-        assetLiabilityId: assetLiabilityId
+        assetLiabilityId: assetLiabilityId,
+        quantity: quantity
       };
 
       await this.databaseService.addAsset(gameId, userId, asset);
@@ -1052,8 +1056,9 @@ class GameService {
     }
 
     // Стандартная логика для других сделок
-    // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости)
-    const monthlyPayment = Math.floor(deal.cost * (0.02 + game.creditMultiple));
+    // Рассчитываем ежемесячный платеж по кредитке (2% от стоимости) с учетом количества
+    const totalCost = deal.cost * quantity;
+    const monthlyPayment = Math.floor(totalCost * (0.02 + game.creditMultiple));
 
     // Для expenses-сделок не добавляем актив, только кредит
     if (!deal.expenses) {
@@ -1062,21 +1067,22 @@ class GameService {
         assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
-        cost: deal.cost,
-        cashFlow: deal.passiveIncome || deal.cashFlow,
+        cost: totalCost,
+        cashFlow: (deal.passiveIncome || deal.cashFlow || 0) * quantity,
         type: deal.type === 'big' ? 'big_deal_credit_card' : 'small_deal_credit_card',
         description: deal.description,
-        isRealEstate: deal.isRealEstate || false
+        isRealEstate: deal.isRealEstate || false,
+        quantity: quantity
       };
 
       await this.databaseService.addAsset(gameId, userId, asset);
     }
 
-    // Добавляем кредитку как liability
+    // Добавляем кредитку как liability с учетом количества
     const liability = {
       title: `Кредитная карта - ${deal.title}`,
-      cost: deal.cost,
-      loanAmount: deal.cost,
+      cost: totalCost,
+      loanAmount: totalCost,
       monthlyPayment: monthlyPayment,
       type: 'credit_card_loan'
     };

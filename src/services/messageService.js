@@ -2130,14 +2130,18 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} deal - Объект сделки
    * @param {Object} player - Объект игрока
    * @param {string} type - Тип ('deal', 'miscellaneous', 'dismissal', 'mortgage_down_payment') по умолчанию 'deal'
+   * @param {number} quantity - Количество (по умолчанию 1)
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal') {
+  async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal', quantity = 1) {
     let message = `💼 **${deal.title}**\n\n`;
     if (deal.description) {
       message += `📝 ${deal.description}\n\n`;
     }
-    message += `💰 Стоимость: ${formatNumber(deal.cost)} ₽\n`;
+
+    // Рассчитываем общую стоимость с учетом количества
+    const totalCost = deal.cost * quantity;
+    message += `💰 Стоимость: ${formatNumber(totalCost)} ₽\n`;
 
     // Показать денежный поток (cashFlow или passiveIncome)
     const income = deal.passiveIncome || deal.cashFlow;
@@ -2147,8 +2151,8 @@ CashFlow - настольная игра о финансовом планиро�
 
     message += `💰 Ваши деньги: ${formatNumber(player.cash)} ₽\n\n`;
 
-    // Стоимость кредитной карты (2% от стоимости)
-    const monthlyPayment = Math.floor(deal.cost * 0.02);
+    // Стоимость кредитной карты (2% от общей стоимости)
+    const monthlyPayment = Math.floor(totalCost * 0.02);
     message += `❌ Недостаточно денег для покупки!\n\n`;
     message += `💳 Оплатить кредиткой:\n`;
     message += `📊 Ежемесячный платеж: ${formatNumber(monthlyPayment)} ₽\n\n`;

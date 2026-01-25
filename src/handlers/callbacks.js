@@ -1213,7 +1213,7 @@ async function handlePayDismissal(query, services) {
         title: 'Оплата расходов на безработице',
         cost: amount
       };
-      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer, 'dismissal');
+      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer, 'dismissal', 1);
       return;
     }
 

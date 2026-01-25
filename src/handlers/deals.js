@@ -195,7 +195,7 @@ async function handleBuyDeal(query, services) {
         await messageService.sendCreditCardOfferMessage(chatId, dealWithDownPayment, currentPlayer, 'mortgage_down_payment');
       } else if (buyResult.error === 'insufficient_funds') {
         // Обычная ошибка недостатка средств
-        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal');
+        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal', game.currentDealQuantity);
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
       }
@@ -391,7 +391,7 @@ async function handleBuyDealWithCreditCard(query, services) {
     const tempDeal = deal.expenses && !deal.cost ? { ...deal, cost: deal.expenses } : deal;
 
     // Купить кредиткой
-    const buyResult = await gameService.buyDealWithCreditCard(game.gameId, userId, tempDeal);
+    const buyResult = await gameService.buyDealWithCreditCard(game.gameId, userId, tempDeal, game.currentDealQuantity);
     if (!buyResult.success) {
       await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки кредиткой.');
       return;
