@@ -2267,14 +2267,24 @@ class GameService {
     const isOtherDream = !!otherPlayerWithDream;
     const isUnclaimedDream = !isOwnDream && !isOtherDream;
 
+    // Проверяем, была ли мечта куплена ранее (стоимость уже удвоена)
+    const purchasedDreams = game.purchasedDreams || [];
+    const wasPurchased = purchasedDreams.includes(dreamField.id);
+
     let cost = dreamField.data.cost;
     let victory = false;
+    let shouldMarkAsPurchased = false;
 
     if (isOwnDream) {
       // Своя мечта - победа
       victory = true;
+      cost = dreamField.data.cost;
     } else if (isOtherDream) {
       // Мечта другого игрока - удвоенная стоимость
+      cost = dreamField.data.cost * 2;
+      shouldMarkAsPurchased = true; // Помечаем как купленную для будущих игроков
+    } else if (wasPurchased) {
+      // Ничья мечта, но была куплена ранее - стоимость удвоена
       cost = dreamField.data.cost * 2;
     } else {
       // Ничья мечта - обычная стоимость, ничего не происходит
@@ -2289,10 +2299,19 @@ class GameService {
     // Списываем стоимость
     const newCash = (player.fastTrackCash || 0) - cost;
 
-    // Обновляем баланс
+    // Обновляем баланс и список купленных мечтаний
+    const updateData = {
+      [`players.${playerIndex}.fastTrackCash`]: newCash
+    };
+
+    // Если это чужая мечта и еще не была куплена, добавляем в список
+    if (shouldMarkAsPurchased && !wasPurchased) {
+      updateData.purchasedDreams = [...purchasedDreams, dreamField.id];
+    }
+
     await this.databaseService.getDb().collection('games').updateOne(
       { gameId },
-      { $set: { [`players.${playerIndex}.fastTrackCash`]: newCash } }
+      { $set: updateData }
     );
 
     return {

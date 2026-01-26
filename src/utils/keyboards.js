@@ -460,9 +460,10 @@ const gameLostKeyboard = {
  * @param {Object} dreamField - Объект поля мечты
  * @param {Object} player - Объект игрока
  * @param {Array} allPlayers - Массив всех игроков
+ * @param {Array} purchasedDreams - Массив ID купленных мечтаний (опционально)
  * @returns {Object} Клавиатура
  */
-function generateDreamKeyboard(dreamField, player, allPlayers) {
+function generateDreamKeyboard(dreamField, player, allPlayers, purchasedDreams = []) {
   const keyboard = {
     inline_keyboard: []
   };
@@ -473,6 +474,9 @@ function generateDreamKeyboard(dreamField, player, allPlayers) {
   const isOtherDream = !!otherPlayerWithDream;
   const isUnclaimedDream = !isOwnDream && !isOtherDream;
 
+  // Проверяем, была ли мечта куплена ранее (стоимость уже удвоена)
+  const wasPurchased = purchasedDreams.includes(dreamField.id);
+
   let buyText = 'Купить мечту';
   let costText = '';
 
@@ -480,8 +484,14 @@ function generateDreamKeyboard(dreamField, player, allPlayers) {
     buyText = '🎯 Купить мечту (ПОБЕДА!)';
     costText = `Стоимость: ${formatNumber(dreamField.data.cost)} ₽`;
   } else if (isOtherDream) {
+    // Мечта другого игрока - удвоенная стоимость
     const doubledCost = dreamField.data.cost * 2;
     buyText = `Купить мечту (${otherPlayerWithDream.username})`;
+    costText = `Стоимость: ${formatNumber(doubledCost)} ₽ (удвоена)`;
+  } else if (wasPurchased) {
+    // Ничья мечта, но была куплена ранее - удвоенная стоимость
+    const doubledCost = dreamField.data.cost * 2;
+    buyText = 'Купить мечту';
     costText = `Стоимость: ${formatNumber(doubledCost)} ₽ (удвоена)`;
   } else {
     buyText = 'Купить мечту';

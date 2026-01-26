@@ -1809,7 +1809,8 @@ CashFlow - настольная игра о финансовом планиро�
     if (fastTrackEvent.type === FIELD_TYPES.DREAM) {
       // Для мечты используем специальную клавиатуру
       const { generateDreamKeyboard } = require('../utils/keyboards');
-      keyboard = generateDreamKeyboard(fastTrackEvent, player, game.players);
+      const purchasedDreams = game.purchasedDreams || [];
+      keyboard = generateDreamKeyboard(fastTrackEvent, player, game.players, purchasedDreams);
     } else {
       keyboard = this.generateFastTrackKeyboard(fastTrackEvent, player, game, gameService);
     }

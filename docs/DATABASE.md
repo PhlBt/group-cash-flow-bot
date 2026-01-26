@@ -107,7 +107,8 @@ DatabaseService - это класс, отвечающий за все взаим
   marketCirculationPlayers: Array, // ID игроков для циркуляции market
   marketCirculationIndex: number, // Текущий индекс в циркуляции market
   marketCirculationOriginalIndex: number, // Оригинальный индекс циркуляции market
-  currentFastTrack: Object // Текущее fastTrack событие (опционально)
+  currentFastTrack: Object, // Текущее fastTrack событие (опционально)
+  purchasedDreams: Array // Массив ID купленных мечтаний (для удвоения стоимости)
 }
 ```
 

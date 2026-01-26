@@ -132,7 +132,8 @@ class DatabaseService {
       marketCirculationPlayers: [],
       marketCirculationIndex: 0,
       marketCirculationOriginalIndex: 0,
-      skippedTurnsList: []
+      skippedTurnsList: [],
+      purchasedDreams: [] // Массив ID купленных мечтаний (для удвоения стоимости)
     });
 
     return gameId;

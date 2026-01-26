@@ -495,6 +495,45 @@ Handlers - модуль функций-обработчиков команд Tel
   - Пропускает событие без действий
   - Передает ход следующему игроку
 
+### callbacks.js - Обработка мечтаний
+
+#### handleSelectDream(query, dreamTitle, services)
+- **Назначение**: Обрабатывает выбор мечты игроком
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `dreamTitle` (string): ID выбранной мечты
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет, что пользователь - владелец сообщения выбора мечты
+  - Находит мечту по ID в FAST_TRACK_FIELDS
+  - Проверяет, что мечта еще не выбрана другим игроком
+  - Сохраняет выбранную мечту через `gameService.setPlayerDream()`
+  - Отправляет сообщение о выборе мечты
+
+#### handleBuyDream(query, services)
+- **Назначение**: Обрабатывает покупку мечты
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет, что пользователь - текущий игрок
+  - Получает сохраненное fastTrack событие (мечту)
+  - Вызывает `gameService.buyDream()` для покупки
+  - При покупке своей мечты: обрабатывает победу через `finishGameWithVictory()`
+  - При покупке чужой мечты: отправляет сообщение о покупке и передает ход
+  - Удаляет кнопки с сообщения после покупки
+
+#### handleSkipDream(query, services)
+- **Назначение**: Обрабатывает пропуск мечты
+- **Параметры**:
+  - `query` (Object): Callback query от Telegram
+  - `services` (Object): Объект с сервисами { gameService, messageService }
+- **Функционал**:
+  - Проверяет, что пользователь - текущий игрок
+  - Удаляет сообщение с карточкой мечты
+  - Отправляет сообщение о пропуске
+  - Передает ход следующему игроку
+
 ### market.js - Обработка поля "Рынок"
 
 #### handleMarket(gameId, userId, services)
