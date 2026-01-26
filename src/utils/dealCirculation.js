@@ -298,19 +298,25 @@ async function circulateCanSellStocksToNextPlayer(gameId, chatId, services) {
       { $set: { currentPlayerIndex: playerIndex } }
     );
 
+    // Получить обновленную игру из базы данных
+    const updatedGame = await gameService.getGame(gameId);
+    if (!updatedGame) {
+      throw new Error('Игра не найдена после обновления');
+    }
+
     // Определить, является ли следующий игрок оригинальным
-    const isOriginalPlayer = game.dealCirculationIndex === 0; // Первый в списке - оригинальный
+    const isOriginalPlayer = updatedGame.dealCirculationIndex === 0; // Первый в списке - оригинальный
 
     // Показать карту игроку с кастомным заголовком
     const customTitle = `*${nextPlayer.username}*, ваша очередь работать со сделкой`;
-    const threadId = game.threadId || null;
-    const gameChatId = game.chatId;
+    const threadId = updatedGame.threadId || null;
+    const gameChatId = updatedGame.chatId;
     await messageService.sendDealCardMessage(
       gameChatId,
       deal,
       nextPlayer,
-      game,
-      isOriginalPlayer ? game.currentDealQuantity : 1, // Для неоригинальных - всегда 1
+      updatedGame,
+      isOriginalPlayer ? updatedGame.currentDealQuantity : 1, // Для неоригинальных - всегда 1
       customTitle,
       threadId
     );

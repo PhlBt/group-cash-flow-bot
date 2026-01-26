@@ -181,7 +181,8 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
   // Проверяем, находится ли игра в циркуляции canSellStocks
   const isInCanSellStocksCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.canSellStocks;
   // Определяем, является ли текущий игрок оригинальным в циркуляции canSellStocks
-  const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
+  // Оригинальный игрок - это тот, у которого dealCirculationIndex === 0
+  const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.dealCirculationIndex === 0;
   // Проверяем, находится ли игра в циркуляции anyCanBuySell
   const isInAnyCanBuySellCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.anyCanBuySell;
 
