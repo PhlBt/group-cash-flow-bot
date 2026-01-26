@@ -61,6 +61,7 @@ DatabaseService - это класс, отвечающий за все взаим
 {
   gameId: "string", // Уникальный ID игры
   chatId: "string", // ID чата Telegram
+  threadId: number | null, // ID треда (для супергрупп) или null для обычных чатов
   creatorId: "string", // ID создателя игры
   players: [
     {
@@ -127,12 +128,13 @@ DatabaseService - это класс, отвечающий за все взаим
 
 ## Методы работы с играми
 
-### createGame(chatId, userId, username)
+### createGame(chatId, userId, username, threadId = null)
 - **Назначение**: Создает новую игровую сессию
 - **Параметры**:
   - `chatId` (string): ID чата
   - `userId` (string): ID пользователя-создателя игры
   - `username` (string): Имя пользователя
+  - `threadId` (number | null): ID треда (для супергрупп) или null для обычных чатов
 - **Возвращает**: Promise<string> - ID созданной игры
 - **Функционал**:
   - Генерирует уникальный ID игры на основе timestamp
@@ -140,6 +142,7 @@ DatabaseService - это класс, отвечающий за все взаим
   - Создает объект игрока с начальными данными
   - Создает документ игры в коллекции 'games' с массивом players
   - Устанавливает статус 'waiting' и время создания
+  - Сохраняет threadId для изоляции игр в разных тредах супергрупп
 
 ### joinGame(userId, gameId, username)
 - **Назначение**: Присоединяет игрока к существующей игре
@@ -190,14 +193,17 @@ DatabaseService - это класс, отвечающий за все взаим
   - Фильтрует по статусам 'waiting' и 'active'
   - Возвращает массив найденных игр
 
-### getActiveGameByChatId(chatId)
+### getActiveGameByChatId(chatId, threadId = null)
 - **Назначение**: Получает активную игру для чата
 - **Параметры**:
   - `chatId` (string): ID чата
+  - `threadId` (number | null): ID треда (для супергрупп) или null для обычных чатов
 - **Возвращает**: Promise<Object|null> - документ игры или null
 - **Функционал**:
-  - Ищет игру в чате со статусом 'waiting' или 'active'
+  - Ищет игру в чате со статусом 'waiting' или 'active' по комбинации chatId + threadId
+  - Для обычных чатов threadId = null, для тредов супергрупп - конкретный ID треда
   - Возвращает найденную игру
+  - Обеспечивает изоляцию игр: каждая игра привязана к конкретному треду
 
 ### initiateEndGameVote(userId, gameId, messageId)
 - **Назначение**: Инициирует голосование за окончание игры

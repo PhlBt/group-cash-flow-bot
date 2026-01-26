@@ -1,4 +1,4 @@
-const { formatNumber } = require('../utils');
+const { formatNumber, getThreadId } = require('../utils');
 
 /**
  * Обрабатывает попадание игрока на поле благотворительности
@@ -23,10 +23,12 @@ async function handleCharity(gameId, userId, services) {
     }
 
     // Показать комбинированное сообщение с полем благотворительности
+    const threadId = game.threadId || null;
     await services.messageService.sendCombinedRollMoveCharityMessage(
       services.bot,
       currentPlayer,
-      game
+      game,
+      threadId
     );
 
   } catch (error) {
@@ -43,55 +45,56 @@ async function handleCharity(gameId, userId, services) {
 async function handleDonateCharity(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Пожертвовать 10% дохода
     const donateResult = await gameService.donateCharity(game.gameId, userId);
     if (!donateResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка при пожертвовании: ' + donateResult.error);
+      await messageService.sendErrorMessage(chatId, 'Ошибка при пожертвовании: ' + donateResult.error, threadId);
       return;
     }
 
     // Удалить кнопки с сообщения выбора благотворительности
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешном пожертвовании
     const donationAmount = formatNumber(donateResult.donationAmount);
     const remainingTurns = donateResult.turnsLeft;
 
     if (currentPlayer.isFastTrack) {
-      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 До конца игры можно бросать 1, 2 или 3 кубика.`);
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 До конца игры можно бросать 1, 2 или 3 кубика.`, threadId);
     } else {
-      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 На следующих ${remainingTurns} ходах можно бросать 1 или 2 кубика.`);
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} пожертвовал ${donationAmount} ₽ на благотворительность!\n🎲 На следующих ${remainingTurns} ходах можно бросать 1 или 2 кубика.`, threadId);
     }
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleDonateCharity:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пожертвовании.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пожертвовании.', threadId);
   }
 }
 
@@ -103,38 +106,39 @@ async function handleDonateCharity(query, services) {
 async function handleSkipCharity(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения выбора благотворительности
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSkipCharity:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске благотворительности.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске благотворительности.', threadId);
   }
 }
 

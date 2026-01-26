@@ -17,32 +17,39 @@ class MessageService {
    * @param {number|string} chatId - ID чата
    * @param {string} text - Текст сообщения
    * @param {Object} options - Опции для sendMessage (reply_markup, parse_mode и т.д.)
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<Object>} Результат sendMessage
    */
-  async sendMessage(chatId, text, options = {}) {
-    return await this.retryOn429(chatId, () => this.bot.sendMessage(chatId, text, options));
+  async sendMessage(chatId, text, options = {}, threadId = null) {
+    const finalOptions = {
+      ...options,
+      ...(threadId ? { message_thread_id: threadId } : {})
+    };
+    return await this.retryOn429(chatId, () => this.bot.sendMessage(chatId, text, finalOptions));
   }
 
   /**
    * Отправляет приветственное сообщение
    * @param {number} chatId - ID чата
    * @param {string} userName - Имя пользователя
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendWelcomeMessage(chatId, userName) {
+  async sendWelcomeMessage(chatId, userName, threadId = null) {
     const message = `🎮 Добро пожаловать в CashFlow!
 
 Правила игры:
 🎯 Цель: Выйти из "крысиных бегов", накопив пассивный доход больше расходов
 
 Используйте кнопки ниже для управления игрой.`;
-    await this.sendMessage(chatId, message, { reply_markup: welcomeKeyboard });
+    await this.sendMessage(chatId, message, { reply_markup: welcomeKeyboard }, threadId);
   }
 
   /**
    * Отправляет справочное сообщение с командами
    * @param {number} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendHelpMessage(chatId) {
+  async sendHelpMessage(chatId, threadId = null) {
     const helpText = `🎮 Добро пожаловать в CashFlow!
 
 CashFlow - настольная игра о финансовом планировании и управлении личными финансами.
@@ -60,22 +67,23 @@ CashFlow - настольная игра о финансовом планиро�
 /endgame - Начать голосование за окончание игры
 /votekick - Начать голосование за исключение игрока`;
 
-    await this.sendMessage(chatId, helpText, { parse_mode: 'Markdown', reply_markup: developerKeyboard });
+    await this.sendMessage(chatId, helpText, { parse_mode: 'Markdown', reply_markup: developerKeyboard }, threadId);
   }
 
   /**
    * Отправляет главное сообщение с правилами игры
    * @param {number} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendRulesMessage(chatId) {
+  async sendRulesMessage(chatId, threadId = null) {
     const rulesService = new RulesService();
     const mainContent = rulesService.getMainContent();
 
     const sentMessage = await this.sendMessage(chatId, mainContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesMainKeyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -85,14 +93,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToTypes(chatId, messageId) {
+  async editRulesToTypes(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const typesContent = rulesService.getTypesSection();
 
     await this.editMessageText(chatId, messageId, typesContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -100,14 +108,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToFinance(chatId, messageId) {
+  async editRulesToFinance(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const financeContent = rulesService.getFinanceSection();
 
     await this.editMessageText(chatId, messageId, financeContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -115,14 +123,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToMechanics(chatId, messageId) {
+  async editRulesToMechanics(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const mechanicsContent = rulesService.getMechanicsSection();
 
     await this.editMessageText(chatId, messageId, mechanicsContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -130,14 +138,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToVictory(chatId, messageId) {
+  async editRulesToVictory(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const victoryContent = rulesService.getVictorySection();
 
     await this.editMessageText(chatId, messageId, victoryContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -145,14 +153,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToTips(chatId, messageId) {
+  async editRulesToTips(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const tipsContent = rulesService.getTipsSection();
 
     await this.editMessageText(chatId, messageId, tipsContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -160,14 +168,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToCommands(chatId, messageId) {
+  async editRulesToCommands(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const commandsContent = rulesService.getCommandsSection();
 
     await this.editMessageText(chatId, messageId, commandsContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -175,14 +183,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToFAQ(chatId, messageId) {
+  async editRulesToFAQ(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const faqContent = rulesService.getFAQSection();
 
     await this.editMessageText(chatId, messageId, faqContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesBackKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -190,33 +198,35 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения для редактирования
    */
-  async editRulesToMain(chatId, messageId) {
+  async editRulesToMain(chatId, messageId, threadId = null) {
     const rulesService = new RulesService();
     const mainContent = rulesService.getMainContent();
 
     await this.editMessageText(chatId, messageId, mainContent, {
       parse_mode: 'MarkdownV2',
       reply_markup: rulesMainKeyboard
-    });
+    }, threadId);
   }
 
   /**
    * Отправляет сообщение о создании новой игры
    * @param {number} chatId - ID чата
    * @param {string} gameId - ID созданной игры
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendGameCreatedMessage(chatId, gameId) {
+  async sendGameCreatedMessage(chatId, gameId, threadId = null) {
     const message = `Новая игра создана! ID игры: ${gameId}. Используйте /play ${gameId} для начала игры.`;
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
    * Отправляет сообщение об ошибке создания игры
    * @param {number} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendGameCreationErrorMessage(chatId) {
+  async sendGameCreationErrorMessage(chatId, threadId = null) {
     const message = 'Ошибка при создании игры. Попробуйте еще раз.';
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
@@ -224,16 +234,13 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {string} errorText - Текст ошибки
    */
-  async sendErrorMessage(chatId, errorText) {
-    await this.sendMessage(chatId, errorText);
-  }
-
   /**
    * Отправляет сообщение об ошибке присоединения к игре
    * @param {number} chatId - ID чата
    * @param {string} errorType - Тип ошибки ('not_found', 'already_joined', 'game_started')
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendJoinErrorMessage(chatId, errorType) {
+  async sendJoinErrorMessage(chatId, errorType, threadId = null) {
     let message;
 
     switch (errorType) {
@@ -253,7 +260,7 @@ CashFlow - настольная игра о финансовом планиро�
         message = 'Ошибка при присоединении к игре. Попробуйте еще раз.';
     }
 
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
@@ -316,8 +323,9 @@ CashFlow - настольная игра о финансовом планиро�
    * Отправляет статистику игры
    * @param {number} chatId - ID чата
    * @param {Object} game - Объект игры
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendGameStatsMessage(chatId, game) {
+  async sendGameStatsMessage(chatId, game, threadId = null) {
     const trackName = game.status === 'active' ? 'активна' : 'завершена';
 
     let message = `📊 СТАТУС ИГРЫ\n\n`;
@@ -334,25 +342,27 @@ CashFlow - настольная игра о финансовом планиро�
       message += `   💳 Кредиты: ${player.loansCount || 0}\n\n`;
     });
 
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
    * Отправляет сообщение об успешном начале игры
    * @param {number} chatId - ID чата
    * @param {string} gameId - ID игры
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendPlaySuccessMessage(chatId, gameId) {
+  async sendPlaySuccessMessage(chatId, gameId, threadId = null) {
     const message = `Игра ${gameId} начата!`;
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
    * Отправляет сообщение об ошибке начала игры
    * @param {number} chatId - ID чата
    * @param {string} errorType - Тип ошибки ('not_found', 'not_creator', 'already_started')
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendPlayErrorMessage(chatId, errorType) {
+  async sendPlayErrorMessage(chatId, errorType, threadId = null) {
     let message;
 
     switch (errorType) {
@@ -369,7 +379,7 @@ CashFlow - настольная игра о финансовом планиро�
         message = 'Ошибка при начале игры. Попробуйте еще раз.';
     }
 
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
@@ -377,8 +387,9 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {Object} userStats - Статистика пользователя
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendPlayerProfileMessage(chatId, player, userStats) {
+  async sendPlayerProfileMessage(chatId, player, userStats, threadId = null) {
     let info = `👤 ${player.username}\n`;
 
     // Добавляем статистику пользователя
@@ -450,7 +461,7 @@ CashFlow - настольная игра о финансовом планиро�
       keyboard = profileKeyboard;
     }
 
-    await this.sendMessage(chatId, info, { reply_markup: keyboard });
+    await this.sendMessage(chatId, info, { reply_markup: keyboard }, threadId);
   }
 
   /**
@@ -458,8 +469,9 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object|null} player - Объект игрока (null для показа только статистики)
    * @param {Object} userStats - Статистика пользователя
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendPlayerCard(chatId, player, userStats) {
+  async sendPlayerCard(chatId, player, userStats, threadId = null) {
     let info = '';
 
     // Добавляем статистику пользователя всегда
@@ -521,7 +533,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    await this.sendMessage(chatId, info);
+    await this.sendMessage(chatId, info, {}, threadId);
   }
 
   /**
@@ -529,9 +541,10 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object} game - Объект игры
    * @param {Array} votedUsers - Массив ID проголосовавших пользователей
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendEndGameVoteMessage(chatId, game, votedUsers) {
+  async sendEndGameVoteMessage(chatId, game, votedUsers, threadId = null) {
     const totalPlayers = game.players.length;
     const majority = Math.ceil(totalPlayers / 2);
     const votedCount = votedUsers.length;
@@ -549,7 +562,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     const sentMessage = await this.sendMessage(chatId, message, {
       reply_markup: endGameVoteKeyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -560,8 +573,9 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} messageId - ID сообщения
    * @param {Object} game - Объект игры
    * @param {Array} votedUsers - Массив ID проголосовавших пользователей
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async updateEndGameVoteMessage(chatId, messageId, game, votedUsers) {
+  async updateEndGameVoteMessage(chatId, messageId, game, votedUsers, threadId = null) {
     const totalPlayers = game.players.length;
     const majority = Math.ceil(totalPlayers / 2);
     const votedCount = votedUsers.length;
@@ -579,7 +593,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     await this.editMessageText(chatId, messageId, message, {
       reply_markup: endGameVoteKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -587,8 +601,9 @@ CashFlow - настольная игра о финансовом планиро�
  * @param {number} chatId - ID чата
  * @param {number} messageId - ID сообщения для обновления
  * @param {Object} game - Объект игры
+ * @param {number|null} threadId - ID треда (для супергрупп) или null
  */
-  async updateWaitingRoomMessage(chatId, messageId, game) {
+  async updateWaitingRoomMessage(chatId, messageId, game, threadId = null) {
     const playersList = game.players.map(player => {
       const status = player.dream ? '✅' : '❌';
       return `${status} ${player.username}`;
@@ -627,7 +642,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     await this.editMessageText(chatId, messageId, message, {
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -635,9 +650,10 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object} game - Объект игры
    * @param {Object} kickVotes - Объект с голосами {userId: targetUserId}
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendKickVoteMessage(chatId, game, kickVotes) {
+  async sendKickVoteMessage(chatId, game, kickVotes, threadId = null) {
     const totalPlayers = game.players.length;
     const majority = Math.ceil(totalPlayers / 2);
 
@@ -690,7 +706,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     const sentMessage = await this.sendMessage(chatId, message, {
       reply_markup: keyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -698,27 +714,30 @@ CashFlow - настольная игра о финансовом планиро�
   /**
    * Отправляет сообщение о завершении игры
    * @param {number} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendGameFinishedMessage(chatId) {
+  async sendGameFinishedMessage(chatId, threadId = null) {
     const message = `🎉 Игра завершена!`;
-    await this.sendMessage(chatId, message, { reply_markup: gameFinishedKeyboard });
+    await this.sendMessage(chatId, message, { reply_markup: gameFinishedKeyboard }, threadId);
   }
 
   /**
    * Отправляет сообщение о проигрыше в банкротстве
    * @param {number} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendGameLostMessage(chatId) {
+  async sendGameLostMessage(chatId, threadId = null) {
     const message = '🥺 Вы проиграли! \nУ вас нет активов для продажи и недостаточно денег для оплаты кредитов.';
-    await this.sendMessage(chatId, message, { reply_markup: gameLostKeyboard });
+    await this.sendMessage(chatId, message, { reply_markup: gameLostKeyboard }, threadId);
   }
 
   /**
    * Отправляет сообщение об ошибке окончания игры
    * @param {number} chatId - ID чата
    * @param {string} errorType - Тип ошибки
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendEndGameErrorMessage(chatId, errorType) {
+  async sendEndGameErrorMessage(chatId, errorType, threadId = null) {
     let message;
 
     switch (errorType) {
@@ -741,16 +760,16 @@ CashFlow - настольная игра о финансовом планиро�
         message = 'Ошибка при голосовании. Попробуйте еще раз.';
     }
 
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
    * Отправляет запрос на описание ошибки
    * @param {number} chatId - ID чата
-   * @param {number} messageId - ID сообщения для ответа
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendErrorReportRequest(chatId) {
+  async sendErrorReportRequest(chatId, threadId = null) {
     const message = `🚨 *Сообщить об ошибке*\n\nПожалуйста, опишите возникшую проблему или ошибку в ответ на это сообщение.\n\n_Вы можете описать:\n• Ошибки в работе бота\n• Проблемы с командами\n• Некорректное поведение игры\n• Предложения по улучшению_\n\n_Описание должно быть не менее 10 символов._`;
 
     const sentMessage = await this.sendMessage(chatId, message, {
@@ -758,7 +777,7 @@ CashFlow - настольная игра о финансовом планиро�
       reply_markup: {
         force_reply: true
       }
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -767,9 +786,10 @@ CashFlow - настольная игра о финансовом планиро�
    * Отправляет сообщение комнаты ожидания
    * @param {number} chatId - ID чата
    * @param {Object} game - Объект игры
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendWaitingRoomMessage(chatId, game) {
+  async sendWaitingRoomMessage(chatId, game, threadId = null) {
     const playersList = game.players.map(player => {
       const status = player.dream ? '✅' : '❌';
       return `${status} ${player.username}`;
@@ -808,7 +828,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     const sentMessage = await this.sendMessage(chatId, message, {
       reply_markup: keyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -819,8 +839,9 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} messageId - ID сообщения
    * @param {Object} game - Объект игры
    * @param {Object} kickVotes - Объект с голосами {userId: targetUserId}
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async updateKickVoteMessage(chatId, messageId, game, kickVotes) {
+  async updateKickVoteMessage(chatId, messageId, game, kickVotes, threadId = null) {
     const totalPlayers = game.players.length;
     const majority = Math.ceil(totalPlayers / 2);
 
@@ -873,7 +894,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     await this.editMessageText(chatId, messageId, message, {
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -895,12 +916,14 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {number} messageId - ID сообщения
    */
-  async removeMessageKeyboard(chatId, messageId) {
+  async removeMessageKeyboard(chatId, messageId, threadId = null) {
     try {
-      await this.retryOn429(chatId, () => this.bot.editMessageReplyMarkup({}, {
+      const options = {
         chat_id: chatId,
-        message_id: messageId
-      }), false);
+        message_id: messageId,
+        ...(threadId ? { message_thread_id: threadId } : {})
+      };
+      await this.retryOn429(chatId, () => this.bot.editMessageReplyMarkup({}, options), false);
     } catch (error) {
       if (error.code === 'ETELEGRAM' && error.response && error.response.statusCode === 400 &&
         error.response.body && error.response.body.description &&
@@ -920,21 +943,24 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {string} newText - Новый текст сообщения
    * @param {Object} options - Дополнительные опции для editMessageText (reply_markup, parse_mode и т.д.)
    */
-  async editMessageText(chatId, messageId, newText, options = {}) {
-    await this.retryOn429(chatId, () => this.bot.editMessageText(newText, {
+  async editMessageText(chatId, messageId, newText, options = {}, threadId = null) {
+    const finalOptions = {
       chat_id: chatId,
       message_id: messageId,
-      ...options
-    }), false);
+      ...options,
+      ...(threadId ? { message_thread_id: threadId } : {})
+    };
+    await this.retryOn429(chatId, () => this.bot.editMessageText(newText, finalOptions), false);
   }
 
   /**
    * Отправляет общее сообщение об ошибке
    * @param {number} chatId - ID чата
    * @param {string} errorText - Текст ошибки
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendErrorMessage(chatId, errorText) {
-    await this.sendMessage(chatId, errorText);
+  async sendErrorMessage(chatId, errorText, threadId = null) {
+    await this.sendMessage(chatId, errorText, {}, threadId);
   }
 
   /**
@@ -945,7 +971,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} messageId - ID сообщения для редактирования (опционально)
    * @param {Array} selectedDreams - Массив названий уже выбранных мечтаний
    */
-  async sendDreamSelectionMessage(chatId, player, page = 0, messageId = null, selectedDreams = []) {
+  async sendDreamSelectionMessage(chatId, player, page = 0, messageId = null, selectedDreams = [], threadId = null) {
     const content = this.generateDreamSelectionContent(player, page, selectedDreams);
 
     if (messageId) {
@@ -953,13 +979,13 @@ CashFlow - настольная игра о финансовом планиро�
       await this.editMessageText(chatId, messageId, content.text, {
         parse_mode: 'Markdown',
         reply_markup: content.keyboard
-      });
+      }, threadId);
     } else {
       // Отправляем новое сообщение
       const sentMessage = await this.sendMessage(chatId, content.text, {
         parse_mode: 'Markdown',
         reply_markup: content.keyboard
-      });
+      }, threadId);
 
       // Сохраняем ID сообщения выбора мечты для игрока
       if (sentMessage && sentMessage.message_id && this.gameService) {
@@ -1032,10 +1058,11 @@ CashFlow - настольная игра о финансовом планиро�
    * Отправляет сообщение о переходе игрока на скоростную дорожку
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendFastTrackTransitionMessage(chatId, player) {
+  async sendFastTrackTransitionMessage(chatId, player, threadId = null) {
     const message = `🎉 ${player.username} перешел на скоростную дорожку!`;
-    await this.sendMessage(chatId, message);
+    await this.sendMessage(chatId, message, {}, threadId);
   }
 
   /**
@@ -1043,9 +1070,10 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры (опционально, для проверки пропуска ходов)
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendPlayerTurnMessage(chatId, player, game = null) {
+  async sendPlayerTurnMessage(chatId, player, game = null, threadId = null) {
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let playerSkipTurn = { needed: false }
@@ -1111,7 +1139,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     const sentMessage = await this.sendMessage(chatId, message, {
       reply_markup: keyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -1172,7 +1200,7 @@ CashFlow - настольная игра о финансовом планиро�
    *
    * Примечание: Для поля PAYDAY клавиатура не отправляется, так как никаких действий не требуется
    */
-  async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, paydayEvents = []) {
+  async sendCombinedRollMovePaydayMessage(chatId, player, steps, newPosition, fieldType, paydayEvents = [], threadId = null) {
     const trackName = '🐀 крысиные бега';
     const fieldName = this.getFieldName(fieldType);
 
@@ -1205,7 +1233,7 @@ CashFlow - настольная игра о финансовом планиро�
     // Для поля PAYDAY не отправляем клавиатуру и не добавляем текст "Выберите действие:"
     const { FIELD_TYPES } = require('../game/board');
     if (fieldType === FIELD_TYPES.PAYDAY) {
-      await this.sendMessage(chatId, message);
+      await this.sendMessage(chatId, message, {}, threadId);
     } else {
       message += `Выберите действие:`;
       let keyboard = gameKeyboard;
@@ -1214,7 +1242,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
       await this.sendMessage(chatId, message, {
         reply_markup: keyboard
-      });
+      }, threadId);
     }
   }
 
@@ -1227,7 +1255,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {string} fieldType - Тип поля
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendFastTrackRollMoveMessage(chatId, player, steps, newPosition, fieldType, paydayEvents = []) {
+  async sendFastTrackRollMoveMessage(chatId, player, steps, newPosition, fieldType, paydayEvents = [], threadId = null) {
     const trackName = '🚀 Скоростная дорожка';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1281,7 +1309,7 @@ CashFlow - настольная игра о финансовом планиро�
     // Для поля PAYDAY не отправляем клавиатуру и не добавляем текст "Выберите действие:"
     const { FIELD_TYPES } = require('../game/board');
     if (fieldType === FIELD_TYPES.FPAYDAY) {
-      await this.sendMessage(chatId, message);
+      await this.sendMessage(chatId, message, {}, threadId);
     } else {
       message += `Выберите действие:`;
       let keyboard = gameKeyboard;
@@ -1290,7 +1318,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
       await this.sendMessage(chatId, message, {
         reply_markup: keyboard
-      });
+      }, threadId);
     }
   }
 
@@ -1331,7 +1359,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} newPosition - Новая позиция
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendCombinedRollMoveDealMessage(chatId, player, steps, newPosition, paydayEvents = []) {
+  async sendCombinedRollMoveDealMessage(chatId, player, steps, newPosition, paydayEvents = [], threadId = null) {
     const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1374,7 +1402,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     await this.sendMessage(chatId, message, {
       reply_markup: dealTypeKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -1383,7 +1411,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
    */
-  async sendCombinedRollMoveCharityMessage(bot, player, game) {
+  async sendCombinedRollMoveCharityMessage(bot, player, game, threadId = null) {
     const trackName = player.inFastTrack ? '🚀 Скоростная дорожка' : '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} попал на поле "Благотворительность"!\n\n`;
@@ -1410,7 +1438,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: charityChoiceKeyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -1423,7 +1451,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} miscCard - Объект miscellaneous карточки
    * @param {Object} game - Объект игры
    */
-  async sendCombinedRollMoveMiscellaneousMessage(chatId, player, steps, newPosition, paydayEvents = [], miscCard, game) {
+  async sendCombinedRollMoveMiscellaneousMessage(chatId, player, steps, newPosition, paydayEvents = [], miscCard, game, threadId = null) {
     const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1477,7 +1505,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -1488,7 +1516,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} newPosition - Новая позиция
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, paydayEvents = []) {
+  async sendCombinedRollMoveDismissalMessage(chatId, player, steps, newPosition, paydayEvents = [], threadId = null) {
     const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1523,7 +1551,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -1534,7 +1562,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} newPosition - Новая позиция
    * @param {Array} paydayEvents - Массив событий выплат
    */
-  async sendCombinedRollMoveChildMessage(chatId, player, steps, newPosition, paydayEvents = []) {
+  async sendCombinedRollMoveChildMessage(chatId, player, steps, newPosition, paydayEvents = [], threadId = null) {
     const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1570,7 +1598,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown'
-    });
+    }, threadId);
   }
 
   /**
@@ -1583,7 +1611,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Array} paydayEvents - Массив событий выплат
    * @param {Object} marketCard - Market карточка
    */
-  async sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, paydayEvents = [], marketCard) {
+  async sendCombinedRollMoveMarketMessage(chatId, player, steps, newPosition, paydayEvents = [], marketCard, threadId = null) {
     const trackName = '🐀 крысиные бега';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1650,7 +1678,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -1664,7 +1692,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} fastTrackEvent - fastTrack событие
    * @param {Object} game - Объект игры для проверки занятости полей
    */
-  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent, game, gameService) {
+  async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent, game, gameService, threadId = null) {
     const trackName = '🚀 Скоростная дорожка';
 
     let message = `🎲 ${player.profession} ${player.username} выкинул ${steps} шагов\n`;
@@ -1789,7 +1817,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -1896,12 +1924,12 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} chatId - ID чата
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendDealTypeMessage(chatId) {
+  async sendDealTypeMessage(chatId, threadId = null) {
     const message = `💼 Вы попали на поле "Сделки"!\n\nВыберите тип сделки:`;
 
     const sentMessage = await this.sendMessage(chatId, message, {
       reply_markup: dealTypeKeyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -1916,13 +1944,13 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {string} customTitle - Кастомный заголовок (опционально)
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendDealCardMessage(chatId, deal, player, game, quantity = 1, customTitle = null) {
+  async sendDealCardMessage(chatId, deal, player, game, quantity = 1, customTitle = null, threadId = null) {
     const content = this.generateDealCardContent(deal, player, game, quantity, customTitle);
 
     const sentMessage = await this.sendMessage(chatId, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -1935,13 +1963,13 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} game - Объект игры
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendMiscellaneousCardMessage(chatId, miscCard, player, game) {
+  async sendMiscellaneousCardMessage(chatId, miscCard, player, game, threadId = null) {
     const content = this.generateMiscellaneousCardContent(miscCard, player, game);
 
     const sentMessage = await this.sendMessage(chatId, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -2146,7 +2174,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} quantity - Количество (по умолчанию 1)
    * @returns {Promise<number>} ID отправленного сообщения
    */
-  async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal', quantity = 1) {
+  async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal', quantity = 1, threadId = null) {
     let message = `💼 **${deal.title}**\n\n`;
     if (deal.description) {
       message += `📝 ${deal.description}\n\n`;
@@ -2202,7 +2230,7 @@ CashFlow - настольная игра о финансовом планиро�
     const sentMessage = await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
 
     return sentMessage.message_id;
   }
@@ -2305,17 +2333,17 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} page - Страница для пагинации (начиная с 0)
    * @param {number} messageId - ID сообщения для редактирования (опционально)
    */
-  async sendPlayerAssetsMessage(chatId, player, page = 0, messageId = null) {
+  async sendPlayerAssetsMessage(chatId, player, page = 0, messageId = null, threadId = null) {
     const content = this.generatePlayerAssetsContent(player, page);
 
     if (messageId) {
       // Редактируем существующее сообщение
       await this.editMessageText(chatId, messageId, content.text, {
         reply_markup: content.keyboard
-      });
+      }, threadId);
     } else {
       // Отправляем новое сообщение
-      await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard });
+      await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard }, threadId);
     }
   }
 
@@ -2398,17 +2426,17 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {number} page - Страница для пагинации (начиная с 0)
    * @param {number} messageId - ID сообщения для редактирования (опционально)
    */
-  async sendPlayerCreditsMessage(chatId, player, page = 0, messageId = null) {
+  async sendPlayerCreditsMessage(chatId, player, page = 0, messageId = null, threadId = null) {
     const content = this.generatePlayerCreditsContent(player, page);
 
     if (messageId) {
       // Редактируем существующее сообщение
       await this.editMessageText(chatId, messageId, content.text, {
         reply_markup: content.keyboard
-      });
+      }, threadId);
     } else {
       // Отправляем новое сообщение
-      await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard });
+      await this.sendMessage(chatId, content.text, { reply_markup: content.keyboard }, threadId);
     }
   }
 
@@ -2419,7 +2447,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
    */
-  async sendMarketCardWithSkipButton(chatId, marketCard, player, game) {
+  async sendMarketCardWithSkipButton(chatId, marketCard, player, game, threadId = null) {
     let message = `📈 **Рынок**\n\n`;
     message += `💼 ${marketCard.title}\n\n`;
     message += `📝 ${marketCard.description}\n\n`;
@@ -2444,7 +2472,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**
@@ -2455,7 +2483,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} game - Объект игры
    * @param {string} customTitle - Кастомный заголовок (опционально)
    */
-  async sendMarketCardWithSellOptions(chatId, marketCard, player, game, customTitle = null) {
+  async sendMarketCardWithSellOptions(chatId, marketCard, player, game, customTitle = null, threadId = null) {
     let message = customTitle ? `${customTitle}\n\n` : '';
     message += `📈 **Рынок**\n\n`;
     message += `💼 ${marketCard.title}\n\n`;
@@ -2514,7 +2542,7 @@ CashFlow - настольная игра о финансовом планиро�
     await this.sendMessage(chatId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   }
 
   /**

@@ -1,4 +1,13 @@
 /**
+ * Извлекает threadId из сообщения Telegram
+ * @param {Object} msg - Сообщение от Telegram
+ * @returns {number|null} ID треда или null для обычных чатов
+ */
+function getThreadId(msg) {
+  return msg.message_thread_id || null;
+}
+
+/**
  * Форматирует число с разделителями разрядов или краткими формами
  * @param {number} num - Число для форматирования
  * @returns {string} Отформатированное число с ₽
@@ -51,6 +60,7 @@ const RateLimiter = require('./rateLimiter');
 const { initializeDealCirculation, processDealAction, circulateToNextPlayer, endDealCirculation, initializeCanSellStocksCirculation, processCanSellStocksAction } = require('./dealCirculation');
 
 module.exports = {
+  getThreadId,
   formatNumber,
   applyInflation,
   RateLimiter,

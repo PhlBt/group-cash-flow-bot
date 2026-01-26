@@ -54,9 +54,10 @@ class DatabaseService {
    * @param {string} chatId - ID чата
    * @param {string} userId - ID создателя игры
    * @param {string} username - Имя пользователя
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<string>} ID созданной игры
    */
-  async createGame(chatId, userId, username) {
+  async createGame(chatId, userId, username, threadId = null) {
     const gamesCollection = this.getCollection('games');
     const gameId = Date.now().toString(); // Простой ID на основе timestamp
 
@@ -109,6 +110,7 @@ class DatabaseService {
     await gamesCollection.insertOne({
       gameId,
       chatId,
+      threadId: threadId || null,
       creatorId: userId,
       players: [player],
       status: 'waiting',
@@ -274,14 +276,17 @@ class DatabaseService {
   /**
    * Получает активную игру для чата
    * @param {string} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<Object|null>} Документ игры или null
    */
-  async getActiveGameByChatId(chatId) {
+  async getActiveGameByChatId(chatId, threadId = null) {
     const gamesCollection = this.getCollection('games');
-    return await gamesCollection.findOne({
+    const query = {
       chatId,
+      threadId: threadId || null,
       status: { $in: ['waiting', 'active'] }
-    });
+    };
+    return await gamesCollection.findOne(query);
   }
 
   /**

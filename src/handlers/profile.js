@@ -12,26 +12,27 @@ async function handleProfile(input, services) {
   const userId = input.from.id
   const username = input.from.first_name || input.from.username || 'игрок';
   const chatId = (input.message) ? input.message.chat.id : input.chat.id
+  const threadId = require('../utils').getThreadId(input.message || input)
 
   try {
     if (input.message) {
       // Callback query - требуется активная игра
-      const game = await gameService.getActiveGameByChatId(chatId);
+      const game = await gameService.getActiveGameByChatId(chatId, threadId);
       if (!game) {
-        await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+        await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
         return;
       }
 
       // Найти игрока
       const player = game.players.find(p => p.userId === userId);
       if (!player) {
-        await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+        await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.', threadId);
         return;
       }
 
       // Проверить, что сейчас ход игрока
       const { validateCurrentPlayer } = require('../utils/validators');
-      const currentPlayer = await validateCurrentPlayer(game.gameId, userId, { gameService, messageService }, chatId);
+      const currentPlayer = await validateCurrentPlayer(game.gameId, userId, { gameService, messageService }, chatId, threadId);
       if (!currentPlayer) {
         return;
       }
@@ -40,33 +41,33 @@ async function handleProfile(input, services) {
       const userStats = await userStatsService.getOrCreateUserStats(userId, username);
 
       // Отправить профиль игрока
-      await messageService.sendPlayerProfileMessage(chatId, player, userStats);
+      await messageService.sendPlayerProfileMessage(chatId, player, userStats, threadId);
     } else {
       // Message от команды - показать статистику пользователя
       const userStats = await userStatsService.getOrCreateUserStats(userId, username);
 
       // Проверить наличие активной игры в чате
-      const activeGame = await gameService.getActiveGameByChatId(chatId);
+      const activeGame = await gameService.getActiveGameByChatId(chatId, threadId);
 
       if (activeGame) {
         // Найти игрока в игре
         const player = activeGame.players.find(p => p.userId === userId);
         if (player) {
           // Показать профиль игрока с кнопками активов и кредитов
-          await messageService.sendPlayerProfileMessage(chatId, player, userStats);
+          await messageService.sendPlayerProfileMessage(chatId, player, userStats, threadId);
         } else {
           // Пользователь не в игре, показать только статистику
-          await messageService.sendPlayerCard(chatId, null, userStats);
+          await messageService.sendPlayerCard(chatId, null, userStats, threadId);
         }
       } else {
         // Нет активной игры, показать только статистику
-        await messageService.sendPlayerCard(chatId, null, userStats);
+        await messageService.sendPlayerCard(chatId, null, userStats, threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleProfile:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке профиля.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке профиля.', threadId);
   }
 }
 
@@ -78,21 +79,22 @@ async function handleProfile(input, services) {
 async function handleStats(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = require('../utils').getThreadId(query.message);
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Отправить статистику игры
-    await messageService.sendGameStatsMessage(chatId, game);
+    await messageService.sendGameStatsMessage(chatId, game, threadId);
 
   } catch (error) {
     console.error('Error in handleStats:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке статистики.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке статистики.', threadId);
   }
 }
 
@@ -104,20 +106,21 @@ async function handleStats(query, services) {
 async function handleAssets(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = require('../utils').getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Найти игрока
     const player = game.players.find(p => p.userId === userId);
     if (!player) {
-      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.', threadId);
       return;
     }
 
@@ -129,11 +132,11 @@ async function handleAssets(query, services) {
     }
 
     // Делегировать отправку в MessageService
-    await messageService.sendPlayerAssetsMessage(chatId, player);
+    await messageService.sendPlayerAssetsMessage(chatId, player, 0, null, threadId);
 
   } catch (error) {
     console.error('Error in handleAssets:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке активов.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке активов.', threadId);
   }
 }
 
@@ -145,20 +148,21 @@ async function handleAssets(query, services) {
 async function handleCredits(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = require('../utils').getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Найти игрока
     const player = game.players.find(p => p.userId === userId);
     if (!player) {
-      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.', threadId);
       return;
     }
 
@@ -170,11 +174,11 @@ async function handleCredits(query, services) {
     }
 
     // Делегировать отправку в MessageService
-    await messageService.sendPlayerCreditsMessage(chatId, player);
+    await messageService.sendPlayerCreditsMessage(chatId, player, 0, null, threadId);
 
   } catch (error) {
     console.error('Error in handleCredits:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке кредитов.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при загрузке кредитов.', threadId);
   }
 }
 

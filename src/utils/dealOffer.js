@@ -127,13 +127,15 @@ async function handleSelectUser(game, offerState, targetUserId, services) {
 
   // Отправить сделку выбранному игроку
   const dealWithCommission = calculateDealWithCommission(game.currentDeal, offerState.commission);
+  const threadId = game.threadId || null;
   await messageService.sendDealCardMessage(
     game.chatId, // Предполагаем, что chatId есть в игре
     dealWithCommission,
     targetPlayer,
     game,
     game.currentDealQuantity,
-    `${targetPlayer.profession} ${targetPlayer.username} вы получили предложение о сделке с комиссией ${offerState.commission}%`
+    `${targetPlayer.profession} ${targetPlayer.username} вы получили предложение о сделке с комиссией ${offerState.commission}%`,
+    threadId
   );
 
 }
@@ -225,7 +227,8 @@ async function passTurnAfterOffer(game, offeringUserId, services) {
   );
 
   // Отправить сообщение о ходе
-  await messageService.sendPlayerTurnMessage(game.chatId, nextPlayer, await gameService.getGame(game.gameId));
+  const threadId = game.threadId || null;
+  await messageService.sendPlayerTurnMessage(game.chatId, nextPlayer, await gameService.getGame(game.gameId), threadId);
 }
 
 module.exports = {

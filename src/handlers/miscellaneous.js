@@ -1,4 +1,4 @@
-const { formatNumber, applyInflation } = require('../utils');
+const { formatNumber, applyInflation, getThreadId } = require('../utils');
 
 /**
  * Обрабатывает попадание игрока на поле miscellaneous
@@ -77,33 +77,34 @@ async function handleMiscellaneous(gameId, userId, services) {
 async function handlePayMiscellaneous(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненную карточку miscellaneous из состояния игры
     const miscCard = game.currentMiscellaneous;
     if (!miscCard) {
-      await messageService.sendErrorMessage(chatId, 'Карточка miscellaneous не найдена. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Карточка miscellaneous не найдена. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Проверить условия для семейных карт
     if (miscCard.hasKids && (!currentPlayer.childrenCount || currentPlayer.childrenCount === 0)) {
-      await messageService.sendErrorMessage(chatId, 'У вас нет детей для этой карточки!');
+      await messageService.sendErrorMessage(chatId, 'У вас нет детей для этой карточки!', threadId);
       return;
     }
 
@@ -122,33 +123,33 @@ async function handlePayMiscellaneous(query, services) {
       if (!payResult.success) {
       if (payResult.error === 'insufficient_funds') {
         // Удалить кнопки с сообщения карточки miscellaneous
-        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+        await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
         // Отправить предложение оплаты кредиткой
-        await messageService.sendCreditCardOfferMessage(chatId, miscCard, currentPlayer, 'miscellaneous', 1);
+        await messageService.sendCreditCardOfferMessage(chatId, miscCard, currentPlayer, 'miscellaneous', 1, threadId);
       } else {
-        await messageService.sendErrorMessage(chatId, 'Ошибка при оплате miscellaneous.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка при оплате miscellaneous.', threadId);
       }
       return;
     }
 
     // Удалить кнопки с сообщения карточки miscellaneous
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил "${miscCard.description}"!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил "${miscCard.description}"!`, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handlePayMiscellaneous:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате miscellaneous.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате miscellaneous.', threadId);
   }
 }
 
@@ -160,61 +161,62 @@ async function handlePayMiscellaneous(query, services) {
 async function handlePayMiscellaneousCreditCard(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненную карточку miscellaneous из состояния игры
     const miscCard = game.currentMiscellaneous;
     if (!miscCard) {
-      await messageService.sendErrorMessage(chatId, 'Карточка miscellaneous не найдена. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Карточка miscellaneous не найдена. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Проверить условия для семейных карт
     if (miscCard.hasKids && (!currentPlayer.childrenCount || currentPlayer.childrenCount === 0)) {
-      await messageService.sendErrorMessage(chatId, 'У вас нет детей для этой карточки!');
+      await messageService.sendErrorMessage(chatId, 'У вас нет детей для этой карточки!', threadId);
       return;
     }
 
     // Оплатить кредиткой
     const payResult = await gameService.payMiscellaneousWithCreditCard(game.gameId, userId, miscCard);
     if (!payResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка при оплате miscellaneous кредиткой.');
+      await messageService.sendErrorMessage(chatId, 'Ошибка при оплате miscellaneous кредиткой.', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения предложения кредитки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил "${miscCard.description}" кредиткой!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил "${miscCard.description}" кредиткой!`, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handlePayMiscellaneousCreditCard:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате miscellaneous кредиткой.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате miscellaneous кредиткой.', threadId);
   }
 }
 
@@ -226,41 +228,42 @@ async function handlePayMiscellaneousCreditCard(query, services) {
 async function handleSkipMiscellaneous(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения карточки miscellaneous
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение о пропуске
-    await messageService.sendErrorMessage(chatId, `⏭️ ${currentPlayer.username} пропустил "${game.currentMiscellaneous.description}"`);
+    await messageService.sendErrorMessage(chatId, `⏭️ ${currentPlayer.username} пропустил "${game.currentMiscellaneous.description}"`, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSkipMiscellaneous:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске miscellaneous.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске miscellaneous.', threadId);
   }
 }
 

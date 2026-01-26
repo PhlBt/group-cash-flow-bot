@@ -113,7 +113,7 @@ async function circulateToNextPlayer(gameId, chatId, services) {
 
   if (incrementResult.completed) {
     // Все игроки из списка совершили действия - завершить циркуляцию
-    await endDealCirculation(gameId, chatId, services);
+    await endDealCirculation(gameId, game.chatId, services);
   } else {
     // Показать карту следующему игроку из списка
     const nextPlayerId = game.dealCirculationPlayers[game.dealCirculationIndex];
@@ -131,13 +131,16 @@ async function circulateToNextPlayer(gameId, chatId, services) {
     );
 
     // Показать карту игроку с кастомным заголовком
+    const threadId = game.threadId || null;
+    const gameChatId = game.chatId;
     await messageService.sendDealCardMessage(
-      chatId,
+      gameChatId,
       deal,
       nextPlayer,
       game,
       game.currentDealQuantity,
-      `*${nextPlayer.username}*, ваша очередь работать со сделкой`
+      `*${nextPlayer.username}*, ваша очередь работать со сделкой`,
+      threadId
     );
   }
 }
@@ -171,7 +174,9 @@ async function endDealCirculation(gameId, chatId, services) {
 
   // Отправить сообщение о ходе следующего игрока
   const nextPlayer = game.players[nextPlayerIndex];
-  await messageService.sendPlayerTurnMessage(chatId, nextPlayer, await gameService.getGame(game.gameId));
+  const threadId = game.threadId || null;
+  const gameChatId = game.chatId;
+  await messageService.sendPlayerTurnMessage(gameChatId, nextPlayer, await gameService.getGame(game.gameId), threadId);
 }
 
 /**
@@ -276,7 +281,7 @@ async function circulateCanSellStocksToNextPlayer(gameId, chatId, services) {
 
   if (incrementResult.completed) {
     // Все игроки из списка совершили действия - завершить циркуляцию
-    await endDealCirculation(gameId, chatId, services);
+    await endDealCirculation(gameId, game.chatId, services);
   } else {
     // Показать карту следующему игроку из списка
     const nextPlayerId = game.dealCirculationPlayers[game.dealCirculationIndex];
@@ -298,13 +303,16 @@ async function circulateCanSellStocksToNextPlayer(gameId, chatId, services) {
 
     // Показать карту игроку с кастомным заголовком
     const customTitle = `*${nextPlayer.username}*, ваша очередь работать со сделкой`;
+    const threadId = game.threadId || null;
+    const gameChatId = game.chatId;
     await messageService.sendDealCardMessage(
-      chatId,
+      gameChatId,
       deal,
       nextPlayer,
       game,
       isOriginalPlayer ? game.currentDealQuantity : 1, // Для неоригинальных - всегда 1
-      customTitle
+      customTitle,
+      threadId
     );
   }
 }

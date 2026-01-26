@@ -1,4 +1,4 @@
-const { formatNumber, applyInflation, initializeDealCirculation, processDealAction, initializeCanSellStocksCirculation, processCanSellStocksAction } = require('../utils');
+const { formatNumber, applyInflation, initializeDealCirculation, processDealAction, initializeCanSellStocksCirculation, processCanSellStocksAction, getThreadId } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
 
 /**
@@ -10,25 +10,26 @@ const { FIELD_TYPES } = require('../game/board');
 async function handleDealType(query, dealType, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения выбора типа сделки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Сгенерировать сделку
     const { smallDeals } = require('../game/cards/smallDeals');
@@ -97,11 +98,11 @@ async function handleDealType(query, dealType, services) {
     const updatedGame = await gameService.getGame(game.gameId);
 
     // Отправить карточку сделки
-    await messageService.sendDealCardMessage(chatId, deal, currentPlayer, updatedGame, updatedGame.currentDealQuantity);
+    await messageService.sendDealCardMessage(chatId, deal, currentPlayer, updatedGame, updatedGame.currentDealQuantity, null, threadId);
 
   } catch (error) {
     console.error('Error in handleDealType:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе типа сделки.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе типа сделки.', threadId);
   }
 }
 
@@ -113,26 +114,27 @@ async function handleDealType(query, dealType, services) {
 async function handleBuyDeal(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненную сделку из состояния игры
     const deal = game.currentDeal;
     if (!deal) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Предлагающий не может выполнять действия с предложенной сделкой
     if (game.offerState && game.offerState.step === 'confirmed' && game.offerState.offeringUserId === userId) {
-      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!');
+      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!', threadId);
       return;
     }
 
@@ -146,14 +148,14 @@ async function handleBuyDeal(query, services) {
 
     // Для предложенных сделок проверить, что пользователь - целевой
     if (isOfferedDeal && game.offerState.targetUserId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!');
+      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок (для обычных сделок)
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!isOfferedDeal && (!currentPlayer || currentPlayer.userId !== userId)) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -184,7 +186,7 @@ async function handleBuyDeal(query, services) {
     if (!buyResult.success) {
       if (buyResult.error === 'insufficient_down_payment') {
         // Предложить оплатить первоначальный взнос кредиткой
-        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+        await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
         const dealWithDownPayment = {
           ...deal,
@@ -192,12 +194,12 @@ async function handleBuyDeal(query, services) {
           title: `Первоначальный взнос за ${deal.title}`
         };
 
-        await messageService.sendCreditCardOfferMessage(chatId, dealWithDownPayment, currentPlayer, 'mortgage_down_payment');
+        await messageService.sendCreditCardOfferMessage(chatId, dealWithDownPayment, currentPlayer, 'mortgage_down_payment', 1, threadId);
       } else if (buyResult.error === 'insufficient_funds') {
         // Обычная ошибка недостатка средств
-        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal', game.currentDealQuantity);
+        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal', game.currentDealQuantity, threadId);
       } else {
-        await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.', threadId);
       }
       return;
     }
@@ -215,18 +217,18 @@ async function handleBuyDeal(query, services) {
     }
 
     // Удалить кнопки с сообщения карточки сделки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной покупке
     const buyerPlayer = isOfferedDeal ? game.players.find(p => p.userId === userId) : currentPlayer;
     const commissionText = isOfferedDeal ? ` с комиссией ${game.offerState.commission}%` : '';
-    await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}"${commissionText}!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}"${commissionText}!`, threadId);
 
     // Проверяем переход на Fast Track после покупки
     if (buyResult.transitioned) {
       const updatedGame = await gameService.getGame(game.gameId);
       const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer, threadId);
     }
 
     // Обработать циркуляцию для anyCanBuySell или canSellStocks
@@ -239,15 +241,15 @@ async function handleBuyDeal(query, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleBuyDeal:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки.', threadId);
   }
 }
 
@@ -259,26 +261,27 @@ async function handleBuyDeal(query, services) {
 async function handleSkipDeal(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить текущую сделку
     const deal = game.currentDeal;
     if (!deal) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Предлагающий не может выполнять действия с предложенной сделкой
     if (game.offerState && game.offerState.step === 'confirmed' && game.offerState.offeringUserId === userId) {
-      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!');
+      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!', threadId);
       return;
     }
 
@@ -287,14 +290,14 @@ async function handleSkipDeal(query, services) {
 
     // Для предложенных сделок проверить, что пользователь - целевой
     if (isOfferedDeal && game.offerState.targetUserId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!');
+      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок (для обычных сделок)
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!isOfferedDeal && (!currentPlayer || currentPlayer.userId !== userId)) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -302,16 +305,16 @@ async function handleSkipDeal(query, services) {
     if (deal && deal.multiple) {
       const processResult = await gameService.processMultiple(game.gameId, deal);
       if (!processResult.success) {
-        await messageService.sendErrorMessage(chatId, 'Ошибка при обработке multiple сделки.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка при обработке multiple сделки.', threadId);
         return;
       }
 
       // Удалить кнопки с сообщения карточки сделки
-      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
       // Отправить сообщение о применении multiple
       const action = deal.multiple === 2 ? 'удвоено' : 'уменьшено вдвое';
-      await messageService.sendErrorMessage(chatId, `📊 Количество акций "${deal.title}" ${action} у всех игроков!`);
+      await messageService.sendErrorMessage(chatId, `📊 Количество акций "${deal.title}" ${action} у всех игроков!`, threadId);
 
       // Проверяем переход на Fast Track для игроков, которые перешли
       if (processResult.transitioned && processResult.transitionedPlayers) {
@@ -319,13 +322,13 @@ async function handleSkipDeal(query, services) {
         for (const transitionedUserId of processResult.transitionedPlayers) {
           const transitionedPlayer = updatedGame.players.find(p => p.userId === transitionedUserId);
           if (transitionedPlayer) {
-            await messageService.sendFastTrackTransitionMessage(chatId, transitionedPlayer);
+            await messageService.sendFastTrackTransitionMessage(chatId, transitionedPlayer, threadId);
           }
         }
       }
     } else {
       // Удалить кнопки с сообщения карточки сделки
-      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
       if (deal && deal.anyCanBuySell) {
         // Обработать циркуляцию для anyCanBuySell
@@ -347,14 +350,14 @@ async function handleSkipDeal(query, services) {
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSkipDeal:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске сделки.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске сделки.', threadId);
   }
 }
 
@@ -366,26 +369,27 @@ async function handleSkipDeal(query, services) {
 async function handleBuyDealWithCreditCard(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненную сделку из состояния игры
     const deal = game.currentDeal;
     if (!deal) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Предлагающий не может выполнять действия с предложенной сделкой
     if (game.offerState && game.offerState.step === 'confirmed' && game.offerState.offeringUserId === userId) {
-      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!');
+      await messageService.sendErrorMessage(chatId, 'Вы уже предложили эту сделку другому игроку!', threadId);
       return;
     }
 
@@ -394,14 +398,14 @@ async function handleBuyDealWithCreditCard(query, services) {
 
     // Для предложенных сделок проверить, что пользователь - целевой
     if (isOfferedDeal && game.offerState.targetUserId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!');
+      await messageService.sendErrorMessage(chatId, 'Эта сделка предложена другому игроку!', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок (для обычных сделок)
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!isOfferedDeal && (!currentPlayer || currentPlayer.userId !== userId)) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -411,12 +415,12 @@ async function handleBuyDealWithCreditCard(query, services) {
     // Купить кредиткой
     const buyResult = await gameService.buyDealWithCreditCard(game.gameId, userId, tempDeal, game.currentDealQuantity);
     if (!buyResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки кредиткой.');
+      await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки кредиткой.', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения предложения кредитки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Если сделка была предложена, передать комиссию предлагающему
     if (isOfferedDeal) {
@@ -435,13 +439,13 @@ async function handleBuyDealWithCreditCard(query, services) {
     // Отправить сообщение об успешной покупке
     const buyerPlayer = isOfferedDeal ? game.players.find(p => p.userId === userId) : currentPlayer;
     const commissionText = isOfferedDeal ? ` с комиссией ${game.offerState.commission}%` : '';
-    await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}" кредиткой${commissionText}!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}" кредиткой${commissionText}!`, threadId);
 
     // Проверяем переход на Fast Track после покупки
     if (buyResult.transitioned) {
       const updatedGame = await gameService.getGame(game.gameId);
       const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer, threadId);
     }
 
     // Обработать циркуляцию для anyCanBuySell
@@ -452,15 +456,15 @@ async function handleBuyDealWithCreditCard(query, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleBuyDealWithCreditCard:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки кредиткой.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки кредиткой.', threadId);
   }
 }
 
@@ -473,27 +477,28 @@ async function handleBuyDealWithCreditCard(query, services) {
 async function handleChangeQuantity(query, delta, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Получить текущую сделку
     const deal = game.currentDeal;
     if (!deal || !deal.unlimitedStocks) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена или не поддерживает изменение количества.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена или не поддерживает изменение количества.', threadId);
       return;
     }
 
@@ -523,11 +528,11 @@ async function handleChangeQuantity(query, delta, services) {
     await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
   } catch (error) {
     console.error('Error in handleChangeQuantity:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка изменения количества.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка изменения количества.', threadId);
   }
 }
 
@@ -539,48 +544,49 @@ async function handleChangeQuantity(query, delta, services) {
 async function handleSellStocks(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Получить текущую сделку
     const deal = game.currentDeal;
     if (!deal || !deal.canSellStocks) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена или не поддерживает продажу.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена или не поддерживает продажу.', threadId);
       return;
     }
 
     // Продать акции
     const sellResult = await gameService.sellStocks(game.gameId, userId, deal);
     if (!sellResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка при продаже акций.');
+      await messageService.sendErrorMessage(chatId, 'Ошибка при продаже акций.', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения карточки сделки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной продаже
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} продал акции "${deal.title}"!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} продал акции "${deal.title}"!`, threadId);
 
     // Проверяем переход на Fast Track после продажи
     if (sellResult.transitioned) {
       const updatedGame = await gameService.getGame(game.gameId);
       const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer, threadId);
     }
 
     // Обработать циркуляцию для anyCanBuySell или canSellStocks
@@ -593,15 +599,15 @@ async function handleSellStocks(query, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleSellStocks:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже акций.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже акций.', threadId);
   }
 }
 
@@ -613,34 +619,35 @@ async function handleSellStocks(query, services) {
 async function handlePayExpenses(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Получить текущую сделку
     const deal = game.currentDeal;
     if (!deal || !deal.expenses) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена или не требует оплаты расходов.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена или не требует оплаты расходов.', threadId);
       return;
     }
 
     // Проверить, есть ли у игрока недвижимость
     const hasRealEstate = currentPlayer.assets && currentPlayer.assets.some(asset => asset.isRealEstate);
     if (!hasRealEstate) {
-      await messageService.sendErrorMessage(chatId, 'У вас нет недвижимости для оплаты расходов.');
+      await messageService.sendErrorMessage(chatId, 'У вас нет недвижимости для оплаты расходов.', threadId);
       return;
     }
 
@@ -649,33 +656,33 @@ async function handlePayExpenses(query, services) {
     if (!payResult.success) {
       if (payResult.error === 'insufficient_funds') {
         // Удалить кнопки с сообщения карточки сделки
-        await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+        await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
         // Отправить предложение оплаты кредиткой
-        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal');
+        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal', 1, threadId);
       } else {
-        await messageService.sendErrorMessage(chatId, 'Ошибка при оплате расходов.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка при оплате расходов.', threadId);
       }
       return;
     }
 
     // Удалить кнопки с сообщения карточки сделки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы "${deal.title}"!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы "${deal.title}"!`, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handlePayExpenses:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов.', threadId);
   }
 }
 
@@ -687,33 +694,34 @@ async function handlePayExpenses(query, services) {
 async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненную сделку из состояния игры
     const deal = game.currentDeal;
     if (!deal) {
-      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Сделка не найдена. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Проверить, что сделка с ипотекой
     if (!deal.mortgage) {
-      await messageService.sendErrorMessage(chatId, 'Эта сделка не требует ипотеки.');
+      await messageService.sendErrorMessage(chatId, 'Эта сделка не требует ипотеки.', threadId);
       return;
     }
 
@@ -729,21 +737,21 @@ async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
         );
 
     if (!buyResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.');
+      await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения предложения кредитки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной покупке
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}" в ипотеку с кредитом на первоначальный взнос!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}" в ипотеку с кредитом на первоначальный взнос!`, threadId);
 
     // Проверяем переход на Fast Track после покупки
     if (buyResult.transitioned) {
       const updatedGame = await gameService.getGame(game.gameId);
       const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer, threadId);
     }
 
     // Обработать циркуляцию для anyCanBuySell
@@ -754,15 +762,15 @@ async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleBuyMortgageDownPaymentWithCreditCard:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке сделки.', threadId);
   }
 }
 

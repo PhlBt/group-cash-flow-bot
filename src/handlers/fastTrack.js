@@ -1,4 +1,4 @@
-const { formatNumber } = require('../utils');
+const { formatNumber, getThreadId } = require('../utils');
 
 /**
  * Обрабатывает попадание игрока на поле fastTrack
@@ -40,27 +40,28 @@ async function handleFastTrack(gameId, userId, fieldData, services) {
 async function handlePayFastTrack(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненное fastTrack событие
     const fastTrackEvent = game.currentFastTrack;
     if (!fastTrackEvent) {
-      await messageService.sendErrorMessage(chatId, 'Событие fastTrack не найдено. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Событие fastTrack не найдено. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -74,13 +75,13 @@ async function handlePayFastTrack(query, services) {
       // Оплатить
       const payResult = await gameService.payFastTrackExpense(game.gameId, userId, amount);
       if (!payResult.success) {
-        await messageService.sendErrorMessage(chatId, 'Ошибка оплаты fastTrack события.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка оплаты fastTrack события.', threadId);
         return;
       }
 
     } else if (fastTrackEvent.data && fastTrackEvent.data.cost && fastTrackEvent.data.passiveIncome) {
       // Инвестиция с пассивным доходом - теперь обрабатывается через invest_fastTrack
-      await messageService.sendErrorMessage(chatId, 'Используйте кнопку "Инвестировать".');
+      await messageService.sendErrorMessage(chatId, 'Используйте кнопку "Инвестировать".', threadId);
       return;
 
     } else if (fastTrackEvent.type === 'dream') {
@@ -91,10 +92,10 @@ async function handlePayFastTrack(query, services) {
       const payResult = await gameService.payFastTrackExpense(game.gameId, userId, fastTrackEvent.data.cost);
       if (!payResult.success) {
         if (payResult.error === 'insufficient_funds') {
-          await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для оплаты fastTrack события.');
+          await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для оплаты fastTrack события.', threadId);
           return;
         } else {
-          await messageService.sendErrorMessage(chatId, 'Ошибка оплаты fastTrack события.');
+          await messageService.sendErrorMessage(chatId, 'Ошибка оплаты fastTrack события.', threadId);
           return;
         }
       }
@@ -103,7 +104,7 @@ async function handlePayFastTrack(query, services) {
       // Получение наличных
       const cashResult = await gameService.addFastTrackCash(game.gameId, userId, fastTrackEvent.data.cash);
       if (!cashResult.success) {
-        await messageService.sendErrorMessage(chatId, 'Ошибка получения наличных.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка получения наличных.', threadId);
         return;
       }
 
@@ -118,7 +119,7 @@ async function handlePayFastTrack(query, services) {
     }
 
     // Удалить кнопки с сообщения fastTrack
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешном выполнении
     let actionVerb = 'инвестировал в'; // default for investments
@@ -134,20 +135,20 @@ async function handlePayFastTrack(query, services) {
     if (fastTrackEvent.data && fastTrackEvent.data.cash) {
       successMessage += ` и получил ${formatNumber(fastTrackEvent.data.cash)} ₽`;
     }
-    await messageService.sendErrorMessage(chatId, successMessage);
+    await messageService.sendErrorMessage(chatId, successMessage, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handlePayFastTrack:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выполнении fastTrack события.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выполнении fastTrack события.', threadId);
   }
 }
 
@@ -159,27 +160,28 @@ async function handlePayFastTrack(query, services) {
 async function handleRollDiceFastTrack(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненное fastTrack событие
     const fastTrackEvent = game.currentFastTrack;
     if (!fastTrackEvent || !fastTrackEvent.data || !fastTrackEvent.data.dice) {
-      await messageService.sendErrorMessage(chatId, 'Событие fastTrack с кубиком не найдено.');
+      await messageService.sendErrorMessage(chatId, 'Событие fastTrack с кубиком не найдено.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -215,19 +217,19 @@ async function handleRollDiceFastTrack(query, services) {
     }
 
     // Удалить кнопки с сообщения fastTrack
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить результат
-    await messageService.sendErrorMessage(chatId, successMessage);
+    await messageService.sendErrorMessage(chatId, successMessage, threadId);
 
     // Если игрок победил, обработать победу
     if (victoryDetected && victoryResult) {
       // Отправить сообщение о победе
-      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} достиг своей цели и победил на быстром круге!`);
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} достиг своей цели и победил на быстром круге!`, threadId);
 
       if (victoryResult.gameFinished) {
         // Игра полностью завершена (все игроки победили)
-        await messageService.sendGameFinishedMessage(chatId);
+        await messageService.sendGameFinishedMessage(chatId, threadId);
         return;
       } else {
         // Игрок вышел из игры, но игра продолжается для остальных
@@ -237,7 +239,7 @@ async function handleRollDiceFastTrack(query, services) {
 
         if (nextPlayer) {
           // Отправить сообщение о ходе следующему игроку
-          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame);
+          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame, threadId);
         }
       }
       return;
@@ -247,14 +249,14 @@ async function handleRollDiceFastTrack(query, services) {
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleRollDiceFastTrack:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при броске кубика fastTrack.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при броске кубика fastTrack.', threadId);
   }
 }
 
@@ -266,34 +268,35 @@ async function handleRollDiceFastTrack(query, services) {
 async function handleInvestFastTrack(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Получить сохраненное fastTrack событие
     const fastTrackEvent = game.currentFastTrack;
     if (!fastTrackEvent) {
-      await messageService.sendErrorMessage(chatId, 'Событие fastTrack не найдено. Попробуйте еще раз.');
+      await messageService.sendErrorMessage(chatId, 'Событие fastTrack не найдено. Попробуйте еще раз.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Проверить, что поле свободно
     const occupationCheck = await gameService.isFastTrackFieldOccupied(game.gameId, userId, fastTrackEvent);
     if (!occupationCheck.success || occupationCheck.occupied) {
-      await messageService.sendErrorMessage(chatId, 'Это поле уже занято другим игроком!');
+      await messageService.sendErrorMessage(chatId, 'Это поле уже занято другим игроком!', threadId);
       return;
     }
 
@@ -301,16 +304,16 @@ async function handleInvestFastTrack(query, services) {
     const investResult = await gameService.investInFastTrackField(game.gameId, userId, fastTrackEvent);
     if (!investResult.success) {
       if (investResult.error === 'insufficient_funds') {
-        await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для инвестирования.');
+        await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для инвестирования.', threadId);
         return;
       } else {
-        await messageService.sendErrorMessage(chatId, 'Ошибка инвестирования.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка инвестирования.', threadId);
         return;
       }
     }
 
     // Удалить кнопки с сообщения fastTrack
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешном инвестировании
     let successMessage = `✅ ${currentPlayer.username} инвестировал в "${fastTrackEvent.title}"`;
@@ -334,7 +337,7 @@ async function handleInvestFastTrack(query, services) {
       }
     }
 
-    await messageService.sendErrorMessage(chatId, successMessage);
+    await messageService.sendErrorMessage(chatId, successMessage, threadId);
 
     // Проверяем автоматическую победу
     if (investResult.victory) {
@@ -342,11 +345,11 @@ async function handleInvestFastTrack(query, services) {
       const victoryResult = await gameService.finishGameWithVictory(game.gameId, userId, investResult.reason);
 
       // Отправить сообщение о победе
-      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} достиг своей цели и победил на быстром круге!`);
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} достиг своей цели и победил на быстром круге!`, threadId);
 
       if (victoryResult.gameFinished) {
         // Игра полностью завершена (все игроки победили)
-        await messageService.sendGameFinishedMessage(chatId);
+        await messageService.sendGameFinishedMessage(chatId, threadId);
         return;
       } else {
         // Игрок вышел из игры, но игра продолжается для остальных
@@ -356,7 +359,7 @@ async function handleInvestFastTrack(query, services) {
 
         if (nextPlayer) {
           // Отправить сообщение о ходе следующему игроку
-          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame);
+          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame, threadId);
         }
       }
       return;
@@ -366,14 +369,14 @@ async function handleInvestFastTrack(query, services) {
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleInvestFastTrack:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при инвестировании в fastTrack поле.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при инвестировании в fastTrack поле.', threadId);
   }
 }
 
@@ -385,38 +388,39 @@ async function handleInvestFastTrack(query, services) {
 async function handleSkipFastTrack(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения fastTrack
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
       if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
       }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSkipFastTrack:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске fastTrack события.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске fastTrack события.', threadId);
   }
 }
 

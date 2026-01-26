@@ -1,4 +1,4 @@
-const { formatNumber } = require('../utils');
+const { formatNumber, getThreadId } = require('../utils');
 const { FIELD_TYPES } = require('../game/board');
 const ErrorStateManager = require('../utils/errorStateManager');
 
@@ -18,19 +18,20 @@ const { handlePayFastTrack, handleRollDiceFastTrack, handleInvestFastTrack, hand
 async function handleRollDice(query, diceCount, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const { validateCurrentPlayer } = require('../utils/validators');
-    const currentPlayer = await validateCurrentPlayer(game.gameId, userId, services, chatId);
+    const currentPlayer = await validateCurrentPlayer(game.gameId, userId, services, chatId, threadId);
     if (!currentPlayer) {
       return;
     }
@@ -45,22 +46,22 @@ async function handleRollDice(query, diceCount, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
 
-      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
       return;
     }
 
     // Удалить кнопки с сообщения о броске кубика
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Проверить, что кубик еще не брошен в этом ходу
     if (game.diceRolledThisTurn) {
-      await messageService.sendErrorMessage(chatId, 'Вы уже бросили кубик в этом ходу!');
+      await messageService.sendErrorMessage(chatId, 'Вы уже бросили кубик в этом ходу!', threadId);
       return;
     }
 
@@ -73,7 +74,7 @@ async function handleRollDice(query, diceCount, services) {
     // Переместить игрока
     const moveResult = await gameService.movePlayer(game.gameId, userId, steps);
     if (!moveResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка перемещения: ' + moveResult.error);
+      await messageService.sendErrorMessage(chatId, 'Ошибка перемещения: ' + moveResult.error, threadId);
       return;
     }
 
@@ -82,7 +83,7 @@ async function handleRollDice(query, diceCount, services) {
     const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
     if (updatedPlayer && updatedPlayer.bankruptcyState) {
       // Игрок стал банкротом - сразу показать интерфейс банкротства и не передавать ход
-      await messageService.sendPlayerTurnMessage(chatId, updatedPlayer, await gameService.getGame(game.gameId));
+      await messageService.sendPlayerTurnMessage(chatId, updatedPlayer, await gameService.getGame(game.gameId), threadId);
       return;
     }
 
@@ -94,7 +95,8 @@ async function handleRollDice(query, diceCount, services) {
         currentPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.paydayEvents || []
+        moveResult.paydayEvents || [],
+        threadId
       );
 
       // Уменьшить счетчик ходов благотворительности
@@ -120,7 +122,8 @@ async function handleRollDice(query, diceCount, services) {
         moveResult.newPosition,
         moveResult.paydayEvents || [],
         miscCard,
-        game
+        game,
+        threadId
       );
 
       // Для поля MISCELLANEOUS не передаем ход следующему игроку - ждем оплаты
@@ -141,7 +144,8 @@ async function handleRollDice(query, diceCount, services) {
         currentPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.paydayEvents || []
+        moveResult.paydayEvents || [],
+        threadId
       );
 
       // Уменьшить счетчик ходов благотворительности
@@ -164,7 +168,8 @@ async function handleRollDice(query, diceCount, services) {
         updatedPlayer,
         steps,
         moveResult.newPosition,
-        moveResult.paydayEvents || []
+        moveResult.paydayEvents || [],
+        threadId
       );
 
       // Уменьшить счетчик ходов благотворительности
@@ -176,9 +181,9 @@ async function handleRollDice(query, diceCount, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     } else if (moveResult.fieldType === FIELD_TYPES.MARKET) {
       // Игрок попал на поле "Рынок" - обработать market событие
@@ -206,7 +211,8 @@ async function handleRollDice(query, diceCount, services) {
         steps,
         moveResult.newPosition,
         moveResult.paydayEvents || [],
-        marketCard
+        marketCard,
+        threadId
       );
 
       // Уменьшить счетчик ходов благотворительности
@@ -238,17 +244,18 @@ async function handleRollDice(query, diceCount, services) {
         moveResult.paydayEvents || [],
         fieldData,
         game,
-        gameService
+        gameService,
+        threadId
       );
 
       // Для поля PAYDAY передаем ход автоматически - никаких действий не требуется
       if (moveResult.fieldType === FIELD_TYPES.FPAYDAY) {
         const nextTurnResult = await gameService.nextTurn(game.gameId);
         if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
-          if (nextTurnResult.transitioned) {
-            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-          }
-          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
         }
       }
       // Для полей INVESTING, EXPENSES, DREAM не передаем ход автоматически - ждем действий игрока
@@ -260,7 +267,8 @@ async function handleRollDice(query, diceCount, services) {
           currentPlayer,
           steps,
           moveResult.newPosition,
-          moveResult.paydayEvents || []
+          moveResult.paydayEvents || [],
+          threadId
         );
       } else {
         await messageService.sendCombinedRollMovePaydayMessage(
@@ -269,7 +277,8 @@ async function handleRollDice(query, diceCount, services) {
           steps,
           moveResult.newPosition,
           moveResult.fieldType,
-          moveResult.paydayEvents || []
+          moveResult.paydayEvents || [],
+          threadId
         );
       }
 
@@ -284,15 +293,15 @@ async function handleRollDice(query, diceCount, services) {
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleRollDice:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при броске кубика.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при броске кубика.', threadId);
   }
 }
 
@@ -304,6 +313,7 @@ async function handleRollDice(query, diceCount, services) {
 async function handleCallbackQuery(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
   const username = query.from.first_name || query.from.username || 'игрок';
   const data = query.data;
@@ -313,13 +323,13 @@ async function handleCallbackQuery(query, services) {
       case 'play':
 
         // Проверить наличие активной игры для чата
-        const existingGame = await gameService.getActiveGameByChatId(chatId);
+        const existingGame = await gameService.getActiveGameByChatId(chatId, threadId);
         if (existingGame) {
           // Присоединиться к существующей игре
           const joinResult = await gameService.joinGame(userId, existingGame.gameId, username);
           if (joinResult.success) {
             // Удалить кнопки с сообщения
-            await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+            await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
             // Получить список уже выбранных мечтаний
             const selectedDreams = existingGame.players
@@ -327,7 +337,7 @@ async function handleCallbackQuery(query, services) {
               .map(p => p.dream.id);
 
             // Отправить выбор мечты новому игроку
-            const messageId = await messageService.sendDreamSelectionMessage(chatId, joinResult.player, 0, null, selectedDreams);
+            const messageId = await messageService.sendDreamSelectionMessage(chatId, joinResult.player, 0, null, selectedDreams, threadId);
             // Сохранить ID сообщения мечты для игрока
             const playerIndex = existingGame.players.length; // Индекс нового игрока
             await gameService.databaseService.getDb().collection('games').updateOne(
@@ -340,30 +350,30 @@ async function handleCallbackQuery(query, services) {
             );
 
             // Отправить карточку игрока
-            await messageService.sendPlayerCard(chatId, joinResult.player);
+            await messageService.sendPlayerCard(chatId, joinResult.player, null, threadId);
 
             // Удалить старое сообщение комнаты ожидания и отправить новое
             const updatedGame = await gameService.getGame(existingGame.gameId);
             if (existingGame.waitingMessageId) {
               await messageService.deleteMessage(chatId, existingGame.waitingMessageId);
             }
-            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame);
+            const newMessageId = await messageService.sendWaitingRoomMessage(chatId, updatedGame, threadId);
             await gameService.setWaitingMessageId(existingGame.gameId, newMessageId);
           } else {
-            await messageService.sendJoinErrorMessage(chatId, joinResult.error);
+            await messageService.sendJoinErrorMessage(chatId, joinResult.error, threadId);
           }
         } else {
           // Удалить кнопки с сообщения
-          await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+          await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
           // Создать новую игру для чата
-          const gameId = await gameService.createGame(chatId, userId, username);
+          const gameId = await gameService.createGame(chatId, userId, username, threadId);
 
           // Отправить выбор мечты создателю
           const game = await gameService.getGame(gameId);
           const player = game.players.find(p => p.userId === userId);
           if (player) {
-            const messageId = await messageService.sendDreamSelectionMessage(chatId, player, 0, null, []);
+            const messageId = await messageService.sendDreamSelectionMessage(chatId, player, 0, null, [], threadId);
             // Сохранить ID сообщения мечты для создателя
             await gameService.databaseService.getDb().collection('games').updateOne(
               { gameId },
@@ -377,23 +387,23 @@ async function handleCallbackQuery(query, services) {
 
           // Отправить карточку игрока создателю
           if (player) {
-            await messageService.sendPlayerCard(chatId, player);
+            await messageService.sendPlayerCard(chatId, player, null, threadId);
           }
 
           // Отправить сообщение комнаты ожидания
-          const messageId = await messageService.sendWaitingRoomMessage(chatId, game);
+          const messageId = await messageService.sendWaitingRoomMessage(chatId, game, threadId);
           await gameService.setWaitingMessageId(gameId, messageId);
         }
         break;
 
       case 'start_game':
         // Найти активную игру в чате
-        const gameToStart = await gameService.getActiveGameByChatId(chatId);
+        const gameToStart = await gameService.getActiveGameByChatId(chatId, threadId);
         if (gameToStart && gameToStart.creatorId === userId) {
           const startResult = await gameService.startGame(userId, gameToStart.gameId);
           if (startResult.success) {
             // Удалить кнопки с сообщения
-            await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+            await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
             // Удалить сообщение комнаты ожидания
             if (gameToStart.waitingMessageId) {
@@ -403,65 +413,65 @@ async function handleCallbackQuery(query, services) {
             // Начать игру - отправить ход первому игроку
             const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
             if (firstPlayer) {
-              await messageService.sendPlayerTurnMessage(chatId, firstPlayer);
+              await messageService.sendPlayerTurnMessage(chatId, firstPlayer, null, threadId);
             }
           } else {
-            await messageService.sendPlayErrorMessage(chatId, startResult.error);
+            await messageService.sendPlayErrorMessage(chatId, startResult.error, threadId);
           }
         } else {
-          await messageService.sendPlayErrorMessage(chatId, 'not_creator');
+          await messageService.sendPlayErrorMessage(chatId, 'not_creator', threadId);
         }
         break;
 
       case 'rules':
         // Показать правила
-        const messageId = await messageService.sendRulesMessage(chatId);
+        const messageId = await messageService.sendRulesMessage(chatId, threadId);
         // Сохранить messageId для будущих редактирований (в реальном приложении лучше использовать базу данных)
         break;
 
       case 'rules_types':
         // Показать раздел "Типы полей"
-        await messageService.editRulesToTypes(chatId, query.message.message_id);
+        await messageService.editRulesToTypes(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_finance':
         // Показать раздел "Финансовая система"
-        await messageService.editRulesToFinance(chatId, query.message.message_id);
+        await messageService.editRulesToFinance(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_mechanics':
         // Показать раздел "Специальные механики"
-        await messageService.editRulesToMechanics(chatId, query.message.message_id);
+        await messageService.editRulesToMechanics(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_victory':
         // Показать раздел "Победа и поражение"
-        await messageService.editRulesToVictory(chatId, query.message.message_id);
+        await messageService.editRulesToVictory(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_tips':
         // Показать раздел "Советы и стратегии"
-        await messageService.editRulesToTips(chatId, query.message.message_id);
+        await messageService.editRulesToTips(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_commands':
         // Показать раздел "Команды и управление"
-        await messageService.editRulesToCommands(chatId, query.message.message_id);
+        await messageService.editRulesToCommands(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_faq':
         // Показать раздел "Часто задаваемые вопросы"
-        await messageService.editRulesToFAQ(chatId, query.message.message_id);
+        await messageService.editRulesToFAQ(chatId, query.message.message_id, threadId);
         break;
 
       case 'rules_back':
         // Вернуться к главному сообщению правил
-        await messageService.editRulesToMain(chatId, query.message.message_id);
+        await messageService.editRulesToMain(chatId, query.message.message_id, threadId);
         break;
 
       case 'help':
         // Показать помощь
-        await messageService.sendHelpMessage(chatId);
+        await messageService.sendHelpMessage(chatId, threadId);
         break;
 
       case 'roll_dice':
@@ -762,7 +772,7 @@ async function handleCallbackQuery(query, services) {
     }
   } catch (error) {
     console.error('Error in handleCallbackQuery:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка. Попробуйте еще раз.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка. Попробуйте еще раз.', threadId);
   }
 }
 
@@ -774,27 +784,28 @@ async function handleCallbackQuery(query, services) {
 async function handleOfferDeal(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Получить текущую сделку
     const deal = game.currentDeal;
     if (!deal || !deal.canSellToOthers) {
-      await messageService.sendErrorMessage(chatId, 'Эта сделка не может быть предложена другим игрокам.');
+      await messageService.sendErrorMessage(chatId, 'Эта сделка не может быть предложена другим игрокам.', threadId);
       return;
     }
 
@@ -809,11 +820,11 @@ async function handleOfferDeal(query, services) {
     await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
   } catch (error) {
     console.error('Error in handleOfferDeal:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при предложении сделки.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при предложении сделки.', threadId);
   }
 }
 
@@ -826,13 +837,14 @@ async function handleOfferDeal(query, services) {
 async function handleSelectCommission(query, commission, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
@@ -850,11 +862,11 @@ async function handleSelectCommission(query, commission, services) {
     await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
   } catch (error) {
     console.error('Error in handleSelectCommission:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе комиссии.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе комиссии.', threadId);
   }
 }
 
@@ -867,13 +879,14 @@ async function handleSelectCommission(query, commission, services) {
 async function handleSelectUser(query, targetUserId, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
@@ -891,11 +904,11 @@ async function handleSelectUser(query, targetUserId, services) {
     await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
   } catch (error) {
     console.error('Error in handleSelectUser:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе пользователя.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе пользователя.', threadId);
   }
 }
 
@@ -907,13 +920,14 @@ async function handleSelectUser(query, targetUserId, services) {
 async function handleCancelOffer(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
@@ -931,11 +945,11 @@ async function handleCancelOffer(query, services) {
     await messageService.editMessageText(chatId, query.message.message_id, content.text, {
       parse_mode: 'Markdown',
       reply_markup: content.keyboard
-    });
+    }, threadId);
 
   } catch (error) {
     console.error('Error in handleCancelOffer:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при отмене предложения.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при отмене предложения.', threadId);
   }
 }
 
@@ -948,27 +962,28 @@ async function handleCancelOffer(query, services) {
 async function handleSellAsset(query, assetId, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Продать актив
     const sellResult = await gameService.sellAssetWithBankruptcy(game.gameId, userId, assetId);
     if (!sellResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка продажи актива: ' + sellResult.error);
+      await messageService.sendErrorMessage(chatId, 'Ошибка продажи актива: ' + sellResult.error, threadId);
       return;
     }
 
@@ -976,7 +991,7 @@ async function handleSellAsset(query, assetId, services) {
     if (sellResult.transitioned) {
       const updatedGame = await gameService.getGame(game.gameId);
       const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer, threadId);
     }
 
     // Проверить, разрешена ли банкротство
@@ -984,26 +999,26 @@ async function handleSellAsset(query, assetId, services) {
     if (checkResult.success && checkResult.resolved) {
       // Банкротство разрешена - завершить
       await gameService.endBankruptcy(game.gameId, userId, false);
-      await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.');
+      await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.', threadId);
 
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     } else {
       // Продолжить банкротство - обновить сообщение активов
       const updatedGame = await gameService.getGame(game.gameId);
       const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-      await messageService.sendPlayerAssetsMessage(chatId, updatedPlayer, 0, query.message.message_id);
+      await messageService.sendPlayerAssetsMessage(chatId, updatedPlayer, 0, query.message.message_id, threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSellAsset:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже актива.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже актива.', threadId);
   }
 }
 
@@ -1016,20 +1031,21 @@ async function handleSellAsset(query, assetId, services) {
 async function handlePayLiability(query, liabilityIndex, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -1056,28 +1072,28 @@ async function handlePayLiability(query, liabilityIndex, services) {
           if (!canPayAnyLiability && !hasAssets) {
             // Не может оплатить ни один кредит и нет активов - проигрыш
             await gameService.endBankruptcy(game.gameId, userId, true);
-            await messageService.sendGameLostMessage(chatId);
+            await messageService.sendGameLostMessage(chatId, threadId);
 
             // Передать ход следующему игроку
             const nextTurnResult = await gameService.nextTurn(game.gameId);
             if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-              if (nextTurnResult.transitioned) {
-                await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-              }
-              await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
             }
             return;
           } else {
             // Может оплатить другие кредиты или есть активы - обычная ошибка
-            await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита');
+            await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита', threadId);
           }
         } else {
           // При добровольной оплате - просто ошибка
-          await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита');
+          await messageService.sendErrorMessage(chatId, 'Недостаточно денег для оплаты этого кредита', threadId);
         }
       } else {
         // Другая ошибка
-        await messageService.sendErrorMessage(chatId, 'Ошибка оплаты долга: ' + payResult.error);
+        await messageService.sendErrorMessage(chatId, 'Ошибка оплаты долга: ' + payResult.error, threadId);
       }
       return;
     }
@@ -1086,7 +1102,7 @@ async function handlePayLiability(query, liabilityIndex, services) {
     if (payResult.transitioned) {
       const updatedGameForTransition = await gameService.getGame(game.gameId);
       const updatedPlayerForTransition = updatedGameForTransition.players.find(p => p.userId === userId);
-      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayerForTransition);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayerForTransition, threadId);
     }
 
     // Для банкротства проверяем разрешение
@@ -1096,15 +1112,15 @@ async function handlePayLiability(query, liabilityIndex, services) {
       if (checkResult.success && checkResult.resolved) {
         // Банкротство разрешена - завершить
         await gameService.endBankruptcy(game.gameId, userId, false);
-        await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.');
+        await messageService.sendErrorMessage(chatId, 'Банкротство разрешено! Вы пропускаете 3 хода.', threadId);
 
         // Передать ход следующему игроку
         const nextTurnResult = await gameService.nextTurn(game.gameId);
         if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-          if (nextTurnResult.transitioned) {
-            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-          }
-          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
         }
         return;
       }
@@ -1113,11 +1129,11 @@ async function handlePayLiability(query, liabilityIndex, services) {
     // Для добровольной оплаты или продолжения банкротства - обновить сообщение кредитов
     const updatedGame = await gameService.getGame(game.gameId);
     const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-    await messageService.sendPlayerCreditsMessage(chatId, updatedPlayer, 0, query.message.message_id);
+    await messageService.sendPlayerCreditsMessage(chatId, updatedPlayer, 0, query.message.message_id, threadId);
 
   } catch (error) {
     console.error('Error in handlePayLiability:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате долга.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате долга.', threadId);
   }
 }
 
@@ -1130,29 +1146,30 @@ async function handlePayLiability(query, liabilityIndex, services) {
 async function handleAssetsPage(query, page, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Обновить сообщение активов с новой страницей
-    await messageService.sendPlayerAssetsMessage(chatId, currentPlayer, page, query.message.message_id);
+    await messageService.sendPlayerAssetsMessage(chatId, currentPlayer, page, query.message.message_id, threadId);
 
   } catch (error) {
     console.error('Error in handleAssetsPage:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.', threadId);
   }
 }
 
@@ -1165,29 +1182,30 @@ async function handleAssetsPage(query, page, services) {
 async function handleCreditsPage(query, page, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Обновить сообщение кредитов с новой страницей
-    await messageService.sendPlayerCreditsMessage(chatId, currentPlayer, page, query.message.message_id);
+    await messageService.sendPlayerCreditsMessage(chatId, currentPlayer, page, query.message.message_id, threadId);
 
   } catch (error) {
     console.error('Error in handleCreditsPage:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.', threadId);
   }
 }
 
@@ -1199,20 +1217,21 @@ async function handleCreditsPage(query, page, services) {
 async function handlePayDismissal(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -1221,13 +1240,13 @@ async function handlePayDismissal(query, services) {
     // Проверить хватает ли денег
     if (currentPlayer.cash < amount) {
       // Удалить кнопки с сообщения
-      await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+      await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
       // Показать предложение кредитки
       const dismissalObj = {
         title: 'Оплата расходов на безработице',
         cost: amount
       };
-      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer, 'dismissal', 1);
+      await messageService.sendCreditCardOfferMessage(chatId, dismissalObj, currentPlayer, 'dismissal', 1, threadId);
       return;
     }
 
@@ -1251,23 +1270,23 @@ async function handlePayDismissal(query, services) {
     await gameService.removeCharityEffect(game.gameId, userId);
 
     // Удалить кнопки с сообщения
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице!`, threadId);
 
     // Передать ход следующему игроку только если игра не завершена
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer && !nextTurnResult.gameFinished) {
-      if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-      }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handlePayDismissal:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов на безработице.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов на безработице.', threadId);
   }
 }
 
@@ -1279,20 +1298,21 @@ async function handlePayDismissal(query, services) {
 async function handlePayDismissalCreditCard(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -1317,23 +1337,23 @@ async function handlePayDismissalCreditCard(query, services) {
     await gameService.removeCharityEffect(game.gameId, userId);
 
     // Удалить кнопки с сообщения
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об успешной оплате
-    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице кредиткой!`);
+    await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} оплатил расходы на безработице кредиткой!`, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-      }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handlePayDismissalCreditCard:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов на безработице кредиткой.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при оплате расходов на безработице кредиткой.', threadId);
   }
 }
 
@@ -1346,20 +1366,21 @@ async function handlePayDismissalCreditCard(query, services) {
 async function handleCharityFastTrack(query, services, diceCount) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
@@ -1374,23 +1395,23 @@ async function handleCharityFastTrack(query, services, diceCount) {
     );
 
     // Удалить кнопки с сообщения
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Отправить сообщение об активации благотворительности
-    await messageService.sendErrorMessage(chatId, `🎲 ${currentPlayer.username} активировал благотворительность! Теперь можно бросать ${diceCount} кубика(ов) за ход.`);
+    await messageService.sendErrorMessage(chatId, `🎲 ${currentPlayer.username} активировал благотворительность! Теперь можно бросать ${diceCount} кубика(ов) за ход.`, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-      }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleCharityFastTrack:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при активации благотворительности.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при активации благотворительности.', threadId);
   }
 }
 
@@ -1403,19 +1424,20 @@ async function handleCharityFastTrack(query, services, diceCount) {
 async function handleSelectDream(query, dreamTitle, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     const playerDreamSelect = game.players.find(player => player.dreamMessageId === query.message.message_id)
     if (userId !== playerDreamSelect.userId) {
-      await messageService.sendErrorMessage(chatId, 'Это сообщение не предназначено для вас.');
+      await messageService.sendErrorMessage(chatId, 'Это сообщение не предназначено для вас.', threadId);
       return;
     }
 
@@ -1426,14 +1448,14 @@ async function handleSelectDream(query, dreamTitle, services) {
     );
 
     if (!selectedDream) {
-      await messageService.sendErrorMessage(chatId, 'Мечта не найдена.');
+      await messageService.sendErrorMessage(chatId, 'Мечта не найдена.', threadId);
       return;
     }
 
     // Проверить, что эта мечта еще не выбрана другим игроком
     const playersDreamIds = game.players.map(p => p.dream ? p.dream.id : null).filter(id => id);
     if (playersDreamIds.includes(selectedDream.id)) {
-      await messageService.sendErrorMessage(chatId, 'Эта мечта уже выбрана другим игроком!');
+      await messageService.sendErrorMessage(chatId, 'Эта мечта уже выбрана другим игроком!', threadId);
       return;
     }
 
@@ -1444,17 +1466,17 @@ async function handleSelectDream(query, dreamTitle, services) {
     await messageService.deleteMessage(chatId, query.message.message_id);
 
     // Отправить сообщение о выборе мечты
-    await messageService.sendErrorMessage(chatId, `🎯 ${query.from.first_name || query.from.username || 'Игрок'} выбрал мечту: "${selectedDream.title}"`);
+    await messageService.sendErrorMessage(chatId, `🎯 ${query.from.first_name || query.from.username || 'Игрок'} выбрал мечту: "${selectedDream.title}"`, threadId);
 
     // Обновить комнату ожидания
     const updatedGame = await gameService.getGame(game.gameId);
     if (game.waitingMessageId) {
-      await messageService.updateWaitingRoomMessage(chatId, game.waitingMessageId, updatedGame);
+      await messageService.updateWaitingRoomMessage(chatId, game.waitingMessageId, updatedGame, threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSelectDream:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе мечты.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при выборе мечты.', threadId);
   }
 }
 
@@ -1467,20 +1489,21 @@ async function handleSelectDream(query, dreamTitle, services) {
 async function handleDreamPage(query, page, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Найти игрока, который выбирает мечту
     const player = game.players.find(p => p.userId === userId);
     if (!player) {
-      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.');
+      await messageService.sendErrorMessage(chatId, 'Игрок не найден в игре.', threadId);
       return;
     }
 
@@ -1490,11 +1513,11 @@ async function handleDreamPage(query, page, services) {
       .map(p => p.dream.id);
 
     // Обновить сообщение с новой страницей мечтаний
-    await messageService.sendDreamSelectionMessage(chatId, player, page, query.message.message_id, selectedDreams);
+    await messageService.sendDreamSelectionMessage(chatId, player, page, query.message.message_id, selectedDreams, threadId);
 
   } catch (error) {
     console.error('Error in handleDreamPage:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при навигации.', threadId);
   }
 }
 
@@ -1506,27 +1529,28 @@ async function handleDreamPage(query, page, services) {
 async function handleBuyDream(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Получить сохраненное fastTrack событие (мечту)
     const dreamField = game.currentFastTrack;
     if (!dreamField || dreamField.type !== 'dream') {
-      await messageService.sendErrorMessage(chatId, 'Мечта не найдена.');
+      await messageService.sendErrorMessage(chatId, 'Мечта не найдена.', threadId);
       return;
     }
 
@@ -1534,16 +1558,16 @@ async function handleBuyDream(query, services) {
     const buyResult = await gameService.buyDream(game.gameId, userId, dreamField, game.players);
     if (!buyResult.success) {
       if (buyResult.error === 'insufficient_funds') {
-        await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для покупки мечты.');
+        await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для покупки мечты.', threadId);
         return;
       } else {
-        await messageService.sendErrorMessage(chatId, 'Ошибка покупки мечты.');
+        await messageService.sendErrorMessage(chatId, 'Ошибка покупки мечты.', threadId);
         return;
       }
     }
 
     // Удалить кнопки с сообщения
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Проверить, победил ли игрок
     if (buyResult.victory) {
@@ -1551,11 +1575,11 @@ async function handleBuyDream(query, services) {
       const victoryResult = await gameService.finishGameWithVictory(game.gameId, userId, 'dream_purchase');
 
       // Отправить сообщение о победе
-      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} купил свою мечту и ПОБЕДИЛ!`);
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} купил свою мечту и ПОБЕДИЛ!`, threadId);
 
       if (victoryResult.gameFinished) {
         // Игра полностью завершена (все игроки победили)
-        await messageService.sendGameFinishedMessage(chatId);
+        await messageService.sendGameFinishedMessage(chatId, threadId);
         return;
       } else {
         // Игрок вышел из игры, но игра продолжается для остальных
@@ -1565,26 +1589,26 @@ async function handleBuyDream(query, services) {
 
         if (nextPlayer) {
           // Отправить сообщение о ходе следующему игроку
-          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame);
+          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame, threadId);
         }
       }
     } else {
       // Просто купил мечту другого игрока или ничью
-      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил мечту за ${formatNumber(buyResult.cost)}`);
+      await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил мечту за ${formatNumber(buyResult.cost)}`, threadId);
 
       // Передать ход следующему игроку
       const nextTurnResult = await gameService.nextTurn(game.gameId);
       if (nextTurnResult.success && nextTurnResult.nextPlayer) {
         if (nextTurnResult.transitioned) {
-          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
         }
-        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
       }
     }
 
   } catch (error) {
     console.error('Error in handleBuyDream:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке мечты.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при покупке мечты.', threadId);
   }
 }
 
@@ -1596,38 +1620,39 @@ async function handleBuyDream(query, services) {
 async function handleSkipDream(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Удалить кнопки с сообщения
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
     if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-      if (nextTurnResult.transitioned) {
-        await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
-      }
-      await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+        if (nextTurnResult.transitioned) {
+          await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+        }
+        await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
     }
 
   } catch (error) {
     console.error('Error in handleSkipDream:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске мечты.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске мечты.', threadId);
   }
 }
 
@@ -1639,14 +1664,15 @@ async function handleSkipDream(query, services) {
 async function handleKickPlayerVote(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
   const data = query.data;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
@@ -1655,13 +1681,13 @@ async function handleKickPlayerVote(query, services) {
 
     // Проверить, что цель существует в игре
     if (!game.players.some(player => player.userId === targetUserId)) {
-      await messageService.sendErrorMessage(chatId, 'Целевой игрок не найден в игре.');
+      await messageService.sendErrorMessage(chatId, 'Целевой игрок не найден в игре.', threadId);
       return;
     }
 
     // Проверить, что пользователь - участник игры
     if (!game.players.some(player => player.userId === userId)) {
-      await messageService.sendErrorMessage(chatId, 'Вы не участник этой игры.');
+      await messageService.sendErrorMessage(chatId, 'Вы не участник этой игры.', threadId);
       return;
     }
 
@@ -1669,13 +1695,13 @@ async function handleKickPlayerVote(query, services) {
     const voteResult = await gameService.voteToKickPlayer(userId, game.gameId, targetUserId);
 
     if (!voteResult.success) {
-      await messageService.sendErrorMessage(chatId, `Ошибка голосования: ${voteResult.error}`);
+      await messageService.sendErrorMessage(chatId, `Ошибка голосования: ${voteResult.error}`, threadId);
       return;
     }
 
     // Обновить сообщение голосования
     const updatedGame = await gameService.getGame(game.gameId);
-    await messageService.updateKickVoteMessage(chatId, query.message.message_id, updatedGame, updatedGame.kickVotes);
+    await messageService.updateKickVoteMessage(chatId, query.message.message_id, updatedGame, updatedGame.kickVotes, threadId);
 
     // Проверить, достигнуто ли большинство
     if (voteResult.shouldKick && voteResult.kickedUserId) {
@@ -1687,12 +1713,12 @@ async function handleKickPlayerVote(query, services) {
       }
 
       // Отправить сообщение об исключении
-      await messageService.sendErrorMessage(chatId, `🚫 ${kickedPlayer ? kickedPlayer.username : 'Игрок'} был исключен из игры!`);
+      await messageService.sendErrorMessage(chatId, `🚫 ${kickedPlayer ? kickedPlayer.username : 'Игрок'} был исключен из игры!`, threadId);
     }
 
   } catch (error) {
     console.error('Error in handleKickPlayerVote:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при голосовании.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при голосовании.', threadId);
   }
 }
 
@@ -1704,15 +1730,16 @@ async function handleKickPlayerVote(query, services) {
 async function handleReportError(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
   const username = query.from.first_name || query.from.username || 'игрок';
 
   try {
     // Установить состояние ожидания описания ошибки с ID сообщения с кнопкой
-    ErrorStateManager.setWaiting(userId, query.message.message_id, chatId);
+    ErrorStateManager.setWaiting(userId, query.message.message_id, chatId, threadId);
 
     // Отправить запрос на описание ошибки с ForceReply
-    const messageId = await messageService.sendErrorReportRequest(chatId, query.message.message_id);
+    const messageId = await messageService.sendErrorReportRequest(chatId, threadId);
 
     // Обновить messageId в ErrorStateManager на ID сообщения с запросом описания
     ErrorStateManager.updateMessageId(userId, messageId);
@@ -1722,7 +1749,7 @@ async function handleReportError(query, services) {
 
   } catch (error) {
     console.error('Error in handleReportError:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при обработке запроса.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при обработке запроса.', threadId);
   }
 }
 
@@ -1734,13 +1761,14 @@ async function handleReportError(query, services) {
 async function handleCancelKickVote(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
     // Найти активную игру в чате
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
@@ -1760,14 +1788,14 @@ async function handleCancelKickVote(query, services) {
       await messageService.deleteMessage(chatId, query.message.message_id);
 
       // Отправить сообщение об отмене
-      await messageService.sendErrorMessage(chatId, '❌ Голосование за исключение игрока отменено.');
+      await messageService.sendErrorMessage(chatId, '❌ Голосование за исключение игрока отменено.', threadId);
     } else {
-      await messageService.sendErrorMessage(chatId, 'Нет активного голосования для отмены.');
+      await messageService.sendErrorMessage(chatId, 'Нет активного голосования для отмены.', threadId);
     }
 
   } catch (error) {
     console.error('Error in handleCancelKickVote:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при отмене голосования.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при отмене голосования.', threadId);
   }
 }
 

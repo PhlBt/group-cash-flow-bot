@@ -10,10 +10,11 @@ class GameService {
    * @param {string} chatId - ID чата
    * @param {string} userId - ID создателя игры
    * @param {string} username - Имя пользователя
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<string>} ID созданной игры
    */
-  async createGame(chatId, userId, username) {
-    return await this.databaseService.createGame(chatId, userId, username);
+  async createGame(chatId, userId, username, threadId = null) {
+    return await this.databaseService.createGame(chatId, userId, username, threadId);
   }
 
   /**
@@ -58,10 +59,11 @@ class GameService {
   /**
    * Получает активную игру для чата
    * @param {string} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    * @returns {Promise<Object|null>} Документ игры или null
    */
-  async getActiveGameByChatId(chatId) {
-    return await this.databaseService.getActiveGameByChatId(chatId);
+  async getActiveGameByChatId(chatId, threadId = null) {
+    return await this.databaseService.getActiveGameByChatId(chatId, threadId);
   }
 
   /**
@@ -308,9 +310,11 @@ class GameService {
       await this.finishGameWithVictory(gameId, nextPlayer.userId, victoryCheck.reason);
 
       // Отправляем сообщение о победе (если есть messageService)
+      const threadId = game.threadId || null;
       await this.messageService.sendErrorMessage(
         game.chatId,
-        `🎉 ${nextPlayer.username} достиг своей цели и победил на быстром круге!`
+        `🎉 ${nextPlayer.username} достиг своей цели и победил на быстром круге!`,
+        threadId
       );
 
       return {
@@ -2393,7 +2397,8 @@ class GameService {
         }
       );
 
-      await this.messageService.sendGameFinishedMessage(game.chatId);
+      const threadId = game.threadId || null;
+      await this.messageService.sendGameFinishedMessage(game.chatId, threadId);
       return { success: true, gameFinished: true };
     } else {
       // Есть еще игроки - продолжаем игру, удаляя победившего
@@ -2443,9 +2448,11 @@ class GameService {
           await this.finishGameWithVictory(gameId, finalNextPlayer.userId, victoryCheck.reason);
           
           // Отправляем сообщение о победе
+          const threadId = game.threadId || null;
           await this.messageService.sendErrorMessage(
             game.chatId,
-            `🎉 ${finalNextPlayer.username} достиг своей цели и победил на быстром круге!`
+            `🎉 ${finalNextPlayer.username} достиг своей цели и победил на быстром круге!`,
+            threadId
           );
 
           return { success: true, gameFinished: true };

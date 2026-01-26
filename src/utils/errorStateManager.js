@@ -4,7 +4,7 @@
  */
 class ErrorStateManager {
   constructor() {
-    this.waitingUsers = new Map(); // userId -> { timeoutId, messageId, chatId }
+    this.waitingUsers = new Map(); // userId -> { timeoutId, messageId, chatId, threadId }
   }
 
   /**
@@ -12,8 +12,9 @@ class ErrorStateManager {
    * @param {string} userId - ID пользователя
    * @param {number} messageId - ID сообщения для ответа
    * @param {number} chatId - ID чата
+   * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  setWaiting(userId, messageId, chatId) {
+  setWaiting(userId, messageId, chatId, threadId = null) {
     // Сбрасываем предыдущий таймер, если есть
     this.clearWaiting(userId);
     
@@ -23,11 +24,12 @@ class ErrorStateManager {
       // Таймаут истек - уведомим пользователя (если bot доступен)
       // bot будет передан через setBotInstance при инициализации
       if (this.bot) {
-        this.bot.sendMessage(chatId, '⏰ Время ожидания ответа истекло. Если хотите сообщить об ошибке, нажмите кнопку "Сообщить об ошибке" снова.');
+        const options = threadId ? { message_thread_id: threadId } : {};
+        this.bot.sendMessage(chatId, '⏰ Время ожидания ответа истекло. Если хотите сообщить об ошибке, нажмите кнопку "Сообщить об ошибке" снова.', options);
       }
     }, 5 * 60 * 1000); // 5 минут
 
-    this.waitingUsers.set(userId, { timeoutId, messageId, chatId });
+    this.waitingUsers.set(userId, { timeoutId, messageId, chatId, threadId });
   }
 
   /**
@@ -87,9 +89,12 @@ class ErrorStateManager {
    */
   cancelWaiting(userId, chatId) {
     if (this.isWaiting(userId)) {
+      const state = this.waitingUsers.get(userId);
+      const threadId = state ? state.threadId : null;
       this.clearWaiting(userId);
       if (this.bot) {
-        this.bot.sendMessage(chatId, '❌ Ожидание описания ошибки отменено.');
+        const options = threadId ? { message_thread_id: threadId } : {};
+        this.bot.sendMessage(chatId, '❌ Ожидание описания ошибки отменено.', options);
       }
     }
   }

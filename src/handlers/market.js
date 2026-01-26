@@ -3,7 +3,7 @@
  */
 
 const { markets } = require('../game/cards/markets');
-const { applyInflation } = require('../utils');
+const { applyInflation, getThreadId } = require('../utils');
 const { formatNumber } = require('../utils');
 
 /**
@@ -38,7 +38,8 @@ async function handleMarket(gameId, services) {
       const currentPlayer = await gameService.getCurrentPlayer(gameId);
       const gameAfterInit = await gameService.getGame(gameId);
       // Отправить информационное сообщение с кнопкой "Пропустить"
-      await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit);
+      const threadId = game.threadId || null;
+      await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit, threadId);
       // Вернуть null, чтобы сигнализировать, что циркуляция началась
       return null;
     }
@@ -53,8 +54,9 @@ async function handleMarket(gameId, services) {
     const currentPlayer = await gameService.getCurrentPlayer(gameId);
 
     // Показать карточку первому игроку в циркуляции
+    const threadId = game.threadId || null;
     const customTitle = `*${currentPlayer.username}*, вы попали на поле "Рынок"`;
-    await messageService.sendMarketCardWithSellOptions(game.chatId, marketCard, currentPlayer, gameAfterInit, customTitle);
+    await messageService.sendMarketCardWithSellOptions(game.chatId, marketCard, currentPlayer, gameAfterInit, customTitle, threadId);
 
     // Вернуть null, чтобы сигнализировать, что циркуляция началась
     return null;
@@ -66,7 +68,8 @@ async function handleMarket(gameId, services) {
     const currentPlayer = await gameService.getCurrentPlayer(gameId);
     const gameAfterInit = await gameService.getGame(gameId);
     // Отправить информационное сообщение с кнопкой "Пропустить"
-    await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit);
+    const threadId = game.threadId || null;
+    await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit, threadId);
     // Вернуть null, чтобы сигнализировать, что циркуляция началась
     return null;
   }
@@ -190,7 +193,8 @@ async function applyPassiveIncomeEffect(gameId, marketCard, services) {
       if (transitionResult.transitioned) {
         // Отправляем сообщение о переходе
         const { messageService } = services;
-        await messageService.sendFastTrackTransitionMessage(game.chatId, player);
+        const threadId = game.threadId || null;
+        await messageService.sendFastTrackTransitionMessage(game.chatId, player, threadId);
       }
     }
   }
@@ -272,31 +276,32 @@ async function initializeMarketCirculation(gameId, marketCard, services) {
 async function handleSkipMarket(query, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     // Удалить кнопки
-    await messageService.removeMessageKeyboard(chatId, query.message.message_id);
+    await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
     // Перейти к следующему игроку в циркуляции
     await circulateMarketToNextPlayer(game.gameId, chatId, services);
 
   } catch (error) {
     console.error('Error in handleSkipMarket:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске market события.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при пропуске market события.', threadId);
   }
 }
 
@@ -309,39 +314,40 @@ async function handleSkipMarket(query, services) {
 async function handleSellMarketAsset(query, assetId, services) {
   const { gameService, messageService } = services;
   const chatId = query.message.chat.id;
+  const threadId = getThreadId(query.message);
   const userId = query.from.id;
 
   try {
-    const game = await gameService.getActiveGameByChatId(chatId);
+    const game = await gameService.getActiveGameByChatId(chatId, threadId);
     if (!game) {
-      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.');
+      await messageService.sendErrorMessage(chatId, 'Игра не найдена или не активна.', threadId);
       return;
     }
 
     // Проверить, что пользователь - текущий игрок
     const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
     if (!currentPlayer || currentPlayer.userId !== userId) {
-      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!');
+      await messageService.sendErrorMessage(chatId, 'Сейчас не ваш ход!', threadId);
       return;
     }
 
     const marketCard = game.currentMarket;
     if (!marketCard) {
-      await messageService.sendErrorMessage(chatId, 'Market событие не найдено.');
+      await messageService.sendErrorMessage(chatId, 'Market событие не найдено.', threadId);
       return;
     }
 
     // Найти актив по assetId
     const assetToSell = currentPlayer.assets.find(asset => asset.assetId === assetId);
     if (!assetToSell) {
-      await messageService.sendErrorMessage(chatId, 'Актив не найден.');
+      await messageService.sendErrorMessage(chatId, 'Актив не найден.', threadId);
       return;
     }
 
     // Проверить, что актив подходит для продажи по этой market карточке
     const relatedDeals = marketCard.relatedDeals || [];
     if (!relatedDeals.includes(assetToSell.id || assetToSell.title)) {
-      await messageService.sendErrorMessage(chatId, 'Этот актив нельзя продать по этой market карточке.');
+      await messageService.sendErrorMessage(chatId, 'Этот актив нельзя продать по этой market карточке.', threadId);
       return;
     }
 
@@ -356,7 +362,7 @@ async function handleSellMarketAsset(query, assetId, services) {
 
   } catch (error) {
     console.error('Error in handleSellMarketAsset:', error);
-    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже актива.');
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при продаже актива.', threadId);
   }
 }
 
@@ -370,6 +376,7 @@ async function handleSellMarketAsset(query, assetId, services) {
  */
 async function updateMarketMessageAfterSale(chatId, messageId, game, services) {
   const { gameService, messageService } = services;
+  const threadId = game.threadId || null;
 
   const currentPlayer = await gameService.getCurrentPlayer(game.gameId);
 
@@ -434,10 +441,10 @@ async function updateMarketMessageAfterSale(chatId, messageId, game, services) {
     await messageService.editMessageText(chatId, messageId, message, {
       parse_mode: 'Markdown',
       reply_markup: keyboard
-    });
+    }, threadId);
   } else {
     // У игрока не осталось подходящих активов - перейти к следующему игроку
-    await messageService.removeMessageKeyboard(chatId, messageId);
+    await messageService.removeMessageKeyboard(chatId, messageId, threadId);
     await circulateMarketToNextPlayer(game.gameId, chatId, services);
   }
 }
@@ -538,7 +545,8 @@ async function sellMarketAsset(gameId, userId, asset, sellPrice, services) {
 
   // Отправить сообщение о продаже
   const chatId = game.chatId;
-  await messageService.sendErrorMessage(chatId, `✅ ${player.username} продал "${asset.title}" за ${sellPrice.toLocaleString()} ₽!`);
+  const threadId = game.threadId || null;
+  await messageService.sendErrorMessage(chatId, `✅ ${player.username} продал "${asset.title}" за ${sellPrice.toLocaleString()} ₽!`, threadId);
 
   // Проверяем переход на Fast Track после продажи (может изменить passiveIncome и totalExpenses)
   const transitionResult = await gameService.checkAndTransitionToFastTrack(gameId, userId);
@@ -546,7 +554,7 @@ async function sellMarketAsset(gameId, userId, asset, sellPrice, services) {
     // Получаем обновленные данные игрока
     const updatedGame = await gameService.getGame(gameId);
     const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
-    await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+    await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer, threadId);
   }
 }
 
@@ -590,8 +598,9 @@ async function circulateMarketToNextPlayer(gameId, chatId, services) {
     );
 
     // Показать карточку игроку с уведомлением о переходе
+    const threadId = game.threadId || null;
     const customTitle = `*${nextPlayer.username}*, ваша очередь работать со сделкой`;
-    await messageService.sendMarketCardWithSellOptions(chatId, game.currentMarket, nextPlayer, game, customTitle);
+    await messageService.sendMarketCardWithSellOptions(chatId, game.currentMarket, nextPlayer, game, customTitle, threadId);
   }
 }
 
@@ -614,12 +623,13 @@ async function endMarketEvent(gameId, chatId, services) {
   await gameService.databaseService.clearMarketCirculation(gameId);
 
   // Передать ход следующему игроку
+  const threadId = game.threadId || null;
   const nextTurnResult = await gameService.nextTurn(gameId);
   if (nextTurnResult.success && nextTurnResult.nextPlayer) {
     if (nextTurnResult.transitioned) {
-      await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer);
+      await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
     }
-    await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId));
+    await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(gameId), threadId);
   }
 }
 
