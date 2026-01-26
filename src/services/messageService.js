@@ -2448,7 +2448,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
    */
-  async sendMarketCardWithSkipButton(chatId, marketCard, player, game, threadId = null) {
+  async sendMarketCardWithSkipButton(chatId, marketCard, player, game, threadId = null, requiresInteraction = true) {
     let message = `📈 **Рынок**\n\n`;
     message += `💼 ${marketCard.title}\n\n`;
     message += `📝 ${marketCard.description}\n\n`;
@@ -2457,7 +2457,12 @@ CashFlow - настольная игра о финансовом планиро�
       message += `💵 Пассивный доход: +${formatNumber(marketCard.passiveIncome)} ₽/мес\n`;
     }
 
-    message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+    // Для карточек без взаимодействия не показывать сообщение об отсутствии активов
+    if (requiresInteraction) {
+      message += `У вас нет подходящих активов для продажи.\n\n`;
+    }
+
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -2483,8 +2488,10 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {Object} player - Объект игрока
    * @param {Object} game - Объект игры
    * @param {string} customTitle - Кастомный заголовок (опционально)
+   * @param {string} threadId - ID треда (опционально)
+   * @param {boolean} requiresInteraction - Требует ли карточка взаимодействия (по умолчанию true)
    */
-  async sendMarketCardWithSellOptions(chatId, marketCard, player, game, customTitle = null, threadId = null) {
+  async sendMarketCardWithSellOptions(chatId, marketCard, player, game, customTitle = null, threadId = null, requiresInteraction = true) {
     let message = customTitle ? `${customTitle}\n\n` : '';
     message += `📈 **Рынок**\n\n`;
     message += `💼 ${marketCard.title}\n\n`;
@@ -2529,8 +2536,14 @@ CashFlow - настольная игра о финансовом планиро�
       message += `Что вы хотите сделать?`;
     } else {
       // Нет подходящих активов для продажи
-      message += `У вас нет подходящих активов для продажи.\n\n`;
-      message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
+      // Для карточек без взаимодействия не показывать сообщение об отсутствии активов
+      if (requiresInteraction) {
+        message += `У вас нет подходящих активов для продажи.\n\n`;
+      }
+      message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
+      message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+      message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+      message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
       message += `Что вы хотите сделать?`;
     }
 

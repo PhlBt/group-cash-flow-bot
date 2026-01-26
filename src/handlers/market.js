@@ -7,6 +7,20 @@ const { applyInflation, getThreadId } = require('../utils');
 const { formatNumber } = require('../utils');
 
 /**
+ * Определяет, требует ли market карточка взаимодействия игроков
+ * @param {Object} marketCard - Market карточка
+ * @returns {boolean} true, если карточка требует взаимодействия
+ */
+function requiresPlayerInteraction(marketCard) {
+  // Карточка требует взаимодействия, если есть возможность продажи активов
+  // И нет автоматических эффектов (passiveIncome, creditMultiple, inflation)
+  const hasAutomaticEffect = marketCard.passiveIncome || marketCard.creditMultiple || marketCard.inflation;
+  const hasSellOption = (marketCard.cost || marketCard.apartmentCost || marketCard.costMultiple) && 
+                         marketCard.relatedDeals && marketCard.relatedDeals.length > 0;
+  return hasSellOption && !hasAutomaticEffect;
+}
+
+/**
  * Обрабатывает попадание на поле Market
  * @param {string} gameId - ID игры
  * @param {string} userId - ID пользователя
@@ -29,23 +43,22 @@ async function handleMarket(gameId, services) {
   // Применить автоматические эффекты (если есть)
   if (marketCard.passiveIncome || marketCard.creditMultiple || marketCard.inflation) {
     await applyAutomaticMarketEffects(gameId, marketCard, services);
-
-    // Для автоматических карточек (без relatedDeals) установить циркуляцию с одним игроком
-    if (!marketCard.relatedDeals || marketCard.relatedDeals.length === 0) {
-      // Установить циркуляцию с текущим игроком
-      await initializeSinglePlayerCirculation(gameId, services);
-      // Получить текущего игрока и игру для отправки сообщения
-      const currentPlayer = await gameService.getCurrentPlayer(gameId);
-      const gameAfterInit = await gameService.getGame(gameId);
-      // Отправить информационное сообщение с кнопкой "Пропустить"
-      const threadId = game.threadId || null;
-      await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit, threadId);
-      // Вернуть null, чтобы сигнализировать, что циркуляция началась
-      return null;
-    }
   }
 
-  // Запустить циркуляцию для эффектов продажи (если есть игроки с активами)
+  // Определить, требует ли карточка взаимодействия игроков
+  const needsInteraction = requiresPlayerInteraction(marketCard);
+
+  if (!needsInteraction) {
+    // Карточка не требует взаимодействия - показать только текущему игроку без создания циркуляции
+    const currentPlayer = await gameService.getCurrentPlayer(gameId);
+    const gameAfterInit = await gameService.getGame(gameId);
+    const threadId = game.threadId || null;
+    await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit, threadId, false);
+    // Вернуть null, чтобы сигнализировать, что обработка началась
+    return null;
+  }
+
+  // Карточка требует взаимодействия - запустить циркуляцию для эффектов продажи (если есть игроки с активами)
   const eligiblePlayers = await initializeMarketCirculation(gameId, marketCard, services);
 
   // Если есть игроки с подходящими активами, начать циркуляцию
@@ -296,8 +309,17 @@ async function handleSkipMarket(query, services) {
     // Удалить кнопки
     await messageService.removeMessageKeyboard(chatId, query.message.message_id, threadId);
 
-    // Перейти к следующему игроку в циркуляции
-    await circulateMarketToNextPlayer(game.gameId, chatId, services);
+    // Проверить, требует ли текущая карточка взаимодействия
+    const marketCard = game.currentMarket;
+    const needsInteraction = marketCard ? requiresPlayerInteraction(marketCard) : false;
+
+    if (!needsInteraction) {
+      // Карточка не требует взаимодействия - сразу завершить событие
+      await endMarketEvent(game.gameId, chatId, services);
+    } else {
+      // Карточка требует взаимодействия - перейти к следующему игроку в циркуляции
+      await circulateMarketToNextPlayer(game.gameId, chatId, services);
+    }
 
   } catch (error) {
     console.error('Error in handleSkipMarket:', error);
