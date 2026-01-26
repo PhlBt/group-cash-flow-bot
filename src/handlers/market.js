@@ -30,9 +30,16 @@ async function handleMarket(gameId, services) {
   if (marketCard.passiveIncome || marketCard.creditMultiple || marketCard.inflation) {
     await applyAutomaticMarketEffects(gameId, marketCard, services);
 
-    // Для автоматических карточек (без relatedDeals) сразу завершаем событие
+    // Для автоматических карточек (без relatedDeals) установить циркуляцию с одним игроком
     if (!marketCard.relatedDeals || marketCard.relatedDeals.length === 0) {
-      await endMarketEvent(gameId, game.chatId, services);
+      // Установить циркуляцию с текущим игроком
+      await initializeSinglePlayerCirculation(gameId, services);
+      // Получить текущего игрока и игру для отправки сообщения
+      const currentPlayer = await gameService.getCurrentPlayer(gameId);
+      const gameAfterInit = await gameService.getGame(gameId);
+      // Отправить информационное сообщение с кнопкой "Пропустить"
+      await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit);
+      // Вернуть null, чтобы сигнализировать, что циркуляция началась
       return null;
     }
   }
@@ -52,8 +59,15 @@ async function handleMarket(gameId, services) {
     // Вернуть null, чтобы сигнализировать, что циркуляция началась
     return null;
   } else {
-    // Если нет игроков с подходящими активами, завершить событие
-    await endMarketEvent(gameId, game.chatId, services);
+    // Если нет игроков с подходящими активами, установить циркуляцию с одним игроком
+    // Установить циркуляцию с текущим игроком
+    await initializeSinglePlayerCirculation(gameId, services);
+    // Получить текущего игрока и игру для отправки сообщения
+    const currentPlayer = await gameService.getCurrentPlayer(gameId);
+    const gameAfterInit = await gameService.getGame(gameId);
+    // Отправить информационное сообщение с кнопкой "Пропустить"
+    await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit);
+    // Вернуть null, чтобы сигнализировать, что циркуляция началась
     return null;
   }
 }
@@ -105,9 +119,9 @@ async function applyAutomaticMarketEffects(gameId, marketCard, services) {
   const game = await gameService.getGame(gameId);
 
   // Обработать passiveIncome
-    if (marketCard.passiveIncome) {
-      await applyPassiveIncomeEffect(gameId, marketCard, services);
-    }
+  if (marketCard.passiveIncome) {
+    await applyPassiveIncomeEffect(gameId, marketCard, services);
+  }
 
   // Обработать creditMultiple
   if (marketCard.creditMultiple) {
@@ -172,6 +186,27 @@ async function applyPassiveIncomeEffect(gameId, marketCard, services) {
       );
     }
   }
+}
+
+/**
+ * Устанавливает циркуляцию с одним игроком (текущим)
+ * @param {string} gameId - ID игры
+ * @param {Object} services - Объект с сервисами
+ */
+async function initializeSinglePlayerCirculation(gameId, services) {
+  const { gameService } = services;
+
+  const game = await gameService.getGame(gameId);
+  const currentPlayer = await gameService.getCurrentPlayer(gameId);
+  const currentIndex = game.players.findIndex(p => p.userId === currentPlayer.userId);
+
+  // Создать список циркуляции с одним игроком
+  const circulationPlayers = [currentPlayer.userId];
+
+  // Сохранить данные циркуляции
+  await gameService.databaseService.setMarketCirculationPlayers(gameId, circulationPlayers);
+  await gameService.databaseService.setMarketCirculationIndex(gameId, 0);
+  await gameService.databaseService.setMarketCirculationOriginalIndex(gameId, currentIndex);
 }
 
 /**
@@ -351,8 +386,13 @@ async function updateMarketMessageAfterSale(chatId, messageId, game, services) {
     message += `🏠 Ваши активы:\n\n`;
     remainingEligibleAssets.forEach((asset, index) => {
       const sellPrice = calculateMarketSellPrice(marketCard, asset);
+      const quantity = asset.quantity || 1;
+      const totalOriginalCost = asset.cost * quantity;
+      const profit = sellPrice - totalOriginalCost;
+      const profitText = profit >= 0 ? `+${formatNumber(profit)}` : `${formatNumber(profit)}`;
+
       message += `${index + 1}. ${asset.title}\n`;
-      message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽\n`;
+      message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽ (${profitText} ₽)\n`;
       message += `   💵 Доход: ${formatNumber(asset.cashFlow || 0)} ₽/мес\n\n`;
     });
 

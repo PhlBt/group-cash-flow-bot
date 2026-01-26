@@ -1625,8 +1625,13 @@ CashFlow - настольная игра о финансовом планиро�
         message += `🏠 Ваши активы:\n`;
         eligibleAssets.forEach((asset, index) => {
           const sellPrice = calculateMarketSellPrice(marketCard, asset);
+          const quantity = asset.quantity || 1;
+          const totalOriginalCost = asset.cost * quantity;
+          const profit = sellPrice - totalOriginalCost;
+          const profitText = profit >= 0 ? `+${formatNumber(profit)}` : `${formatNumber(profit)}`;
+
           message += `\n${index + 1}. ${asset.title}\n`;
-          message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽\n`;
+          message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽ (${profitText} ₽)\n`;
           message += `   💵 Доход: ${formatNumber(asset.cashFlow || 0)} ₽/мес\n`;
         });
       } else {
@@ -2464,8 +2469,13 @@ CashFlow - настольная игра о финансовом планиро�
       message += `🏠 Ваши активы:\n\n`;
       eligibleAssets.forEach((asset, index) => {
         const sellPrice = calculateMarketSellPrice(marketCard, asset);
+        const quantity = asset.quantity || 1;
+        const totalOriginalCost = asset.cost * quantity;
+        const profit = sellPrice - totalOriginalCost;
+        const profitText = profit >= 0 ? `+${formatNumber(profit)}` : `${formatNumber(profit)}`;
+
         message += `${index + 1}. ${asset.title}\n`;
-        message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽\n`;
+        message += `   💰 Цена продажи: ${formatNumber(sellPrice)} ₽ (${profitText} ₽)\n`;
         message += `   💵 Доход: ${formatNumber(asset.cashFlow || 0)} ₽/мес\n\n`;
 
         // Добавить кнопку продажи
@@ -2535,6 +2545,7 @@ CashFlow - настольная игра о финансовом планиро�
 
     return keyboard;
   }
+
 }
 
 /**
