@@ -189,6 +189,9 @@ async function handleRollDiceFastTrack(query, services) {
     // Проверить успех
     let successMessage = `🎲 ${currentPlayer.username} бросил кубик: ${diceResult}\n`;
 
+    let victoryDetected = false;
+    let victoryResult = null;
+
     if (diceResult >= fastTrackEvent.data.dice) {
       // Успех - применить награду
       successMessage += `✅ Успех! `;
@@ -197,8 +200,14 @@ async function handleRollDiceFastTrack(query, services) {
         await gameService.addFastTrackCash(game.gameId, userId, fastTrackEvent.data.cash);
         successMessage += `Получено ${formatNumber(fastTrackEvent.data.cash)} ₽`;
       } else if (fastTrackEvent.data.passiveIncome) {
-        await gameService.addFastTrackPassiveIncome(game.gameId, userId, fastTrackEvent.data.passiveIncome);
+        const incomeResult = await gameService.addFastTrackPassiveIncome(game.gameId, userId, fastTrackEvent.data.passiveIncome);
         successMessage += `Получен пассивный доход ${formatNumber(fastTrackEvent.data.passiveIncome)} ₽/мес`;
+        
+        // Проверяем автоматическую победу
+        if (incomeResult.success && incomeResult.victory) {
+          victoryDetected = true;
+          victoryResult = await gameService.finishGameWithVictory(game.gameId, userId, incomeResult.reason);
+        }
       }
     } else {
       // Неудача
@@ -210,6 +219,29 @@ async function handleRollDiceFastTrack(query, services) {
 
     // Отправить результат
     await messageService.sendErrorMessage(chatId, successMessage);
+
+    // Если игрок победил, обработать победу
+    if (victoryDetected && victoryResult) {
+      // Отправить сообщение о победе
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} достиг своей цели и победил на быстром круге!`);
+
+      if (victoryResult.gameFinished) {
+        // Игра полностью завершена (все игроки победили)
+        await messageService.sendGameFinishedMessage(chatId);
+        return;
+      } else {
+        // Игрок вышел из игры, но игра продолжается для остальных
+        // Получить текущую игру и следующего игрока
+        const updatedGame = await gameService.getGame(game.gameId);
+        const nextPlayer = await gameService.getCurrentPlayer(game.gameId);
+
+        if (nextPlayer) {
+          // Отправить сообщение о ходе следующему игроку
+          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame);
+        }
+      }
+      return;
+    }
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);
@@ -303,6 +335,32 @@ async function handleInvestFastTrack(query, services) {
     }
 
     await messageService.sendErrorMessage(chatId, successMessage);
+
+    // Проверяем автоматическую победу
+    if (investResult.victory) {
+      // Игрок победил - обработать победу
+      const victoryResult = await gameService.finishGameWithVictory(game.gameId, userId, investResult.reason);
+
+      // Отправить сообщение о победе
+      await messageService.sendErrorMessage(chatId, `🎉 ${currentPlayer.username} достиг своей цели и победил на быстром круге!`);
+
+      if (victoryResult.gameFinished) {
+        // Игра полностью завершена (все игроки победили)
+        await messageService.sendGameFinishedMessage(chatId);
+        return;
+      } else {
+        // Игрок вышел из игры, но игра продолжается для остальных
+        // Получить текущую игру и следующего игрока
+        const updatedGame = await gameService.getGame(game.gameId);
+        const nextPlayer = await gameService.getCurrentPlayer(game.gameId);
+
+        if (nextPlayer) {
+          // Отправить сообщение о ходе следующему игроку
+          await messageService.sendPlayerTurnMessage(chatId, nextPlayer, updatedGame);
+        }
+      }
+      return;
+    }
 
     // Передать ход следующему игроку
     const nextTurnResult = await gameService.nextTurn(game.gameId);

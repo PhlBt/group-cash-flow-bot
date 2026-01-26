@@ -205,8 +205,16 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
 
   // Если unlimitedStocks, показываем клавиатуру с количеством
   if (deal.unlimitedStocks) {
+    // Определяем, можно ли показывать кнопки покупки и изменения количества
+    // Показываем кнопки, если:
+    // 1. В циркуляции anyCanBuySell (все могут покупать)
+    // 2. НЕ в циркуляции canSellStocks (обычная сделка)
+    // 3. В циркуляции canSellStocks, но игрок - оригинальный (только он может покупать)
+    const canShowBuyButtons = isInAnyCanBuySellCirculation || 
+      (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation);
+
     // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки изменения количества
-    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation || isInAnyCanBuySellCirculation) {
+    if (canShowBuyButtons) {
       keyboard.inline_keyboard = [
         [
           { text: '➖ 1', callback_data: 'decrease_quantity_1' },
@@ -224,7 +232,7 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
     }
 
     // Для неоригинальных игроков в циркуляции canSellStocks не показываем кнопки покупки
-    if (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation || isInAnyCanBuySellCirculation) {
+    if (canShowBuyButtons) {
       keyboard.inline_keyboard.push([
         { text: '💰 Купить', callback_data: 'buy_deal' }
       ]);

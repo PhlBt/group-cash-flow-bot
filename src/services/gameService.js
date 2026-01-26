@@ -1937,7 +1937,7 @@ class GameService {
    * @param {string} gameId - ID игры
    * @param {string} userId - ID игрока
    * @param {number} amount - Сумма пассивного дохода
-   * @returns {Promise<{success: boolean, error?: string}>} Результат операции
+   * @returns {Promise<{success: boolean, error?: string, victory?: boolean, reason?: string}>} Результат операции
    */
   async addFastTrackPassiveIncome(gameId, userId, amount) {
     const game = await this.databaseService.getGame(gameId);
@@ -1964,6 +1964,15 @@ class GameService {
           }
         }
       );
+
+      // Проверяем автоматическую победу после обновления дохода
+      if (player.dreamCost && newFastTrackIncome >= player.dreamCost) {
+        return {
+          success: true,
+          victory: true,
+          reason: 'automatic_fast_track_victory'
+        };
+      }
     } else {
       const newPassiveIncome = player.passiveIncome + amount;
       const newCashFlow = player.salary + newPassiveIncome - player.totalExpenses;
@@ -1978,7 +1987,7 @@ class GameService {
       );
     }
 
-    return { success: true };
+    return { success: true, victory: false };
   }
 
   /**
@@ -2168,10 +2177,20 @@ class GameService {
       { $set: updateData }
     );
 
+    // Проверяем автоматическую победу после обновления дохода (только для Fast Track игроков)
+    let victory = false;
+    let victoryReason = null;
+    if (player.inFastTrack && player.dreamCost && newFastTrackIncome >= player.dreamCost) {
+      victory = true;
+      victoryReason = 'automatic_fast_track_victory';
+    }
+
     return {
       success: true,
       diceResult,
-      reward
+      reward,
+      victory,
+      reason: victoryReason
     };
   }
 
@@ -2305,7 +2324,7 @@ class GameService {
    * @param {string} victoryReason - Причина победы ('dream_purchase' или 'automatic_fast_track_victory')
    * @returns {Promise<{success: boolean, error?: string, gameFinished?: boolean}>} Результат операции
    */
-  async finishGameWithVictory(gameId, winnerUserId) {
+  async finishGameWithVictory(gameId, winnerUserId, victoryReason) {
     const game = await this.databaseService.getGame(gameId);
     if (!game) {
       return { success: false, error: 'not_found' };

@@ -2050,7 +2050,15 @@ CashFlow - настольная игра о финансовом планиро�
       const isOriginalPlayerInCirculation = isInCanSellStocksCirculation && game.currentPlayerIndex === game.dealCirculationOriginalIndex;
       const isInAnyCanBuySellCirculation = game.dealCirculationPlayers && game.dealCirculationPlayers.length > 0 && deal.anyCanBuySell;
 
-      if (deal.unlimitedStocks && (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation || isInAnyCanBuySellCirculation)) {
+      // Показываем количество и общую стоимость только если игрок может покупать
+      // Показываем, если:
+      // 1. В циркуляции anyCanBuySell (все могут покупать)
+      // 2. НЕ в циркуляции canSellStocks (обычная сделка)
+      // 3. В циркуляции canSellStocks, но игрок - оригинальный (только он может покупать)
+      const canShowQuantity = isInAnyCanBuySellCirculation || 
+        (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation);
+
+      if (deal.unlimitedStocks && canShowQuantity) {
         message += `🔢 Количество: ${quantity}\n`;
         message += `💰 Общая стоимость: ${formatNumber(deal.cost * quantity)} ₽\n`;
       }
