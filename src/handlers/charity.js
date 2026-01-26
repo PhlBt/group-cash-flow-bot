@@ -66,7 +66,13 @@ async function handleDonateCharity(query, services) {
     // Пожертвовать 10% дохода
     const donateResult = await gameService.donateCharity(game.gameId, userId);
     if (!donateResult.success) {
-      await messageService.sendErrorMessage(chatId, 'Ошибка при пожертвовании: ' + donateResult.error, threadId);
+      let errorMessage = 'Ошибка при пожертвовании';
+      if (donateResult.error === 'insufficient_funds') {
+        errorMessage = 'Недостаточно средств для пожертвования';
+      } else if (donateResult.error) {
+        errorMessage = 'Ошибка при пожертвовании: ' + donateResult.error;
+      }
+      await messageService.sendErrorMessage(chatId, errorMessage, threadId);
       return;
     }
 
