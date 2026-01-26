@@ -222,6 +222,13 @@ async function handleBuyDeal(query, services) {
     const commissionText = isOfferedDeal ? ` с комиссией ${game.offerState.commission}%` : '';
     await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}"${commissionText}!`);
 
+    // Проверяем переход на Fast Track после покупки
+    if (buyResult.transitioned) {
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+    }
+
     // Обработать циркуляцию для anyCanBuySell или canSellStocks
     if (deal.anyCanBuySell) {
       await processDealAction(game.gameId, userId, chatId, 'buy', services);
@@ -305,6 +312,17 @@ async function handleSkipDeal(query, services) {
       // Отправить сообщение о применении multiple
       const action = deal.multiple === 2 ? 'удвоено' : 'уменьшено вдвое';
       await messageService.sendErrorMessage(chatId, `📊 Количество акций "${deal.title}" ${action} у всех игроков!`);
+
+      // Проверяем переход на Fast Track для игроков, которые перешли
+      if (processResult.transitioned && processResult.transitionedPlayers) {
+        const updatedGame = await gameService.getGame(game.gameId);
+        for (const transitionedUserId of processResult.transitionedPlayers) {
+          const transitionedPlayer = updatedGame.players.find(p => p.userId === transitionedUserId);
+          if (transitionedPlayer) {
+            await messageService.sendFastTrackTransitionMessage(chatId, transitionedPlayer);
+          }
+        }
+      }
     } else {
       // Удалить кнопки с сообщения карточки сделки
       await messageService.removeMessageKeyboard(chatId, query.message.message_id);
@@ -418,6 +436,13 @@ async function handleBuyDealWithCreditCard(query, services) {
     const buyerPlayer = isOfferedDeal ? game.players.find(p => p.userId === userId) : currentPlayer;
     const commissionText = isOfferedDeal ? ` с комиссией ${game.offerState.commission}%` : '';
     await messageService.sendErrorMessage(chatId, `✅ ${buyerPlayer.username} купил "${deal.title}" кредиткой${commissionText}!`);
+
+    // Проверяем переход на Fast Track после покупки
+    if (buyResult.transitioned) {
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+    }
 
     // Обработать циркуляцию для anyCanBuySell
     if (deal.anyCanBuySell) {
@@ -550,6 +575,13 @@ async function handleSellStocks(query, services) {
 
     // Отправить сообщение об успешной продаже
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} продал акции "${deal.title}"!`);
+
+    // Проверяем переход на Fast Track после продажи
+    if (sellResult.transitioned) {
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+    }
 
     // Обработать циркуляцию для anyCanBuySell или canSellStocks
     if (deal.anyCanBuySell) {
@@ -706,6 +738,13 @@ async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
 
     // Отправить сообщение об успешной покупке
     await messageService.sendErrorMessage(chatId, `✅ ${currentPlayer.username} купил "${deal.title}" в ипотеку с кредитом на первоначальный взнос!`);
+
+    // Проверяем переход на Fast Track после покупки
+    if (buyResult.transitioned) {
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+    }
 
     // Обработать циркуляцию для anyCanBuySell
     if (deal.anyCanBuySell) {

@@ -972,6 +972,13 @@ async function handleSellAsset(query, assetId, services) {
       return;
     }
 
+    // Проверяем переход на Fast Track после продажи
+    if (sellResult.transitioned) {
+      const updatedGame = await gameService.getGame(game.gameId);
+      const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+    }
+
     // Проверить, разрешена ли банкротство
     const checkResult = await gameService.checkBankruptcyResolution(game.gameId, userId);
     if (checkResult.success && checkResult.resolved) {
@@ -1073,6 +1080,13 @@ async function handlePayLiability(query, liabilityIndex, services) {
         await messageService.sendErrorMessage(chatId, 'Ошибка оплаты долга: ' + payResult.error);
       }
       return;
+    }
+
+    // Проверяем переход на Fast Track после оплаты кредита
+    if (payResult.transitioned) {
+      const updatedGameForTransition = await gameService.getGame(game.gameId);
+      const updatedPlayerForTransition = updatedGameForTransition.players.find(p => p.userId === userId);
+      await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayerForTransition);
     }
 
     // Для банкротства проверяем разрешение

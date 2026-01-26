@@ -184,6 +184,14 @@ async function applyPassiveIncomeEffect(gameId, marketCard, services) {
           }
         }
       );
+
+      // Проверяем переход на Fast Track после обновления passiveIncome
+      const transitionResult = await gameService.checkAndTransitionToFastTrack(gameId, player.userId);
+      if (transitionResult.transitioned) {
+        // Отправляем сообщение о переходе
+        const { messageService } = services;
+        await messageService.sendFastTrackTransitionMessage(game.chatId, player);
+      }
     }
   }
 }
@@ -531,6 +539,15 @@ async function sellMarketAsset(gameId, userId, asset, sellPrice, services) {
   // Отправить сообщение о продаже
   const chatId = game.chatId;
   await messageService.sendErrorMessage(chatId, `✅ ${player.username} продал "${asset.title}" за ${sellPrice.toLocaleString()} ₽!`);
+
+  // Проверяем переход на Fast Track после продажи (может изменить passiveIncome и totalExpenses)
+  const transitionResult = await gameService.checkAndTransitionToFastTrack(gameId, userId);
+  if (transitionResult.transitioned) {
+    // Получаем обновленные данные игрока
+    const updatedGame = await gameService.getGame(gameId);
+    const updatedPlayer = updatedGame.players.find(p => p.userId === userId);
+    await messageService.sendFastTrackTransitionMessage(chatId, updatedPlayer);
+  }
 }
 
 /**

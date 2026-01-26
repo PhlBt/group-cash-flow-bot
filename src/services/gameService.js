@@ -730,7 +730,10 @@ class GameService {
 
     await this.databaseService.addAsset(gameId, userId, asset);
 
-    return { success: true };
+    // Проверяем переход на Fast Track после добавления актива
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -807,7 +810,10 @@ class GameService {
 
     await this.databaseService.addAsset(gameId, userId, asset);
 
-    return { success: true };
+    // Проверяем переход на Fast Track после добавления актива
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -875,7 +881,10 @@ class GameService {
 
     await this.databaseService.addAsset(gameId, userId, asset);
 
-    return { success: true };
+    // Проверяем переход на Fast Track после добавления актива
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -978,7 +987,10 @@ class GameService {
       await this.databaseService.addAsset(gameId, userId, asset);
     }
 
-    return { success: true };
+    // Проверяем переход на Fast Track после добавления актива
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -1052,7 +1064,10 @@ class GameService {
 
       await this.databaseService.addAsset(gameId, userId, asset);
 
-      return { success: true };
+      // Проверяем переход на Fast Track после добавления актива
+      const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+      return { success: true, transitioned: transitionResult.transitioned || false };
     }
 
     // Стандартная логика для других сделок
@@ -1089,7 +1104,10 @@ class GameService {
 
     await this.databaseService.addLiability(gameId, userId, liability);
 
-    return { success: true };
+    // Проверяем переход на Fast Track после изменений (актив или кредит могут изменить баланс)
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -1155,7 +1173,16 @@ class GameService {
       }
     }
 
-    return { success: true };
+    // Проверяем переход на Fast Track для каждого игрока после обновления
+    const transitionedPlayers = [];
+    for (const player of game.players) {
+      const transitionResult = await this.checkAndTransitionToFastTrack(gameId, player.userId);
+      if (transitionResult.transitioned) {
+        transitionedPlayers.push(player.userId);
+      }
+    }
+
+    return { success: true, transitioned: transitionedPlayers.length > 0, transitionedPlayers };
   }
 
   /**
@@ -1259,7 +1286,10 @@ class GameService {
       }
     );
 
-    return { success: true };
+    // Проверяем переход на Fast Track после продажи (может изменить passiveIncome и totalExpenses)
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -1577,7 +1607,10 @@ class GameService {
       }
     );
 
-    return { success: true };
+    // Проверяем переход на Fast Track после продажи актива и закрытия кредитов
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -1639,7 +1672,10 @@ class GameService {
       }
     );
 
-    return { success: true };
+    // Проверяем переход на Fast Track после закрытия кредита (уменьшает totalExpenses)
+    const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+
+    return { success: true, transitioned: transitionResult.transitioned || false };
   }
 
   /**
@@ -1985,9 +2021,15 @@ class GameService {
           }
         }
       );
+
+      // Проверяем переход на Fast Track после добавления пассивного дохода (только для Rat Race)
+      const transitionResult = await this.checkAndTransitionToFastTrack(gameId, userId);
+      if (transitionResult.transitioned) {
+        return { success: true, victory: false, transitioned: true };
+      }
     }
 
-    return { success: true, victory: false };
+    return { success: true, victory: false, transitioned: false };
   }
 
   /**
