@@ -594,6 +594,16 @@ async function handleCallbackQuery(query, services) {
         await handleChangeQuantity(query, 100, services);
         break;
 
+      case 'decrease_quantity_1000':
+        // Уменьшить количество на 1000
+        await handleChangeQuantity(query, -1000, services);
+        break;
+
+      case 'increase_quantity_1000':
+        // Увеличить количество на 1000
+        await handleChangeQuantity(query, 1000, services);
+        break;
+
       case 'sell_stocks':
         // Продажа акций
         await handleSellStocks(query, services);

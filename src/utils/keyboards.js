@@ -228,6 +228,10 @@ function generateDealKeyboard(deal, player, game, quantity = 1) {
         [
           { text: '➖ 100', callback_data: 'decrease_quantity_100' },
           { text: '➕ 100', callback_data: 'increase_quantity_100' }
+        ],
+        [
+          { text: '➖ 1000', callback_data: 'decrease_quantity_1000' },
+          { text: '➕ 1000', callback_data: 'increase_quantity_1000' }
         ]
       ];
     }
