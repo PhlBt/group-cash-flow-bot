@@ -2177,10 +2177,10 @@ CashFlow - настольная игра о финансовом планиро�
    * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal', quantity = 1, threadId = null) {
-    let message;
+    let message = ''
 
     if (deal.title)
-      message = `💼 **${deal.title}**\n\n`;
+      message += `💼 **${deal.title}**\n\n`;
 
     if (deal.description)
       message += `📝 ${deal.description}\n\n`;
