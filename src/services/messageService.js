@@ -2177,7 +2177,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal', quantity = 1, threadId = null) {
-    let message = ''
+    let message = `❌ Недостаточно денег для покупки!\n\n`;
 
     if (deal.title)
       message += `💼 **${deal.title}**\n\n`;
@@ -2199,7 +2199,6 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Стоимость кредитной карты (2% от общей стоимости)
     const monthlyPayment = Math.floor(totalCost * 0.02);
-    message += `❌ Недостаточно денег для покупки!\n\n`;
     message += `💳 Оплатить кредиткой:\n`;
     message += `📊 Ежемесячный платеж: ${formatNumber(monthlyPayment)} ₽\n\n`;
     message += `Что вы хотите сделать?`;
