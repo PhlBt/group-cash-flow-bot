@@ -2227,8 +2227,17 @@ CashFlow - настольная игра о финансовом планиро�
           ]
         ]
       };
+    } else if (type === 'miscellaneous') {
+      // Для miscellaneous - используем специальную клавиатуру с правильным callback_data
+      keyboard = {
+        inline_keyboard: [
+          [
+            { text: '💳 Оплатить кредиткой', callback_data: 'pay_miscellaneous_credit_card' }
+          ]
+        ]
+      };
     } else {
-      // Для сделок и miscellaneous - стандартная клавиатура с пропуском
+      // Для сделок - стандартная клавиатура с пропуском
       keyboard = creditCardKeyboard;
     }
 
