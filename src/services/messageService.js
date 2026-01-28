@@ -2177,10 +2177,13 @@ CashFlow - настольная игра о финансовом планиро�
    * @returns {Promise<number>} ID отправленного сообщения
    */
   async sendCreditCardOfferMessage(chatId, deal, player, type = 'deal', quantity = 1, threadId = null) {
-    let message = `💼 **${deal.title}**\n\n`;
-    if (deal.description) {
+    let message;
+
+    if (deal.title)
+      message = `💼 **${deal.title}**\n\n`;
+
+    if (deal.description)
       message += `📝 ${deal.description}\n\n`;
-    }
 
     // Рассчитываем общую стоимость с учетом количества
     const totalCost = deal.cost * quantity;
@@ -2215,7 +2218,7 @@ CashFlow - настольная игра о финансовом планиро�
           ]
         ]
       };
-    } else if (type === 'dismissal' || type === 'miscellaneous') {
+    } else if (type === 'dismissal') {
       // Для безработицы - только кнопка оплаты кредиткой, без пропуска
       keyboard = {
         inline_keyboard: [
