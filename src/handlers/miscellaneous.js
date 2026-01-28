@@ -112,9 +112,6 @@ async function handlePayMiscellaneous(query, services) {
     if (miscCard.mortgage !== undefined) {
       // Карточка с ипотекой
       payResult = await gameService.buyMiscellaneousWithMortgage(game.gameId, userId, miscCard);
-    } else if (miscCard.credit) {
-      // Карточка с кредитом
-      payResult = await gameService.buyMiscellaneousWithCredit(game.gameId, userId, miscCard);
     } else {
       // Обычные расходы
       payResult = await gameService.payMiscellaneousExpenses(game.gameId, userId, miscCard);

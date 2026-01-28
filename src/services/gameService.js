@@ -1056,6 +1056,7 @@ class GameService {
         assetId: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         id: deal.id,
         title: deal.title,
+        group_Id: deal.group_Id,
         cost: totalCost,
         cashFlow: deal.passiveIncome * quantity,
         type: 'big_deal',
@@ -1093,6 +1094,11 @@ class GameService {
         isRealEstate: deal.isRealEstate || false,
         quantity: quantity
       };
+
+      if (deal.type === 'small') {
+        asset.group_Id = deal.group_Id
+        asset.cost = deal.cost
+      }
 
       await this.databaseService.addAsset(gameId, userId, asset);
     }

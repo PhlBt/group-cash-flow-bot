@@ -1225,7 +1225,7 @@ CashFlow - настольная игра о финансовом планиро�
       }
     }
 
-    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -1541,7 +1541,7 @@ CashFlow - настольная игра о финансовом планиро�
     message += `📝 Вы временно потеряли свою работу!\n`;
     message += `💰 Оплатите размер ваших «Общих Расходов» и пропустите 2 хода.\n\n`;
     message += `💸 Общие расходы: ${formatNumber(player.totalExpenses)} ₽\n`;
-    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n\n`;
     message += `Что вы хотите сделать?`;
 
     // Генерируем клавиатуру
@@ -1591,7 +1591,7 @@ CashFlow - настольная игра о финансовом планиро�
       message += `📝 У вас уже максимальное количество детей!\n`;
     }
     message += `👨‍👩‍👧‍👦 Детей: ${player.childrenCount}\n`;
-    message += `💰 Баланс: ${formatNumber(updatedCash)} ₽\n`;
+    message += `💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
     message += `📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
     message += `📉 Общие расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
     message += `💹 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n\n`;
@@ -1754,7 +1754,7 @@ CashFlow - настольная игра о финансовом планиро�
       message += `💼 ${fieldTypeLabel ? fieldTypeLabel + ' ' : ''}${fastTrackEvent.title}\n\n`;
     }
 
-    if (fastTrackEvent.data &&  fastTrackEvent.data.dice) {
+    if (fastTrackEvent.data && fastTrackEvent.data.dice) {
       message += `Шанс на получение дохода! Вам должно выпасть ${fastTrackEvent.data.dice} или больше!\n\n`
     }
 
@@ -2085,7 +2085,7 @@ CashFlow - настольная игра о финансовом планиро�
       // 1. В циркуляции anyCanBuySell (все могут покупать)
       // 2. НЕ в циркуляции canSellStocks (обычная сделка)
       // 3. В циркуляции canSellStocks, но игрок - оригинальный (только он может покупать)
-      const canShowQuantity = isInAnyCanBuySellCirculation || 
+      const canShowQuantity = isInAnyCanBuySellCirculation ||
         (!isInCanSellStocksCirculation || isOriginalPlayerInCirculation);
 
       if (deal.unlimitedStocks && canShowQuantity) {
@@ -2134,9 +2134,18 @@ CashFlow - настольная игра о финансовом планиро�
 
     message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
 
+    console.log('-=====-')
+    console.log('sellStock', deal.canSellStocks && deal.group_Id && player.assets)
+    console.log('sellStock canSellStocks', deal.canSellStocks)
+    console.log('sellStock group_Id', deal.group_Id)
+    console.log('sellStock assets', player.assets)
+    console.log('-=====-')
     // Если можно продавать акции и у игрока есть активы с тем же group_Id
     if (deal.canSellStocks && deal.group_Id && player.assets) {
       const sameGroupAssets = player.assets.filter(asset => asset.group_Id === deal.group_Id);
+      console.log('-=====-')
+      console.log('sameGroupAssets', sameGroupAssets)
+      console.log('-=====-')
       if (sameGroupAssets.length > 0) {
         const totalQuantity = sameGroupAssets.reduce((sum, asset) => sum + (asset.quantity || 1), 0);
         const sellPrice = deal.cost * totalQuantity;
