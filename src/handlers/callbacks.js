@@ -73,9 +73,6 @@ async function handleRollDice(query, diceCount, services) {
 
     // Переместить игрока
     const moveResult = await gameService.movePlayer(game.gameId, userId, steps);
-    console.log('-=====-')
-    console.log('moveResult', moveResult)
-    console.log('-=====-')
     if (!moveResult.success) {
       await messageService.sendErrorMessage(chatId, 'Ошибка перемещения: ' + moveResult.error, threadId);
       return;

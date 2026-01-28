@@ -2134,18 +2134,9 @@ CashFlow - настольная игра о финансовом планиро�
 
     message += `\n💰 Баланс: ${formatNumber(player.cash)} ₽\n`;
 
-    console.log('-=====-')
-    console.log('sellStock', deal.canSellStocks && deal.group_Id && player.assets)
-    console.log('sellStock canSellStocks', deal.canSellStocks)
-    console.log('sellStock group_Id', deal.group_Id)
-    console.log('sellStock assets', player.assets)
-    console.log('-=====-')
     // Если можно продавать акции и у игрока есть активы с тем же group_Id
     if (deal.canSellStocks && deal.group_Id && player.assets) {
       const sameGroupAssets = player.assets.filter(asset => asset.group_Id === deal.group_Id);
-      console.log('-=====-')
-      console.log('sameGroupAssets', sameGroupAssets)
-      console.log('-=====-')
       if (sameGroupAssets.length > 0) {
         const totalQuantity = sameGroupAssets.reduce((sum, asset) => sum + (asset.quantity || 1), 0);
         const sellPrice = deal.cost * totalQuantity;
