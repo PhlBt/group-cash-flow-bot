@@ -15,8 +15,8 @@ function requiresPlayerInteraction(marketCard) {
   // Карточка требует взаимодействия, если есть возможность продажи активов
   // И нет автоматических эффектов (passiveIncome, creditMultiple, inflation)
   const hasAutomaticEffect = marketCard.passiveIncome || marketCard.creditMultiple || marketCard.inflation;
-  const hasSellOption = (marketCard.cost || marketCard.apartmentCost || marketCard.costMultiple) && 
-                         marketCard.relatedDeals && marketCard.relatedDeals.length > 0;
+  const hasSellOption = (marketCard.cost || marketCard.apartmentCost || marketCard.costMultiple) &&
+    marketCard.relatedDeals && marketCard.relatedDeals.length > 0;
   return hasSellOption && !hasAutomaticEffect;
 }
 
@@ -59,33 +59,11 @@ async function handleMarket(gameId, services) {
   }
 
   // Карточка требует взаимодействия - запустить циркуляцию для эффектов продажи (если есть игроки с активами)
-  const eligiblePlayers = await initializeMarketCirculation(gameId, marketCard, services);
+  await initializeMarketCirculation(gameId, marketCard, services);
 
-  // Если есть игроки с подходящими активами, начать циркуляцию
-  if (eligiblePlayers.length > 0) {
-    const gameAfterInit = await gameService.getGame(gameId);
-    const currentPlayer = await gameService.getCurrentPlayer(gameId);
-
-    // Показать карточку первому игроку в циркуляции
-    const threadId = game.threadId || null;
-    const customTitle = `*${currentPlayer.username}*, вы попали на поле "Рынок"`;
-    await messageService.sendMarketCardWithSellOptions(game.chatId, marketCard, currentPlayer, gameAfterInit, customTitle, threadId);
-
-    // Вернуть null, чтобы сигнализировать, что циркуляция началась
-    return null;
-  } else {
-    // Если нет игроков с подходящими активами, установить циркуляцию с одним игроком
-    // Установить циркуляцию с текущим игроком
-    await initializeSinglePlayerCirculation(gameId, services);
-    // Получить текущего игрока и игру для отправки сообщения
-    const currentPlayer = await gameService.getCurrentPlayer(gameId);
-    const gameAfterInit = await gameService.getGame(gameId);
-    // Отправить информационное сообщение с кнопкой "Пропустить"
-    const threadId = game.threadId || null;
-    await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit, threadId);
-    // Вернуть null, чтобы сигнализировать, что циркуляция началась
-    return null;
-  }
+  // НЕ показываем сообщение первому игроку - это будет делаться из handleRollDice()
+  // Вернуть marketCard, чтобы handleRollDice мог отправить комбинированное сообщение
+  return marketCard;
 }
 
 /**
@@ -214,27 +192,6 @@ async function applyPassiveIncomeEffect(gameId, marketCard, services) {
 }
 
 /**
- * Устанавливает циркуляцию с одним игроком (текущим)
- * @param {string} gameId - ID игры
- * @param {Object} services - Объект с сервисами
- */
-async function initializeSinglePlayerCirculation(gameId, services) {
-  const { gameService } = services;
-
-  const game = await gameService.getGame(gameId);
-  const currentPlayer = await gameService.getCurrentPlayer(gameId);
-  const currentIndex = game.players.findIndex(p => p.userId === currentPlayer.userId);
-
-  // Создать список циркуляции с одним игроком
-  const circulationPlayers = [currentPlayer.userId];
-
-  // Сохранить данные циркуляции
-  await gameService.databaseService.setMarketCirculationPlayers(gameId, circulationPlayers);
-  await gameService.databaseService.setMarketCirculationIndex(gameId, 0);
-  await gameService.databaseService.setMarketCirculationOriginalIndex(gameId, currentIndex);
-}
-
-/**
  * Инициализирует циркуляцию market среди игроков с подходящими активами
  * @param {string} gameId - ID игры
  * @param {Object} marketCard - Market карточка
@@ -257,28 +214,35 @@ async function initializeMarketCirculation(gameId, marketCard, services) {
     }
   }
 
-  if (eligiblePlayers.length > 0) {
-    // Установить циркуляцию начиная с текущего игрока
-    const currentPlayer = await gameService.getCurrentPlayer(gameId);
-    const currentIndex = game.players.findIndex(p => p.userId === currentPlayer.userId);
+  // Определяем текущего игрока
+  const currentPlayer = await gameService.getCurrentPlayer(gameId);
+  const currentIndex = game.players.findIndex(p => p.userId === currentPlayer.userId);
 
-    // Создать список циркуляции
-    const circulationPlayers = [];
-    for (let i = 0; i < game.players.length; i++) {
-      const playerIndex = (currentIndex + i) % game.players.length;
-      const playerId = game.players[playerIndex].userId;
-      if (eligiblePlayers.includes(playerId)) {
-        circulationPlayers.push(playerId);
-      }
+  // Формируем список циркуляции
+  const circulationPlayers = [];
+
+  // 1. ВСЕГДА добавляем текущего игрока первым (даже если у него нет активов)
+  circulationPlayers.push(currentPlayer.userId);
+
+  // 2. Добавляем остальных игроков с активами в порядке хода
+  for (let i = 1; i < game.players.length; i++) {
+    const playerIndex = (currentIndex + i) % game.players.length;
+    const playerId = game.players[playerIndex].userId;
+
+    // Добавляем только если игрок имеет подходящие активы И не является текущим игроком
+    if (eligiblePlayers.includes(playerId) && playerId !== currentPlayer.userId) {
+      circulationPlayers.push(playerId);
     }
+  }
 
+  if (circulationPlayers.length > 0) {
     // Сохранить данные циркуляции
     await gameService.databaseService.setMarketCirculationPlayers(gameId, circulationPlayers);
     await gameService.databaseService.setMarketCirculationIndex(gameId, 0);
     await gameService.databaseService.setMarketCirculationOriginalIndex(gameId, currentIndex);
   }
 
-  return eligiblePlayers;
+  return circulationPlayers;
 }
 
 /**

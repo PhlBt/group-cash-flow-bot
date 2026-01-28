@@ -190,13 +190,20 @@ async function handleRollDice(query, diceCount, services) {
       const { handleMarket } = require('./market');
       const marketCard = await handleMarket(game.gameId, services);
 
-      // Если handleMarket вернул null, значит циркуляция началась и сообщение уже отправлено
+      // Если handleMarket вернул null, значит карточка не требует взаимодействия
       if (marketCard === null) {
         // Уменьшить счетчик ходов благотворительности
         if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
           await gameService.decreaseCharityTurns(game.gameId, userId);
         }
-        // Для поля MARKET не передаем ход автоматически - ждем действий игроков в циркуляции
+        // Передать ход следующему игроку
+        const nextTurnResult = await gameService.nextTurn(game.gameId);
+        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
+          if (nextTurnResult.transitioned) {
+            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
+          }
+          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
+        }
         return;
       }
 
@@ -220,7 +227,7 @@ async function handleRollDice(query, diceCount, services) {
         await gameService.decreaseCharityTurns(game.gameId, userId);
       }
 
-      // Для поля MARKET не передаем ход автоматически - ждем действий игроков
+      // Для поля MARKET не передаем ход автоматически - ждем действий игроков в циркуляции
     } else if (moveResult.fieldType === FIELD_TYPES.INVESTING || moveResult.fieldType === FIELD_TYPES.EXPENSES || moveResult.fieldType === FIELD_TYPES.DREAM || moveResult.fieldType === FIELD_TYPES.FPAYDAY) {
       // Игрок попал на поле "Инвестиция", "Расходы", "Мечта" или "День выплат" - обработать fastTrack событие
       const { handleFastTrack } = require('./fastTrack');
