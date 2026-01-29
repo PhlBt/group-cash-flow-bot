@@ -92,8 +92,8 @@ class UserStatsService {
 
       const updates = {
         totalGames: currentStats.totalGames + 1,
-        wins: 0, // Пока оставляем 0, логику побед добавим позже
-        losses: 0 // Пока оставляем 0, логику побед добавим позже
+        wins: currentStats.wins,
+        losses: currentStats.losses
       };
 
       await this.updateUserStats(player.userId, updates);

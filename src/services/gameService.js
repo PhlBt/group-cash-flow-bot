@@ -102,9 +102,6 @@ class GameService {
       return { success: false, error: 'already_finished' };
     }
 
-    // Обновляем статистику перед завершением игры
-    await this.userStatsService.updateStatsAfterGame(game);
-
     // Завершаем игру
     return await this.databaseService.finishGame(gameId);
   }
