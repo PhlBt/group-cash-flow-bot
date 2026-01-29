@@ -20,12 +20,14 @@ const messageService = new MessageService(bot);
 // Инициализация сервиса игры (будет установлен после подключения к БД)
 let gameService;
 let userStatsService;
+let chatUserStorage;
 
 // Объект с сервисами для передачи в обработчики
 const services = {
   get messageService() { return messageService; },
   get gameService() { return gameService; },
   get userStatsService() { return userStatsService; },
+  get chatUserStorage() { return chatUserStorage; },
   get bot() { return bot; }
 };
 
@@ -37,6 +39,12 @@ async function connectToMongoDB() {
     await databaseService.connect();
     userStatsService = new UserStatsService(databaseService);
     gameService = new GameService(databaseService, userStatsService, messageService);
+    
+    // Инициализация модуля хранения данных пользователей и чатов
+    const ChatUserStorage = require('./modules/chatUserStorage');
+    chatUserStorage = new ChatUserStorage(databaseService);
+    await chatUserStorage.init();
+    console.log('ChatUserStorage initialized successfully');
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);
@@ -78,6 +86,10 @@ async function startBot() {
       console.log(`Command /start ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleStart(msg, services);
   });
 
@@ -87,6 +99,10 @@ async function startBot() {
       console.log(`Command /help ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleHelp(msg, services);
   });
 
@@ -96,6 +112,10 @@ async function startBot() {
       console.log(`Command /rules ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleRules(msg, services);
   });
 
@@ -105,6 +125,10 @@ async function startBot() {
       console.log(`Command /profile ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleProfile(msg, services);
   });
 
@@ -114,6 +138,10 @@ async function startBot() {
       console.log(`Command /leave ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleLeave(msg, services);
   });
 
@@ -123,6 +151,10 @@ async function startBot() {
       console.log(`Command /endgame ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleEndGame(msg, services);
   });
 
@@ -132,6 +164,10 @@ async function startBot() {
       console.log(`Command /votekick ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
     await handlers.handleVoteKick(msg, services);
   });
 
@@ -141,6 +177,12 @@ async function startBot() {
       console.log(`Callback query ignored for chat ${query.message.chat.id} due to rate limit`);
       return;
     }
+
+    console.log('msg', query)
+    
+    // Сохраняем данные чата и пользователя из callback query
+    await chatUserStorage.saveQueryChatAndUser(query);
+    
     await handlers.handleCallbackQuery(query, services);
   });
 
@@ -150,6 +192,9 @@ async function startBot() {
       console.log(`Message ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
+
+    // Сохраняем данные чата и пользователя для всех сообщений
+    await chatUserStorage.saveChatAndUser(msg);
 
     // Проверяем, является ли сообщение текстом и есть ли reply_to_message
     if (msg.text && msg.reply_to_message) {

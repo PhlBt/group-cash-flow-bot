@@ -27,3 +27,17 @@ npm run serve
 ```bash
 docker-compose up --build -d
 ```
+
+## 📖 Документация
+
+- [Команды бота](./docs/COMMANDS.md)
+- [Работа с базой данных](./docs/DATABASE.md)
+- [Система сделок](./docs/DEALS.md)
+- [Игровые механики](./docs/GAME.md)
+- [Обработчики](./docs/HANDLERS.md)
+- [Сообщения](./docs/MESSAGE.md)
+- [Проект](./docs/PROJECT.md)
+- [Правила](./docs/RULES.md)
+- [Статистика пользователей](./docs/USERSTATS.md)
+- [Утилиты](./docs/UTILS.md)
+- [ChatUserStorage](./src/modules/chatUserStorage/README.md) - Универсальный модуль для хранения данных пользователей и чатов
