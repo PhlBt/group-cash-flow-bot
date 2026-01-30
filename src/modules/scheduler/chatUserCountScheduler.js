@@ -24,7 +24,7 @@ class ChatUserCountScheduler {
     // Добавляем задачу в планировщик
     this.scheduler.addTask(
       'updateChatUserCounts',
-      '* * * * *', // Каждый день в 04:00
+      '0 4 * * *', // Каждый день в 04:00
       this.updateChatUserCounts.bind(this),
       {
         timezone: 'Europe/Samara'
