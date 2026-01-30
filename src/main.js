@@ -5,6 +5,7 @@ const MessageService = require('./services/messageService');
 const GameService = require('./services/gameService');
 const UserStatsService = require('./services/userStatsService');
 const handlers = require('./handlers/index');
+const { getThreadId } = require('./utils');
 
 // Загрузка переменных окружения
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -29,6 +30,7 @@ const services = {
   get gameService() { return gameService; },
   get userStatsService() { return userStatsService; },
   get chatUserStorage() { return chatUserStorage; },
+  get threadRestrictionService() { return threadRestrictionService; },
   get bot() { return bot; }
 };
 
@@ -46,6 +48,12 @@ async function connectToMongoDB() {
     chatUserStorage = new ChatUserStorage(databaseService);
     await chatUserStorage.init();
     console.log('ChatUserStorage initialized successfully');
+    
+    // Инициализация сервиса управления ограничениями тем
+    const ThreadRestrictionService = require('./services/threadRestrictionService');
+    threadRestrictionService = new ThreadRestrictionService(databaseService);
+    await threadRestrictionService.init();
+    console.log('ThreadRestrictionService initialized successfully');
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);
@@ -61,7 +69,9 @@ async function setBotCommands() {
     { command: 'profile', description: 'Профиль игрока' },
     { command: 'leave', description: 'Выйти из игры' },
     { command: 'votekick', description: 'Начать голосование за исключение игрока' },
-    { command: 'endgame', description: 'Начать голосование за окончание игры' }
+    { command: 'endgame', description: 'Начать голосование за окончание игры' },
+    { command: 'adminOpenThread', description: 'Открыть тему для команд бота' },
+    { command: 'adminCloseThread', description: 'Закрыть тему для команд бота' }
   ];
 
   try {
@@ -86,6 +96,30 @@ async function initScheduler() {
   }
 }
 
+// Функция проверки thread-ограничений для команд
+async function checkThreadRestrictions(chatId, threadId, bot, chatUserStorage, threadRestrictionService) {
+  try {
+    // Проверяем, что это супергруппа
+    const chat = await bot.getChat(chatId);
+    if (chat.type !== 'supergroup') {
+      return true; // Разрешаем команду в обычных чатах
+    }
+
+    // Проверяем наличие ограничений
+    const hasRestrictions = await threadRestrictionService.hasRestrictions(chatId);
+    if (!hasRestrictions) {
+      return true; // Разрешаем команду если нет ограничений
+    }
+
+    // Проверяем, разрешена ли команда в этой теме
+    const isAllowed = await threadRestrictionService.isThreadRestricted(chatId, threadId);
+    return isAllowed;
+  } catch (error) {
+    console.error('Error checking thread restrictions:', error);
+    return true; // В случае ошибки разрешаем команду
+  }
+}
+
 // Запуск подключения к MongoDB и бота
 async function startBot() {
   await connectToMongoDB();
@@ -103,6 +137,13 @@ async function startBot() {
       return;
     }
     
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
+    }
+    
     // Сохраняем данные чата и пользователя
     await chatUserStorage.saveChatAndUser(msg);
     
@@ -116,10 +157,22 @@ async function startBot() {
       return;
     }
     
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
+    }
+    
     // Сохраняем данные чата и пользователя
     await chatUserStorage.saveChatAndUser(msg);
     
-    await handlers.handleHelp(msg, services);
+    // Передаем все необходимые сервисы для проверки прав администратора
+    await handlers.handleHelp(msg, {
+      messageService,
+      bot,
+      chatUserStorage
+    });
   });
 
   // Обработчик команды /rules
@@ -127,6 +180,13 @@ async function startBot() {
     if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
       console.log(`Command /rules ignored for chat ${msg.chat.id} due to rate limit`);
       return;
+    }
+    
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
     }
     
     // Сохраняем данные чата и пользователя
@@ -142,6 +202,13 @@ async function startBot() {
       return;
     }
     
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
+    }
+    
     // Сохраняем данные чата и пользователя
     await chatUserStorage.saveChatAndUser(msg);
     
@@ -153,6 +220,13 @@ async function startBot() {
     if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
       console.log(`Command /leave ignored for chat ${msg.chat.id} due to rate limit`);
       return;
+    }
+    
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
     }
     
     // Сохраняем данные чата и пользователя
@@ -168,6 +242,13 @@ async function startBot() {
       return;
     }
     
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
+    }
+    
     // Сохраняем данные чата и пользователя
     await chatUserStorage.saveChatAndUser(msg);
     
@@ -181,10 +262,43 @@ async function startBot() {
       return;
     }
     
+    // Проверяем thread-ограничения (кроме admin команд)
+    const threadId = getThreadId(msg);
+    const isAllowed = await checkThreadRestrictions(msg.chat.id, threadId, bot, chatUserStorage, threadRestrictionService);
+    if (!isAllowed) {
+      return; // Не отправляем сообщение, просто игнорируем команду
+    }
+    
     // Сохраняем данные чата и пользователя
     await chatUserStorage.saveChatAndUser(msg);
     
     await handlers.handleVoteKick(msg, services);
+  });
+
+  // Обработчик команды /adminOpenThread
+  bot.onText(/\/adminOpenThread/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /adminOpenThread ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
+    await handlers.handleAdminOpenThread(msg, services);
+  });
+
+  // Обработчик команды /adminCloseThread
+  bot.onText(/\/adminCloseThread/, async (msg) => {
+    if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
+      console.log(`Command /adminCloseThread ignored for chat ${msg.chat.id} due to rate limit`);
+      return;
+    }
+    
+    // Сохраняем данные чата и пользователя
+    await chatUserStorage.saveChatAndUser(msg);
+    
+    await handlers.handleAdminCloseThread(msg, services);
   });
 
   // Обработчик callback_query от inline кнопок

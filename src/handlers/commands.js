@@ -18,14 +18,15 @@ async function handleStart(msg, services) {
 /**
  * Обрабатывает команду /help
  * @param {Object} msg - Сообщение Telegram
- * @param {Object} services - Объект с сервисами { messageService }
+ * @param {Object} services - Объект с сервисами { messageService, bot, chatUserStorage }
  */
 async function handleHelp(msg, services) {
-  const { messageService } = services;
+  const { messageService, bot, chatUserStorage } = services;
   const chatId = msg.chat.id;
   const threadId = getThreadId(msg);
+  const userId = msg.from.id;
 
-  await messageService.sendHelpMessage(chatId, threadId);
+  await messageService.sendHelpMessage(chatId, userId, chatUserStorage, bot, threadId);
 }
 
 /**
@@ -336,6 +337,84 @@ async function handleVoteKick(msg, services) {
   }
 }
 
+/**
+ * Обрабатывает команду /adminOpenThread
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { messageService, bot, chatUserStorage, threadRestrictionService }
+ */
+async function handleAdminOpenThread(msg, services) {
+  const { messageService, bot, chatUserStorage, threadRestrictionService } = services;
+  const chatId = msg.chat.id;
+  const threadId = getThreadId(msg);
+  const userId = msg.from.id;
+
+  try {
+    // Проверяем, что это супергруппа
+    if (msg.chat.type !== 'supergroup') {
+      // Не отправляем сообщение, просто игнорируем команду
+      return;
+    }
+
+    // Проверяем права администратора
+    const isAdmin = await chatUserStorage.isUserAdmin(chatId, userId, bot);
+    if (!isAdmin) {
+      // Не отправляем сообщение, просто игнорируем команду
+      return;
+    }
+
+    // Добавляем тему к ограничениям (поддержка основного чата)
+    const result = await threadRestrictionService.addThreadRestriction(chatId, threadId);
+
+    if (result.success) {
+      await messageService.sendErrorMessage(chatId, result.message, threadId);
+    } else {
+      await messageService.sendErrorMessage(chatId, result.error, threadId);
+    }
+  } catch (error) {
+    console.error('Error in handleAdminOpenThread:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при открытии темы.', threadId);
+  }
+}
+
+/**
+ * Обрабатывает команду /adminCloseThread
+ * @param {Object} msg - Сообщение Telegram
+ * @param {Object} services - Объект с сервисами { messageService, bot, chatUserStorage, threadRestrictionService }
+ */
+async function handleAdminCloseThread(msg, services) {
+  const { messageService, bot, chatUserStorage, threadRestrictionService } = services;
+  const chatId = msg.chat.id;
+  const threadId = getThreadId(msg);
+  const userId = msg.from.id;
+
+  try {
+    // Проверяем, что это супергруппа
+    if (msg.chat.type !== 'supergroup') {
+      // Не отправляем сообщение, просто игнорируем команду
+      return;
+    }
+
+    // Проверяем права администратора
+    const isAdmin = await chatUserStorage.isUserAdmin(chatId, userId, bot);
+    if (!isAdmin) {
+      // Не отправляем сообщение, просто игнорируем команду
+      return;
+    }
+
+    // Удаляем тему из ограничений (поддержка основного чата)
+    const result = await threadRestrictionService.removeThreadRestriction(chatId, threadId);
+
+    if (result.success) {
+      await messageService.sendErrorMessage(chatId, result.message, threadId);
+    } else {
+      await messageService.sendErrorMessage(chatId, result.error, threadId);
+    }
+  } catch (error) {
+    console.error('Error in handleAdminCloseThread:', error);
+    await messageService.sendErrorMessage(chatId, 'Произошла ошибка при закрытии темы.', threadId);
+  }
+}
+
 module.exports = {
   handleStart,
   handleHelp,
@@ -346,5 +425,7 @@ module.exports = {
   handleRules,
   handleEndGameVote,
   handleLeave,
-  handleVoteKick
+  handleVoteKick,
+  handleAdminOpenThread,
+  handleAdminCloseThread
 };

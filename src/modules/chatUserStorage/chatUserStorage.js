@@ -382,6 +382,117 @@ class ChatUserStorage {
       return { totalUsers: 0, totalCounter: 0 };
     }
   }
+
+  /**
+   * Получает список администраторов чата с кэшированием
+   * @param {number} chatId - ID чата
+   * @param {Object} bot - Экземпляр Telegram бота
+   * @returns {Promise<Array>} Массив администраторов
+   */
+  async getChatAdmins(chatId, bot) {
+    if (!this.chatsCollection) {
+      await this.init();
+    }
+
+    try {
+      const chat = await this.chatsCollection.findOne({ id: chatId });
+      const now = new Date();
+      const cacheTimeout = 10 * 60 * 1000; // 10 минут в миллисекундах
+
+      // Проверяем, есть ли кэш и не истек ли он
+      if (chat && chat.admins && chat.admins_cache_expires_at && now < chat.admins_cache_expires_at) {
+        return chat.admins;
+      }
+
+      // Получаем администраторов из Telegram API
+      const admins = await bot.getChatAdministrators(chatId);
+      
+      // Форматируем данные администраторов
+      const formattedAdmins = admins.map(admin => ({
+        id: admin.user.id,
+        first_name: admin.user.first_name,
+        last_name: admin.user.last_name || '',
+        username: admin.user.username || ''
+      }));
+
+      // Обновляем кэш в базе данных
+      const cacheExpiresAt = new Date(now.getTime() + cacheTimeout);
+      
+      await this.chatsCollection.updateOne(
+        { id: chatId },
+        {
+          $set: {
+            admins: formattedAdmins,
+            admins_cache_expires_at: cacheExpiresAt
+          }
+        },
+        { upsert: true }
+      );
+
+      return formattedAdmins;
+    } catch (error) {
+      console.error('Error getting chat admins:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Проверяет, является ли пользователь администратором чата
+   * @param {number} chatId - ID чата
+   * @param {number} userId - ID пользователя
+   * @param {Object} bot - Экземпляр Telegram бота
+   * @returns {Promise<boolean>} true если пользователь администратор
+   */
+  async isUserAdmin(chatId, userId, bot) {
+    const admins = await this.getChatAdmins(chatId, bot);
+    return admins.some(admin => admin.id === userId);
+  }
+
+  /**
+   * Обновляет кэш администраторов (принудительно)
+   * @param {number} chatId - ID чата
+   * @param {Object} bot - Экземпляр Telegram бота
+   * @returns {Promise<Array>} Массив администраторов
+   */
+  async updateChatAdmins(chatId, bot) {
+    if (!this.chatsCollection) {
+      await this.init();
+    }
+
+    try {
+      // Получаем администраторов из Telegram API
+      const admins = await bot.getChatAdministrators(chatId);
+      
+      // Форматируем данные администраторов
+      const formattedAdmins = admins.map(admin => ({
+        id: admin.user.id,
+        first_name: admin.user.first_name,
+        last_name: admin.user.last_name || '',
+        username: admin.user.username || ''
+      }));
+
+      // Обновляем кэш в базе данных
+      const now = new Date();
+      const cacheTimeout = 10 * 60 * 1000; // 10 минут в миллисекундах
+      const cacheExpiresAt = new Date(now.getTime() + cacheTimeout);
+      
+      await this.chatsCollection.updateOne(
+        { id: chatId },
+        {
+          $set: {
+            admins: formattedAdmins,
+            admins_cache_expires_at: cacheExpiresAt
+          }
+        },
+        { upsert: true }
+      );
+
+      return formattedAdmins;
+    } catch (error) {
+      console.error('Error updating chat admins:', error);
+      return [];
+    }
+  }
 }
 
 module.exports = ChatUserStorage;

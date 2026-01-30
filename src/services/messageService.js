@@ -47,10 +47,16 @@ class MessageService {
   /**
    * Отправляет справочное сообщение с командами
    * @param {number} chatId - ID чата
+   * @param {number} userId - ID пользователя
+   * @param {Object} chatUserStorage - Сервис хранения данных пользователей и чатов
+   * @param {Object} bot - Объект бота Telegram
    * @param {number|null} threadId - ID треда (для супергрупп) или null
    */
-  async sendHelpMessage(chatId, threadId = null) {
-    const helpText = `🎮 Добро пожаловать в CashFlow!
+  async sendHelpMessage(chatId, userId, chatUserStorage, bot, threadId = null) {
+    // Проверяем, является ли пользователь администратором
+    const isAdmin = await chatUserStorage.isUserAdmin(chatId, userId, bot);
+    
+    let helpText = `🎮 Добро пожаловать в CashFlow!
 
 CashFlow - настольная игра о финансовом планировании и управлении личными финансами.
 
@@ -66,6 +72,15 @@ CashFlow - настольная игра о финансовом планиро�
 *УПРАВЛЕНИЕ ИГРОЙ:*
 /endgame - Начать голосование за окончание игры
 /votekick - Начать голосование за исключение игрока`;
+
+    // Добавляем администраторские команды только для администраторов
+    if (isAdmin) {
+      helpText += `
+
+*АДМИНИСТРАТИВНЫЕ КОМАНДЫ (только для администраторов):*
+/adminOpenThread - Открыть тему для команд бота
+/adminCloseThread - Закрыть тему для команд бота`;
+    }
 
     await this.sendMessage(chatId, helpText, { parse_mode: 'Markdown', reply_markup: developerKeyboard }, threadId);
   }

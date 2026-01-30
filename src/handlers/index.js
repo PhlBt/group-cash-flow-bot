@@ -38,5 +38,9 @@ module.exports = {
   handleCredits: profile.handleCredits,
 
   // Error
-  handleErrorMessage: error.handleErrorMessage
+  handleErrorMessage: error.handleErrorMessage,
+
+  // Admin commands
+  handleAdminOpenThread: commands.handleAdminOpenThread,
+  handleAdminCloseThread: commands.handleAdminCloseThread
 };
