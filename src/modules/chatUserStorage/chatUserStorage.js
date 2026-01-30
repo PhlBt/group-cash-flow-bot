@@ -82,7 +82,8 @@ class ChatUserStorage {
       type: chat.type,
       title: chat.title,
       username: chat.username,
-      updated_at: new Date()
+      updated_at: new Date(),
+      kicked: false
     };
 
     try {

@@ -21,6 +21,7 @@ const messageService = new MessageService(bot);
 let gameService;
 let userStatsService;
 let chatUserStorage;
+let chatUserCountScheduler;
 
 // Объект с сервисами для передачи в обработчики
 const services = {
@@ -71,9 +72,24 @@ async function setBotCommands() {
   }
 }
 
+// Инициализация планировщика обновления количества пользователей в чатах
+async function initScheduler() {
+  try {
+    // Инициализация планировщика обновления количества пользователей в чатах
+    const ChatUserCountScheduler = require('./modules/scheduler/chatUserCountScheduler');
+    chatUserCountScheduler = new ChatUserCountScheduler();
+    chatUserCountScheduler.init(bot, databaseService);
+    chatUserCountScheduler.start();
+    console.log('ChatUserCountScheduler initialized and started successfully');
+  } catch (error) {
+    console.error('Error initializing scheduler:', error);
+  }
+}
+
 // Запуск подключения к MongoDB и бота
 async function startBot() {
   await connectToMongoDB();
+  await initScheduler();
   await setBotCommands();
 
   // Устанавливаем экземпляр бота в ErrorStateManager
@@ -219,6 +235,10 @@ startBot().catch(console.error);
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('Shutting down bot...');
+  if (chatUserCountScheduler) {
+    chatUserCountScheduler.stop();
+    console.log('ChatUserCountScheduler stopped');
+  }
   messageService.rateLimiter.stop();
   await bot.stopPolling();
   process.exit(0);
@@ -226,6 +246,10 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   console.log('Shutting down bot...');
+  if (chatUserCountScheduler) {
+    chatUserCountScheduler.stop();
+    console.log('ChatUserCountScheduler stopped');
+  }
   messageService.rateLimiter.stop();
   await bot.stopPolling();
   process.exit(0);
