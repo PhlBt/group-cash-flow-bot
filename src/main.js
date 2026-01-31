@@ -307,8 +307,6 @@ async function startBot() {
       return;
     }
 
-    console.log('msg', query)
-    
     // Сохраняем данные чата и пользователя из callback query
     await chatUserStorage.saveQueryChatAndUser(query);
     

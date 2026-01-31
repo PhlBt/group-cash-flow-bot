@@ -408,6 +408,21 @@ async function handleCallbackQuery(query, services) {
               await messageService.deleteMessage(chatId, gameToStart.waitingMessageId);
             }
 
+            // Обновить статистику всех игроков (увеличить totalGames)
+            try {
+              const statsResult = await gameService.userStatsService.updatePlayersGameStats(gameToStart.gameId, gameService);
+              if (statsResult.success) {
+                console.log(`Updated stats for ${statsResult.updatedCount} players`);
+                if (statsResult.errors.length > 0) {
+                  console.log('Errors occurred:', statsResult.errors);
+                }
+              } else {
+                console.error('Failed to update player stats:', statsResult.errors);
+              }
+            } catch (error) {
+              console.error('Error updating player stats:', error);
+            }
+
             // Начать игру - отправить ход первому игроку
             const firstPlayer = await gameService.getCurrentPlayer(gameToStart.gameId);
             if (firstPlayer) {

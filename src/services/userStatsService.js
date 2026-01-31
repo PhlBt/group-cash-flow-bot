@@ -82,21 +82,80 @@ class UserStatsService {
   }
 
   /**
-   * Обновляет статистику после завершения игры
-   * @param {Object} game - Объект завершенной игры
-   * @returns {Promise<void>}
+   * Обновляет статистику всех игроков в игре (увеличивает totalGames)
+   * @param {string} gameId - ID игры
+   * @param {Object} gameService - Экземпляр GameService для получения данных игры
+   * @returns {Promise<{success: boolean, updatedCount: number, errors: Array}>} Результат операции
    */
-  async updateStatsAfterGame(game) {
-    for (const player of game.players) {
-      const currentStats = await this.getOrCreateUserStats(player.userId, player.username);
+  async updatePlayersGameStats(gameId, gameService) {
+    try {
+      // Получаем игру и всех игроков
+      const game = await gameService.getGame(gameId);
+      if (!game || !game.players) {
+        return { success: false, updatedCount: 0, errors: ['Game not found or no players'] };
+      }
 
-      const updates = {
-        totalGames: currentStats.totalGames + 1,
-        wins: currentStats.wins,
-        losses: currentStats.losses
+      const statsCollection = this.databaseService.getCollection('userStats');
+      const playerUserIds = game.players.map(p => p.userId);
+      
+      // 1. Получаем всю статистику игроков одним запросом
+      const existingStats = await statsCollection.find({ userId: { $in: playerUserIds } }).toArray();
+      const statsMap = new Map(existingStats.map(stat => [stat.userId, stat]));
+
+      // 2. Формируем bulk операции в цикле
+      const bulkOps = [];
+      let updatedCount = 0;
+
+      for (const player of game.players) {
+        const existingStat = statsMap.get(player.userId);
+        
+        if (existingStat) {
+          // Обновляем существующую статистику
+          bulkOps.push({
+            updateOne: {
+              filter: { userId: player.userId },
+              update: {
+                $set: {
+                  totalGames: existingStat.totalGames + 1,
+                  username: player.username,
+                  updatedAt: new Date()
+                }
+              }
+            }
+          });
+          updatedCount++;
+        } else {
+          // Создаем новую статистику
+          bulkOps.push({
+            insertOne: {
+              document: {
+                userId: player.userId,
+                username: player.username,
+                totalGames: 1,
+                wins: 0,
+                losses: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            }
+          });
+          updatedCount++;
+        }
+      }
+
+      // 3. Выполняем все операции одной bulk операцией
+      if (bulkOps.length > 0) {
+        await statsCollection.bulkWrite(bulkOps);
+      }
+
+      return { 
+        success: true, 
+        updatedCount, 
+        errors: [] 
       };
-
-      await this.updateUserStats(player.userId, updates);
+    } catch (error) {
+      console.error('Error in updatePlayersGameStats:', error);
+      return { success: false, updatedCount: 0, errors: [error.message] };
     }
   }
 
