@@ -349,12 +349,32 @@ CashFlow - настольная игра о финансовом планиро�
 
     game.players.forEach((player, index) => {
       message += `${index + 1}. ${player.profession} ${player.username}\n`;
-      message += `   💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
-      message += `   📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
-      message += `   📉 Расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
-      message += `   📊 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
-      message += `   🏠 Активы: ${player.assetsCount}\n`;
-      message += `   💳 Кредиты: ${player.loansCount || 0}\n\n`;
+      
+      if (player.inFastTrack) {
+        // Информация для игроков на Fast Track
+        message += `   💰 Капитал: ${formatNumber(player.fastTrackCash || 0)} ₽\n`;
+        message += `   💵 Доход: ${formatNumber(player.fastTrackIncome || 0)} ₽/мес\n`;
+        if (player.dream) {
+          message += `   🤤 Мечта: ${player.dream.title}\n`;
+          message += `   🎯 Цель: ${formatNumber(player.dreamCost || 0)} ₽\n`;
+          // Расчет прогресса к цели
+          const dreamCost = player.dreamCost || 0;
+          if (dreamCost > 0) {
+            const progressPercent = ((player.fastTrackIncome / dreamCost) * 100).toFixed(1);
+            const remaining = Math.max(0, dreamCost - player.fastTrackIncome);
+            message += `   📊 Прогресс: ${progressPercent}% (осталось: ${formatNumber(remaining)} ₽)\n`;
+          }
+        }
+        message += `\n`;
+      } else {
+        // Информация для игроков на Rat Race
+        message += `   💰 Деньги: ${formatNumber(player.cash)} ₽\n`;
+        message += `   📈 Пассивный доход: ${formatNumber(player.passiveIncome)} ₽/мес\n`;
+        message += `   📉 Расходы: ${formatNumber(player.totalExpenses)} ₽/мес\n`;
+        message += `   📊 Денежный поток: ${formatNumber(player.cashFlow)} ₽/мес\n`;
+        message += `   🏠 Активы: ${player.assetsCount}\n`;
+        message += `   💳 Кредиты: ${player.loansCount || 0}\n\n`;
+      }
     });
 
     await this.sendMessage(chatId, message, {}, threadId);
