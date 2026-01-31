@@ -23,6 +23,7 @@ let gameService;
 let userStatsService;
 let chatUserStorage;
 let chatUserCountScheduler;
+let threadRestrictionService;
 
 // Объект с сервисами для передачи в обработчики
 const services = {
@@ -70,8 +71,8 @@ async function setBotCommands() {
     { command: 'leave', description: 'Выйти из игры' },
     { command: 'votekick', description: 'Начать голосование за исключение игрока' },
     { command: 'endgame', description: 'Начать голосование за окончание игры' },
-    { command: 'adminOpenThread', description: 'Открыть тему для команд бота' },
-    { command: 'adminCloseThread', description: 'Закрыть тему для команд бота' }
+    { command: 'adminopenthread', description: 'Открыть тему для команд бота' },
+    { command: 'adminclosethread', description: 'Закрыть тему для команд бота' }
   ];
 
   try {
@@ -275,10 +276,10 @@ async function startBot() {
     await handlers.handleVoteKick(msg, services);
   });
 
-  // Обработчик команды /adminOpenThread
-  bot.onText(/\/adminOpenThread/, async (msg) => {
+  // Обработчик команды /adminopenthread
+  bot.onText(/\/adminopenthread/, async (msg) => {
     if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
-      console.log(`Command /adminOpenThread ignored for chat ${msg.chat.id} due to rate limit`);
+      console.log(`Command /adminopenthread ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
     
@@ -288,10 +289,10 @@ async function startBot() {
     await handlers.handleAdminOpenThread(msg, services);
   });
 
-  // Обработчик команды /adminCloseThread
-  bot.onText(/\/adminCloseThread/, async (msg) => {
+  // Обработчик команды /adminclosethread
+  bot.onText(/\/adminclosethread/, async (msg) => {
     if (messageService.rateLimiter.isRateLimited(msg.chat.id)) {
-      console.log(`Command /adminCloseThread ignored for chat ${msg.chat.id} due to rate limit`);
+      console.log(`Command /adminclosethread ignored for chat ${msg.chat.id} due to rate limit`);
       return;
     }
     

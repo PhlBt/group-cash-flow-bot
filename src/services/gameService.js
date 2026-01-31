@@ -2268,30 +2268,22 @@ class GameService {
     const isOwnDream = player.dream && player.dream.id === dreamField.id;
     const otherPlayerWithDream = allPlayers.find(p => p.dream && p.dream.id === dreamField.id && p.userId !== userId);
     const isOtherDream = !!otherPlayerWithDream;
-    const isUnclaimedDream = !isOwnDream && !isOtherDream;
 
-    // Проверяем, была ли мечта куплена ранее (стоимость уже удвоена)
-    const purchasedDreams = game.purchasedDreams || [];
-    const wasPurchased = purchasedDreams.includes(dreamField.id);
+    // Получаем текущий множитель стоимости для этой мечты
+    const dreamMultipliers = game.dreamMultipliers || {};
+    const currentMultiplier = dreamMultipliers[dreamField.id] || 1;
 
-    let cost = dreamField.data.cost;
+    let cost = dreamField.data.cost * currentMultiplier;
     let victory = false;
-    let shouldMarkAsPurchased = false;
+    let shouldUpdateMultiplier = false;
 
     if (isOwnDream) {
       // Своя мечта - победа
       victory = true;
-      cost = dreamField.data.cost;
-    } else if (isOtherDream) {
-      // Мечта другого игрока - удвоенная стоимость
-      cost = dreamField.data.cost * 2;
-      shouldMarkAsPurchased = true; // Помечаем как купленную для будущих игроков
-    } else if (wasPurchased) {
-      // Ничья мечта, но была куплена ранее - стоимость удвоена
-      cost = dreamField.data.cost * 2;
+      // Для своей мечты не увеличиваем стоимость
     } else {
-      // Ничья мечта - обычная стоимость, ничего не происходит
-      cost = dreamField.data.cost;
+      // Любая покупка (чужая или ничья) - увеличиваем стоимость для будущих игроков
+      shouldUpdateMultiplier = true;
     }
 
     // Проверяем хватает ли денег
@@ -2302,14 +2294,16 @@ class GameService {
     // Списываем стоимость
     const newCash = (player.fastTrackCash || 0) - cost;
 
-    // Обновляем баланс и список купленных мечтаний
+    // Обновляем баланс
     const updateData = {
       [`players.${playerIndex}.fastTrackCash`]: newCash
     };
 
-    // Если это чужая мечта и еще не была куплена, добавляем в список
-    if (shouldMarkAsPurchased && !wasPurchased) {
-      updateData.purchasedDreams = [...purchasedDreams, dreamField.id];
+    // Если нужно обновить множитель стоимости, увеличиваем его в 2 раза
+    if (shouldUpdateMultiplier) {
+      const newMultiplier = currentMultiplier * 2;
+      dreamMultipliers[dreamField.id] = newMultiplier;
+      updateData.dreamMultipliers = dreamMultipliers;
     }
 
     await this.databaseService.getDb().collection('games').updateOne(

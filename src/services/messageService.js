@@ -78,8 +78,8 @@ CashFlow - настольная игра о финансовом планиро�
       helpText += `
 
 *АДМИНИСТРАТИВНЫЕ КОМАНДЫ (только для администраторов):*
-/adminOpenThread - Открыть тему для команд бота
-/adminCloseThread - Закрыть тему для команд бота`;
+/adminopenthread - Открыть тему для команд бота
+/adminclosethread - Закрыть тему для команд бота`;
     }
 
     await this.sendMessage(chatId, helpText, { parse_mode: 'Markdown', reply_markup: developerKeyboard }, threadId);
@@ -1705,7 +1705,7 @@ CashFlow - настольная игра о финансовом планиро�
    * @param {boolean} inFastTrack - На Fast Track
    * @param {Array} paydayEvents - Массив событий выплат
    * @param {Object} fastTrackEvent - fastTrack событие
-   * @param {Object} game - Объект игры для проверки занятости полей
+   * @param {Object} game - Объект игры для проверки занятости полей и получения dreamMultipliers
    */
   async sendCombinedRollMoveFastTrackMessage(chatId, player, steps, newPosition, paydayEvents = [], fastTrackEvent, game, gameService, threadId = null) {
     const trackName = '🚀 Скоростная дорожка';
@@ -1744,29 +1744,29 @@ CashFlow - настольная игра о финансовом планиро�
 
     switch (fastTrackEvent.type) {
       case FIELD_TYPES.INVESTING:
-        fieldTypeLabel = 'Инвестиция:';
+        fieldTypeLabel = '💼 Инвестиция:';
         break;
       case FIELD_TYPES.EXPENSES:
-        fieldTypeLabel = 'Расходы:';
+        fieldTypeLabel = '⬇️ Расходы:';
         break;
       case FIELD_TYPES.CHARITY:
-        fieldTypeLabel = 'Благотворительность:';
+        fieldTypeLabel = '🕊 Благотворительность:';
         break;
       case FIELD_TYPES.FCHARITY:
-        fieldTypeLabel = 'Благотворительность:';
+        fieldTypeLabel = '🕊 Благотворительность:';
         break;
       case FIELD_TYPES.DREAM:
-        fieldTypeLabel = 'Мечта:';
+        fieldTypeLabel = '🤤 Мечта:';
         break;
       case FIELD_TYPES.FPAYDAY:
-        fieldTypeLabel = 'День выплат:';
+        fieldTypeLabel = '⬆️ День выплат:';
         break;
       default:
         fieldTypeLabel = '';
     }
 
     if (fastTrackEvent.type !== FIELD_TYPES.FPAYDAY) {
-      message += `💼 ${fieldTypeLabel ? fieldTypeLabel + ' ' : ''}${fastTrackEvent.title}\n\n`;
+      message += `${fieldTypeLabel ? fieldTypeLabel + ' ' : ''}${fastTrackEvent.title}\n\n`;
     }
 
     if (fastTrackEvent.data && fastTrackEvent.data.dice) {
@@ -1780,7 +1780,21 @@ CashFlow - настольная игра о финансовом планиро�
 
     // Добавляем информацию об оплате для полей с cost
     if (fastTrackEvent.data && fastTrackEvent.data.cost && !fastTrackEvent.data.passiveIncome) {
-      message += `💰 Требуется оплата: ${formatNumber(fastTrackEvent.data.cost)} ₽\n`;
+      // Проверяем, является ли это мечтой и есть ли для нее множитель
+      const isDream = fastTrackEvent.type === FIELD_TYPES.DREAM;
+      const dreamMultipliers = game.dreamMultipliers || {};
+      const multiplier = dreamMultipliers[fastTrackEvent.id] || 1;
+      const baseCost = fastTrackEvent.data.cost;
+      const totalCost = baseCost * multiplier;
+
+      if (isDream && multiplier > 1) {
+        // Для мечты с множителем показываем базовую стоимость, увеличенную стоимость и информацию о множителе
+        message += `💰 Требуется оплата: ${formatNumber(totalCost)} ₽\n`;
+        message += `📈 Множитель стоимости: x${multiplier}\n`;
+      } else {
+        // Для обычных полей или мечты без множителя показываем стандартную стоимость
+        message += `💰 Требуется оплата: ${formatNumber(totalCost)} ₽\n`;
+      }
     }
 
     // Показать параметры события
