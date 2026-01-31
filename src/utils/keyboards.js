@@ -369,7 +369,7 @@ function generateOfferKeyboard(offerState, players) {
   } else if (offerState.step === 'select_user') {
     // Клавиатура выбора пользователя
     const offeringUserId = offerState.offeringUserId;
-    const otherPlayers = players.filter(p => p.userId !== offeringUserId);
+    const otherPlayers = players.filter(p => p.userId !== offeringUserId && !p.inFastTrack);
 
     // Добавляем кнопки игроков (максимум 6 в ряд, или по 2 в ряд)
     const buttonsPerRow = 2;

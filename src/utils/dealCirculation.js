@@ -39,7 +39,12 @@ async function initializeDealCirculation(gameId, deal, services) {
   const circulationPlayers = [];
   for (let i = 0; i < game.players.length; i++) {
     const playerIndex = (currentIndex + i) % game.players.length;
-    circulationPlayers.push(game.players[playerIndex].userId);
+    const player = game.players[playerIndex];
+
+    // Исключить игроков на Fast Track
+    if (!player.inFastTrack) {
+      circulationPlayers.push(player.userId);
+    }
   }
 
   if (circulationPlayers.length > 0) {
