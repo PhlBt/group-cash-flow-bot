@@ -71,8 +71,6 @@ async function setBotCommands() {
     { command: 'leave', description: 'Выйти из игры' },
     { command: 'votekick', description: 'Начать голосование за исключение игрока' },
     { command: 'endgame', description: 'Начать голосование за окончание игры' },
-    { command: 'adminopenthread', description: 'Открыть тему для команд бота' },
-    { command: 'adminclosethread', description: 'Закрыть тему для команд бота' }
   ];
 
   try {
