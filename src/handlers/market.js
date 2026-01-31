@@ -49,13 +49,10 @@ async function handleMarket(gameId, services) {
   const needsInteraction = requiresPlayerInteraction(marketCard);
 
   if (!needsInteraction) {
-    // Карточка не требует взаимодействия - показать только текущему игроку без создания циркуляции
-    const currentPlayer = await gameService.getCurrentPlayer(gameId);
-    const gameAfterInit = await gameService.getGame(gameId);
-    const threadId = game.threadId || null;
-    await messageService.sendMarketCardWithSkipButton(game.chatId, marketCard, currentPlayer, gameAfterInit, threadId, false);
-    // Вернуть null, чтобы сигнализировать, что обработка началась
-    return null;
+    // Карточка не требует взаимодействия - НЕ отправлять сообщение здесь
+    // Сообщение будет отправлено из handleRollDice в комбинированном виде
+    // Вернуть marketCard, чтобы handleRollDice отправил комбинированное сообщение
+    return marketCard;
   }
 
   // Карточка требует взаимодействия - запустить циркуляцию для эффектов продажи (если есть игроки с активами)

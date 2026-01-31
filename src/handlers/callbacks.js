@@ -192,20 +192,11 @@ async function handleRollDice(query, diceCount, services) {
 
       // Если handleMarket вернул null, значит карточка не требует взаимодействия
       if (marketCard === null) {
-        // Уменьшить счетчик ходов благотворительности
-        if (currentPlayer.charityEffect && currentPlayer.charityTurnsLeft > 0) {
-          await gameService.decreaseCharityTurns(game.gameId, userId);
-        }
-        // Передать ход следующему игроку
-        const nextTurnResult = await gameService.nextTurn(game.gameId);
-        if (nextTurnResult.success && nextTurnResult.nextPlayer) {
-          if (nextTurnResult.transitioned) {
-            await messageService.sendFastTrackTransitionMessage(chatId, nextTurnResult.nextPlayer, threadId);
-          }
-          await messageService.sendPlayerTurnMessage(chatId, nextTurnResult.nextPlayer, await gameService.getGame(game.gameId), threadId);
-        }
+        // Это означает, что карточка требует взаимодействия - ход не передаем
         return;
       }
+      // Если marketCard !== null, это может быть карточка с эффектом, но мы не передаем ход автоматически
+      // Ход будет передан только после нажатия кнопки "Пропустить" в handleSkipMarket
 
       // Получить обновленную игру после применения эффектов
       const updatedGame = await gameService.getGame(game.gameId);

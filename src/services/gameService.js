@@ -2420,7 +2420,7 @@ class GameService {
       );
 
       const threadId = game.threadId || null;
-      await this.messageService.sendGameFinishedMessage(game.chatId, threadId);
+      // await this.messageService.sendGameFinishedMessage(game.chatId, threadId);
       return { success: true, gameFinished: true };
     } else {
       // Есть еще игроки - продолжаем игру, удаляя победившего

@@ -196,8 +196,12 @@ async function handleBuyDeal(query, services) {
 
         await messageService.sendCreditCardOfferMessage(chatId, dealWithDownPayment, currentPlayer, 'mortgage_down_payment', 1, threadId);
       } else if (buyResult.error === 'insufficient_funds') {
-        // Обычная ошибка недостатка средств
-        await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal', game.currentDealQuantity, threadId);
+        if (originalDeal.unlimitedStocks) {
+          await messageService.sendErrorMessage(chatId, '❌ Недостаточно денег для покупки акций.', threadId);
+        } else {
+          // Обычная ошибка недостатка средств
+          await messageService.sendCreditCardOfferMessage(chatId, deal, currentPlayer, 'deal', game.currentDealQuantity, threadId);
+        }
       } else {
         await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.', threadId);
       }
@@ -730,11 +734,11 @@ async function handleBuyMortgageDownPaymentWithCreditCard(query, services) {
     const buyResult = isBigDeal
       ? await gameService.buyBigDealWithMortgageAndCreditDownPayment(game.gameId, userId, deal)
       : await gameService.buySmallDealWithMortgageAndCreditDownPayment(
-          game.gameId,
-          userId,
-          deal,
-          game.currentDealQuantity
-        );
+        game.gameId,
+        userId,
+        deal,
+        game.currentDealQuantity
+      );
 
     if (!buyResult.success) {
       await messageService.sendErrorMessage(chatId, 'Ошибка при покупке сделки.', threadId);
